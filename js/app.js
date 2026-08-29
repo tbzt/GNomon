@@ -57,6 +57,7 @@ import { Conduite } from "./widgets/conduite.js";
 import { Monde } from "./widgets/monde.js";
 import { Livrets } from "./widgets/livrets.js";
 import { Besoins } from "./widgets/besoins.js";
+import { Theme, LIBELLES } from "./core/theme.js";
 import { Utils } from "./core/utils.js";
 
 /** ── LES QUATRE MOMENTS ──
@@ -206,7 +207,16 @@ export const App = {
     for (const [nom, el] of Object.entries(this._hotes)) el.hidden = nom !== ecran;
     // Les écrans-instruments prennent la largeur ; seule la fiche garde
     // une colonne de lecture — c'est le seul écran qu'on lit vraiment.
-    document.querySelector("main").dataset.ecran = ecran;
+    // `data-actif` et non `data-ecran` : ce marqueur dit dans quel écran
+    // on EST, alors que `data-ecran` désigne un bouton qui MÈNE quelque
+    // part. Les deux ont porté le même nom, et `<main>` — ancêtre de
+    // toute l'application — se faisait ramasser par le balayage qui
+    // câble les onglets. Il recevait donc un écouteur de plus à chaque
+    // rendu, jamais retiré, et chaque clic n'importe où rejouait
+    // l'ouverture de l'écran courant autant de fois qu'il en avait
+    // accumulé. Invisible tant que les écrans se reconstruisaient de
+    // toute façon ; fatal dès qu'un widget garde un état dans le DOM.
+    document.querySelector("main").dataset.actif = ecran;
     this._rendreNav();
     this._compteurs();
   },
@@ -257,12 +267,16 @@ export const App = {
     sous.innerHTML = onglets + fil;
     sous.hidden = mode.ecrans.length < 2 && !fil;
 
-    for (const b of document.querySelectorAll("[data-mode]"))
+    // Le balayage reste borné aux deux conteneurs qu'on vient de
+    // réécrire : leurs boutons sont neufs, donc sans écouteur. Un
+    // `document.querySelectorAll` attraperait ce qui vit ailleurs et
+    // survit d'un rendu à l'autre — c'est-à-dire une fuite.
+    for (const b of hoteModes.querySelectorAll("[data-mode]"))
       b.addEventListener("click", () => {
         const m = MODES.find((x) => x.cle === b.dataset.mode);
         if (m) this._aller(m.ecrans[0].cle);
       });
-    for (const b of document.querySelectorAll("[data-ecran]"))
+    for (const b of sous.querySelectorAll("[data-ecran]"))
       b.addEventListener("click", () => this._aller(b.dataset.ecran));
   },
 
@@ -480,6 +494,26 @@ export const App = {
 
   _brancherBarre() {
     document.getElementById("poids").addEventListener("click", () => this._detailPoids());
+
+    /* Le bouton NOMME l'état courant, il ne promet pas le suivant : une
+       bascule qui affiche « Sombre » alors qu'on est en clair, ou
+       l'inverse, se lit de travers une fois sur deux. Il dit ce qui est,
+       et son infobulle dit ce qu'un clic fera. */
+    const bTheme = document.getElementById("act-theme");
+    if (bTheme) {
+      bTheme.addEventListener("click", () => Theme.cycler());
+      Theme.subscribe((etat) => {
+        bTheme.textContent = LIBELLES[etat];
+        bTheme.dataset.etat = etat;
+        bTheme.title =
+          etat === "systeme"
+            ? `Thème : suit l'appareil (actuellement ${Theme.effectif()}). Cliquez pour forcer le clair.`
+            : etat === "clair"
+              ? "Thème : clair, quel que soit l'appareil. Cliquez pour le sombre."
+              : "Thème : sombre, quel que soit l'appareil. Cliquez pour revenir au réglage de l'appareil.";
+      });
+      Theme.init();
+    }
 
     document.getElementById("act-exporter").addEventListener("click", () => {
       this._quitter();

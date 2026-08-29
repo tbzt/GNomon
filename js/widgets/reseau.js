@@ -1,9 +1,9 @@
 "use strict";
 
 /* ============================================================
-   RÉSEAU — le casting, en deux lentilles.
+   RÉSEAU — le casting, en trois lentilles.
    ------------------------------------------------------------
-   **Une vérité, deux vues** — la doctrine du projet appliquée là où
+   **Une vérité, trois vues** — la doctrine du projet appliquée là où
    elle sert le plus.
 
    · **La liste** met les couvertures côte à côte : elle dit d'un coup
@@ -12,13 +12,19 @@
    · **Le graphe** montre ce que la liste ne peut pas : la forme du
      réseau, les groupes, et surtout **ce qui casse si quelqu'un ne
      vient pas**.
+   · **Le tableau** est la seule des trois où l'on ÉCRIT : une ligne par
+     personnage, les mêmes champs que la fiche mis en colonnes. Il sert
+     quand la question porte sur l'ensemble — remplir les fonctions
+     narratives manquantes, reclasser un groupe, comparer quarante
+     morales — là où ouvrir quarante fiches est le vrai coût.
 
-   Aucune n'est « la vraie » : les deux lisent le même store, avec le
+   Aucune n'est « la vraie » : les trois lisent le même store, avec le
    même vocabulaire (⇄ accord · ⇄̸ désaccord · → sens unique).
    ============================================================ */
 import { scoreCouverture } from "../core/couverture.js";
 import { TONALITES, IMPORTANCES, FONCTIONS } from "../core/reseaustore.js";
 import { ReseauGraphe } from "./reseaugraphe.js";
+import { Tableau } from "./tableau.js";
 import { Accueil } from "./accueil.js";
 import { Utils } from "../core/utils.js";
 
@@ -67,6 +73,7 @@ export const Reseau = {
 
   demonter() {
     ReseauGraphe.demonter();
+    Tableau.demonter();
   },
 
   rendre() {
@@ -75,12 +82,14 @@ export const Reseau = {
       '<div class="lentilles">' +
       `<button type="button" class="lentille${this._lentille === "liste" ? " actif" : ""}" data-lentille="liste">Liste</button>` +
       `<button type="button" class="lentille${this._lentille === "graphe" ? " actif" : ""}" data-lentille="graphe">Graphe</button>` +
+      `<button type="button" class="lentille${this._lentille === "tableau" ? " actif" : ""}" data-lentille="tableau">Tableau</button>` +
       '<span class="spacer"></span>' +
       '<button type="button" class="creer-perso" data-creer>+ Personnage</button>' +
       "</div>";
 
     if (!persos.length) {
       ReseauGraphe.demonter();
+      Tableau.demonter();
       // Le projet entièrement vierge mérite mieux qu'une phrase : on
       // ne sait ni par où commencer ni que dix autres écrans existent.
       if (this._actions && Accueil.estVierge(this._store, this._actions.monde_store)) {
@@ -94,7 +103,27 @@ export const Reseau = {
       return;
     }
 
+    /* Le tableau se monte UNE fois et se rafraîchit ensuite. Le
+       reconstruire à chaque événement du store arracherait le champ
+       sous le curseur — or c'est la seule lentille où l'on saisit.
+       C'est le widget lui-même qui dit s'il est en service — la
+       présence de son nœud dans le DOM ne le dit pas : quitter l'écran
+       le masque sans le vider. */
+    if (this._lentille === "tableau") {
+      ReseauGraphe.demonter();
+      if (Tableau.monteDans(this._hote)) {
+        Tableau.rafraichir();
+        return;
+      }
+      this._hote.innerHTML = barre + '<div id="tb-hote"></div>';
+      const h = this._hote.querySelector("#tb-hote");
+      Tableau.monter(h, this._store, { onOuvrir: this._onOuvrir });
+      Tableau.brancher(h);
+      return;
+    }
+
     if (this._lentille === "graphe") {
+      Tableau.demonter();
       this._hote.innerHTML = barre + '<div id="rg-hote"></div>';
       ReseauGraphe.monter(this._hote.querySelector("#rg-hote"), this._store, this._stores, {
         onOuvrir: this._onOuvrir,
@@ -103,6 +132,7 @@ export const Reseau = {
     }
 
     ReseauGraphe.demonter();
+    Tableau.demonter();
     const groupes = [...this._store.groupes(), { id: null, nom: "Sans groupe" }];
     this._hote.innerHTML =
       barre +

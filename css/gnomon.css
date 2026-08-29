@@ -22,12 +22,34 @@
   --neutre: #5a646b;
   --complique: #6b4e9e;
 
+  color-scheme: light;
+
   --serif: "Iowan Old Style", "Palatino Linotype", Palatino, "Book Antiqua", Georgia, serif;
   --mono: ui-monospace, "SF Mono", SFMono-Regular, Menlo, Consolas, monospace;
 }
 
+/* ── TROIS ÉTATS, PAS DEUX ────────────────────────────────────
+   Le réglage a trois positions : « clair », « sombre », et le défaut
+   « système » qui n'en est aucune des deux. Le défaut ne pose AUCUN
+   attribut sur la racine — c'est son absence qui laisse la requête
+   média décider. D'où les deux blocs ci-dessous, identiques :
+
+   1. sous `prefers-color-scheme: dark`, mais neutralisé par
+      `:not([data-theme="light"])` — un choix explicite « clair » doit
+      gagner contre un système sombre ;
+   2. sur `[data-theme="dark"]`, hors requête média — un choix
+      explicite « sombre » doit gagner contre un système clair.
+
+   Les deux listes sont volontairement dupliquées : CSS nu ne sait pas
+   nommer un jeu de valeurs. Elles se modifient ENSEMBLE.
+
+   `color-scheme` accompagne chaque jeu : sans lui, les contrôles
+   natifs (listes déroulantes, ascenseurs, curseurs) restent peints
+   dans le thème du système et jurent avec le reste de la page.
+   ------------------------------------------------------------ */
+
 @media (prefers-color-scheme: dark) {
-  :root {
+  :root:not([data-theme="light"]) {
     --ground: #0e1820;
     --surface: #152230;
     --panel: #0a1219;
@@ -41,7 +63,25 @@
     --negatif: #e27b72;
     --neutre: #7c8b97;
     --complique: #ac91de;
+    color-scheme: dark;
   }
+}
+
+:root[data-theme="dark"] {
+  --ground: #0e1820;
+  --surface: #152230;
+  --panel: #0a1219;
+  --ink: #dce6ec;
+  --ink-soft: #9aaebb;
+  --ink-faint: #728ea3;
+  --rule: #233440;
+  --accent: #83b7e6;
+  --accent-ink: #b5d5f2;
+  --positif: #5fb88a;
+  --negatif: #e27b72;
+  --neutre: #7c8b97;
+  --complique: #ac91de;
+  color-scheme: dark;
 }
 
 * {
@@ -2939,10 +2979,10 @@ button[disabled] {
 main {
   max-width: 1560px;
 }
-main[data-ecran="fiche"] {
+main[data-actif="fiche"] {
   max-width: 1160px;
 }
-main[data-ecran="conduite"] {
+main[data-actif="conduite"] {
   max-width: none;
   padding: 0;
 }
@@ -3076,7 +3116,7 @@ table.matrice .cell,
    liste à gauche en sans, l'aperçu à droite dans son propre cadre.
    ============================================================ */
 
-main[data-ecran="monde"] {
+main[data-actif="monde"] {
   max-width: 900px;
 }
 
@@ -4235,5 +4275,390 @@ main[data-ecran="monde"] {
   }
   .ac-moments span {
     grid-column: 2;
+  }
+}
+
+/* ============================================================
+   BASCULE DE THÈME
+   ============================================================ */
+
+.barre .theme {
+  min-width: 7.2em;
+  text-align: center;
+}
+
+/* En « système » le bouton reste discret : c'est le défaut, il n'y a
+   rien à signaler. Dès qu'un choix est forcé, il s'affirme — sinon on
+   oublie qu'on a dérogé et on croit son appareil détraqué. */
+.barre .theme[data-etat="systeme"] {
+  color: var(--ink-faint);
+}
+
+.barre .theme[data-etat="clair"],
+.barre .theme[data-etat="sombre"] {
+  border-color: var(--accent);
+  color: var(--accent-ink);
+}
+
+/* ============================================================
+   TABLEAU — la lentille où l'on saisit.
+   ------------------------------------------------------------
+   Un tableau de quarante lignes sur vingt colonnes ne se lit pas
+   comme une page. Trois décisions portent tout :
+
+   1. **La colonne des noms est figée**, et l'en-tête aussi. Dès qu'on
+      défile vers la droite ou vers le bas, sans elles on ne sait plus
+      ni de qui ni de quoi parle une cellule.
+   2. **Les champs sont invisibles au repos.** Un tableau où chaque
+      cellule porte une bordure d'input est un mur de rectangles : on
+      ne voit plus les données. La bordure n'apparaît qu'au survol et
+      au focus — c'est là qu'elle informe.
+   3. **Les colonnes dérivées se distinguent au fond, pas à la
+      couleur.** Elles sont en mono sur un fond légèrement retiré :
+      on comprend sans légende qu'on ne les saisit pas.
+
+   Les manques ne sont pas peints en rouge vif — sur une grille encore
+   à moitié vide, ce serait un mur d'alarme illisible. Un lavis très
+   faible suffit à faire ressortir les trous quand on cherche les trous.
+   ============================================================ */
+
+/* ---------- barre de commandes ---------- */
+
+.tb-barre {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  flex-wrap: wrap;
+  margin: 0 0 12px;
+  font-family: var(--sans);
+  font-size: 13px;
+}
+
+.tb-jeux {
+  display: flex;
+  gap: 2px;
+  border: 1px solid var(--rule);
+  border-radius: 3px;
+  padding: 2px;
+  background: var(--surface);
+}
+
+.tb-jeu {
+  font-family: var(--sans);
+  font-size: 12.5px;
+  text-transform: none;
+  letter-spacing: 0;
+  padding: 4px 11px;
+  border: 0;
+  border-radius: 2px;
+  background: none;
+  color: var(--ink-soft);
+}
+
+.tb-jeu:hover {
+  background: var(--ground);
+  color: var(--ink);
+}
+
+.tb-jeu.actif {
+  background: var(--accent);
+  color: var(--surface);
+  font-weight: 600;
+}
+
+.tb-champ,
+.tb-case {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--ink-faint);
+}
+
+.tb-champ > span,
+.tb-case > span {
+  font-family: var(--mono);
+  font-size: 10.5px;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.tb-champ input,
+.tb-champ select {
+  font-family: var(--sans);
+  font-size: 13px;
+  padding: 4px 7px;
+  border: 1px solid var(--rule);
+  border-radius: 2px;
+  background: var(--surface);
+  color: var(--ink);
+}
+
+.tb-champ input[type="search"] {
+  width: 15em;
+}
+
+.tb-barre .spacer {
+  flex: 1;
+}
+
+.tb-compte {
+  font-family: var(--mono);
+  font-size: 11px;
+  letter-spacing: 0.06em;
+  color: var(--ink-faint);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+/* ---------- la grille ---------- */
+
+.tb-defil {
+  position: relative;
+  overflow: auto;
+  max-height: calc(100vh - var(--haut-barres) - 150px);
+  border: 1px solid var(--rule);
+  border-radius: 3px;
+  background: var(--surface);
+  /* Le fond du conteneur doit être opaque : la colonne figée glisse
+     par-dessus les autres et laisserait voir au travers. */
+}
+
+.tb {
+  border-collapse: separate;
+  border-spacing: 0;
+  table-layout: fixed;
+  width: max-content;
+  min-width: 100%;
+  font-family: var(--sans);
+  font-size: 13.5px;
+}
+
+.tb th,
+.tb td {
+  width: var(--l, 10em);
+  max-width: var(--l, 10em);
+  border-bottom: 1px solid var(--rule);
+  border-right: 1px solid color-mix(in srgb, var(--rule) 45%, transparent);
+  padding: 0;
+  text-align: left;
+  vertical-align: middle;
+}
+
+/* ---------- en-tête ---------- */
+
+.tb thead th {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  background: var(--panel);
+  border-bottom: 1px solid var(--rule);
+  box-shadow: 0 1px 0 var(--rule);
+}
+
+.tb thead th button {
+  display: block;
+  width: 100%;
+  font-family: var(--mono);
+  font-size: 10.5px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  text-align: left;
+  padding: 9px 8px;
+  border: 0;
+  border-radius: 0;
+  background: none;
+  color: var(--ink-faint);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.tb thead th button:hover {
+  background: var(--ground);
+  color: var(--ink);
+}
+
+.tb thead th.trie button {
+  color: var(--accent-ink);
+  font-weight: 700;
+}
+
+.tb thead th button i {
+  font-style: normal;
+}
+
+.tb th.num button {
+  text-align: right;
+}
+
+/* ---------- colonne figée ---------- */
+
+.tb .figee {
+  position: sticky;
+  left: 0;
+  z-index: 1;
+  background: var(--surface);
+  /* Une ombre plutôt qu'un trait : elle ne se voit que lorsque le
+     tableau a effectivement défilé sous la colonne. */
+  box-shadow: 1px 0 0 var(--rule);
+}
+
+.tb thead th.figee {
+  z-index: 3;
+  background: var(--panel);
+  box-shadow: 1px 0 0 var(--rule), 0 1px 0 var(--rule);
+}
+
+.tb tbody tr:hover .figee {
+  background: var(--ground);
+}
+
+/* ---------- lignes ---------- */
+
+.tb tbody tr:hover td {
+  background: color-mix(in srgb, var(--accent) 6%, transparent);
+}
+
+.tb tbody tr.pnj .figee input {
+  font-style: italic;
+}
+
+/* ---------- cellules saisissables ---------- */
+
+.tb td input[type="text"],
+.tb td select {
+  width: 100%;
+  font-family: inherit;
+  font-size: inherit;
+  color: var(--ink);
+  padding: 8px;
+  border: 1px solid transparent;
+  border-radius: 0;
+  background: none;
+  text-overflow: ellipsis;
+}
+
+.tb td select {
+  /* Sans cela, la flèche native pousse le texte hors de la cellule. */
+  padding-right: 2px;
+  appearance: none;
+  cursor: pointer;
+}
+
+.tb td input[type="text"]:hover,
+.tb td select:hover {
+  border-color: var(--rule);
+}
+
+.tb td input[type="text"]:focus,
+.tb td select:focus {
+  outline: 0;
+  border-color: var(--accent);
+  box-shadow: inset 0 0 0 1px var(--accent);
+  background: var(--surface);
+  position: relative;
+  z-index: 4;
+}
+
+.tb td input[type="checkbox"] {
+  display: block;
+  margin: 0 auto;
+  accent-color: var(--accent);
+  cursor: pointer;
+}
+
+.tb td:has(input[type="checkbox"]) {
+  padding: 8px 0;
+}
+
+/* ---------- cellules dérivées ---------- */
+
+.tb .derivee {
+  font-family: var(--mono);
+  font-size: 11.5px;
+  font-variant-numeric: tabular-nums;
+  color: var(--ink-soft);
+  background: color-mix(in srgb, var(--panel) 55%, transparent);
+}
+
+.tb td.derivee {
+  padding: 8px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.tb .num,
+.tb td.derivee.num {
+  text-align: right;
+}
+
+.tb td.derivee.alerte {
+  color: var(--negatif);
+  background: color-mix(in srgb, var(--negatif) 8%, transparent);
+}
+
+/* ---------- dernière colonne : l'échappée vers la fiche ---------- */
+
+.tb .tb-fin {
+  width: 5.4em;
+  max-width: 5.4em;
+  border-right: 0;
+}
+
+.tb-ouvrir {
+  font-size: 10px;
+  padding: 4px 8px;
+  margin: 5px 6px;
+  opacity: 0;
+}
+
+.tb tbody tr:hover .tb-ouvrir,
+.tb-ouvrir:focus-visible {
+  opacity: 1;
+}
+
+/* ---------- ajout d'une ligne ---------- */
+
+.tb-ajout {
+  display: block;
+  width: 100%;
+  font-family: var(--sans);
+  font-size: 13px;
+  text-transform: none;
+  letter-spacing: 0;
+  text-align: left;
+  padding: 10px 8px;
+  border: 0;
+  border-radius: 0;
+  background: none;
+  color: var(--ink-faint);
+}
+
+.tb-ajout:hover {
+  background: color-mix(in srgb, var(--accent) 8%, transparent);
+  color: var(--accent-ink);
+}
+
+.tb-pied {
+  font-family: var(--sans);
+  font-size: 12px;
+  color: var(--ink-faint);
+  margin: 10px 0 0;
+  max-width: 78ch;
+}
+
+.tb-defil .vide {
+  margin: 0;
+  padding: 22px 14px;
+}
+
+@media (max-width: 700px) {
+  .tb-champ input[type="search"] {
+    width: 100%;
+  }
+  .tb-defil {
+    max-height: none;
   }
 }

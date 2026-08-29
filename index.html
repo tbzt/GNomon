@@ -9,6 +9,24 @@
       content="Atelier d'écriture de jeu de rôle grandeur nature : réseau de personnages, trames, informations. 100 % local, aucune donnée transmise."
     />
     <link rel="stylesheet" href="css/gnomon.css" />
+
+    <!-- Le thème choisi doit être posé AVANT le premier rendu. Les
+         modules sont différés : si on attendait `app.js`, la page
+         s'afficherait une fraction de seconde dans le thème du système
+         puis basculerait — un clignotement blanc désagréable, et pire
+         en pleine nuit. D'où ces quatre lignes en clair, seule
+         duplication assumée de la clé de stockage (voir
+         js/core/theme.js, qui reste la référence). -->
+    <script>
+      try {
+        var t = JSON.parse(localStorage.getItem("gnomon_v1_theme"));
+        if (t === "sombre" || t === "clair")
+          document.documentElement.setAttribute(
+            "data-theme",
+            t === "sombre" ? "dark" : "light",
+          );
+      } catch (e) {}
+    </script>
   </head>
   <body>
     <div class="barre">
@@ -22,6 +40,7 @@
       <input id="fichier-archive" type="file" accept="application/json,.json" hidden />
       <button id="act-seed" type="button">Jeu d'essai</button>
       <button id="act-vider" type="button">Vider</button>
+      <button id="act-theme" class="theme" type="button" title="Thème d'affichage"></button>
     </div>
 
     <div class="sous-barre" id="sous-barre"></div>
