@@ -504,6 +504,23 @@ suivantes.
 
 L'impression est en **A5 portrait**, la convention des livrets de GN français.
 
+### Le portrait et le trombinoscope
+
+Le **portrait** est distinct des images de background : c'est le visage, et il sera tiré
+quarante fois sur une planche. Il est donc **carré et petit — 360 px** — là où une image de
+background peut se permettre 900 px puisqu'il n'y en a qu'une ou deux par fiche. Quarante
+portraits à 900 px dépasseraient à eux seuls le quota du `localStorage`. Le recadrage prend le
+carré central plutôt que de déformer : un visage étiré est pire qu'un visage coupé.
+
+Le **trombinoscope** obéit à la **même règle que le livret : rien que du public.** Nom, rôle,
+groupe, visage. Y glisser la fonction narrative ou un mot sur les intrigues transformerait
+l'objet le plus partagé du GN en fuite générale — c'est la planche que tout le monde reçoit et
+que personne ne range.
+
+Un portrait manquant **n'est pas masqué** : il devient une silhouette aux initiales, et l'écran
+compte combien il en manque. Un trou visible se comble ; un trou caché reste. Impression en
+**A4 portrait**, quatre par rangée.
+
 ### L'archive : deux modes aux sémantiques opposées
 
 - **remplacer** — le fichier devient la vérité. Pour restaurer, ou reprendre le travail de

@@ -176,6 +176,7 @@ export const ReseauStore = {
       background: "",
       style: "",
       objectifs: [],
+      portrait: "",
       images: [],
       ...champs,
     };
@@ -218,6 +219,29 @@ export const ReseauStore = {
     for (const l of liens) if (l && l.id && !vus.has(l.id)) d.liens.push(l);
     this.save();
     this._emit({ type: "personnage:creer", id: personnage.id });
+  },
+
+  /* ================= Portrait =================
+     Distinct des `images` : le portrait est le VISAGE, celui qui va au
+     trombinoscope et en tête de livret. Il est carré et petit
+     (360 px) parce qu'il sera tiré quarante fois sur une planche — une
+     image de background, elle, peut se permettre 900 px puisqu'il n'y
+     en a qu'une ou deux par fiche. */
+
+  majPortrait(personnageId, src) {
+    const p = this.personnage(personnageId);
+    if (!p) return null;
+    p.portrait = src || "";
+    this.save();
+    this._emit({ type: "personnage:maj", id: personnageId });
+    return p;
+  },
+
+  /** Combien manquent — le trombinoscope s'en sert pour dire quoi
+      faire plutôt que d'afficher des silhouettes sans rien dire. */
+  sansPortrait(pjSeulement = true) {
+    const gens = pjSeulement ? this.pj() : this.personnages();
+    return gens.filter((p) => !(p.portrait || "").trim());
   },
 
   /* ================= Images d'un personnage =================

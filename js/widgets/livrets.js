@@ -24,6 +24,8 @@ import {
   livretHtml,
   consigneHtml,
   livretMarkdown,
+  trombinoscope,
+  trombinoscopeHtml,
 } from "../core/livret.js";
 import { telecharger } from "../core/archive.js";
 import { Utils } from "../core/utils.js";
@@ -32,7 +34,8 @@ export const Livrets = {
   _hote: null,
   _stores: null,
   _selId: null,
-  _onglet: "livrets", // « livrets » (PJ) ou « consignes » (PNJ)
+  _onglet: "livrets", // « livrets » (PJ) · « consignes » (PNJ) · « trombi »
+  _avecPnj: false,
 
   monter(hote, stores) {
     this._hote = hote;
@@ -48,9 +51,17 @@ export const Livrets = {
     const gens = this._pnj() ? this._stores.reseau.pnj() : this._stores.reseau.pj();
     const onglets =
       '<div class="lv-onglets">' +
-      `<button type="button" class="lv-onglet${this._pnj() ? "" : " actif"}" data-onglet="livrets">Livrets joueurs</button>` +
-      `<button type="button" class="lv-onglet${this._pnj() ? " actif" : ""}" data-onglet="consignes">Consignes PNJ</button>` +
+      `<button type="button" class="lv-onglet${this._onglet === "livrets" ? " actif" : ""}" data-onglet="livrets">Livrets joueurs</button>` +
+      `<button type="button" class="lv-onglet${this._onglet === "consignes" ? " actif" : ""}" data-onglet="consignes">Consignes PNJ</button>` +
+      `<button type="button" class="lv-onglet${this._onglet === "trombi" ? " actif" : ""}" data-onglet="trombi">Trombinoscope</button>` +
       "</div>";
+
+    if (this._onglet === "trombi") {
+      this._hote.innerHTML = '<div class="lv">' + onglets + this._trombi() + "</div>";
+      this._brancherOnglets();
+      this._brancherTrombi();
+      return;
+    }
 
     if (!gens.length) {
       this._hote.innerHTML =
@@ -88,6 +99,46 @@ export const Livrets = {
 
     this._brancherOnglets();
     this._brancher();
+  },
+
+  /** La planche. Même règle que le livret : **rien que du public** —
+      un trombinoscope qui laisserait filer la fonction narrative ferait
+      fuiter l'intrigue dans l'objet le plus partagé du GN. */
+  _trombi() {
+    const t = trombinoscope(this._stores, { avecPnj: this._avecPnj });
+    return (
+      '<div class="lv-barre">' +
+      `<p class="carnet-titre">Trombinoscope<span class="carnet-aide">${t.total} ${Utils.plur(t.total, "personnage")}` +
+      (t.sansPortrait
+        ? ` · ${t.sansPortrait} sans portrait`
+        : " · tous les portraits sont là") +
+      " · rien que du public</span></p>" +
+      '<span class="lv-actions">' +
+      `<label class="bascule"><input type="checkbox" id="tb-pnj"${this._avecPnj ? " checked" : ""} /> Inclure les PNJ</label>` +
+      '<button type="button" id="tb-html">Exporter la planche (HTML)</button>' +
+      "</span></div>" +
+      (t.sansPortrait
+        ? '<div class="lv-avert"><p class="cast-bloc-titre">Portraits manquants' +
+          "<span>une silhouette aux initiales est imprimée à la place</span></p>" +
+          `<ul><li>${t.sansPortrait} ${Utils.plur(t.sansPortrait, "personnage")} ${Utils.plur(t.sansPortrait, "n'a", "ont")} pas de portrait. ` +
+          "Le trou est visible exprès : caché, il ne se comblerait jamais.</li></ul></div>"
+        : "") +
+      '<div class="lv-cadre"><iframe id="lv-iframe" title="Aperçu du trombinoscope" ' +
+      'sandbox="allow-same-origin"></iframe></div>'
+    );
+  },
+
+  _brancherTrombi() {
+    const un = (s) => this._hote.querySelector(s);
+    const t = trombinoscope(this._stores, { avecPnj: this._avecPnj });
+    un("#lv-iframe").srcdoc = trombinoscopeHtml(t);
+    un("#tb-pnj").addEventListener("change", (e) => {
+      this._avecPnj = e.target.checked;
+      this.rendre();
+    });
+    un("#tb-html").addEventListener("click", () =>
+      telecharger(`trombinoscope-${this._slug(t.titre || "gnomon")}.html`, trombinoscopeHtml(t), "text/html"),
+    );
   },
 
   _brancherOnglets() {

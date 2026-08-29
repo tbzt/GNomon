@@ -3491,3 +3491,106 @@ main[data-ecran="monde"] {
   color: var(--complique);
   font-variant-numeric: tabular-nums;
 }
+
+/* ============================================================
+   PORTRAITS ET TROMBINOSCOPE.
+   Une silhouette aux initiales remplace un portrait manquant — visible
+   exprès : un trou caché ne se comble jamais.
+   ============================================================ */
+
+.silhouette {
+  display: grid;
+  place-items: center;
+  width: 100%;
+  height: 100%;
+  background: var(--panel);
+  color: var(--ink-faint);
+  font-family: var(--sans);
+  font-weight: 600;
+  letter-spacing: 0.04em;
+}
+
+/* ---------- sur la fiche ---------- */
+
+.fiche-identite {
+  display: flex;
+  gap: 18px;
+  align-items: flex-start;
+}
+.fiche-identite-texte {
+  flex: 1;
+  min-width: 0;
+}
+
+.fiche-portrait {
+  flex: 0 0 auto;
+  width: 104px;
+}
+.fiche-portrait > img,
+.fiche-portrait > .silhouette {
+  width: 104px;
+  height: 104px;
+  object-fit: cover;
+  border: 1px solid var(--rule);
+  border-radius: 3px;
+  display: block;
+  font-size: 30px;
+}
+.portrait-actions {
+  display: flex;
+  gap: 3px;
+  margin-top: 5px;
+}
+.portrait-actions button {
+  font-size: 9px;
+  padding: 3px 5px;
+  flex: 1;
+}
+
+@media (max-width: 560px) {
+  .fiche-identite {
+    flex-direction: column;
+  }
+}
+
+/* ---------- sur les cartes du réseau ---------- */
+
+.perso-tete {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+}
+.perso-texte {
+  flex: 1;
+  min-width: 0;
+}
+.perso-vignette {
+  flex: 0 0 auto;
+  width: 44px;
+  height: 44px;
+  display: block;
+}
+.perso-vignette img,
+.perso-vignette .silhouette {
+  width: 44px;
+  height: 44px;
+  object-fit: cover;
+  border: 1px solid var(--rule);
+  border-radius: 3px;
+  display: block;
+  font-size: 14px;
+}
+.perso.pnj .perso-vignette img,
+.perso.pnj .perso-vignette .silhouette {
+  border-style: dashed;
+}
+
+/* ---------- l'onglet trombinoscope ---------- */
+
+.lv-barre .bascule {
+  font-family: var(--sans);
+  font-size: 13px;
+  text-transform: none;
+  letter-spacing: 0;
+  color: var(--ink-soft);
+}

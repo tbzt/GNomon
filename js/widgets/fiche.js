@@ -51,6 +51,15 @@ import { Utils } from "../core/utils.js";
     total. 900 px de large suffisent largement à un livret imprimé en
     A5 ; sans cette étape, la première image ferait échouer toutes les
     écritures suivantes. */
+function initiales(nom) {
+  return String(nom || "?")
+    .split(/\s+/)
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((m) => m[0].toUpperCase())
+    .join("");
+}
+
 function reduire(fichier, largeurMax = 900, qualite = 0.82) {
   return new Promise((resolve, reject) => {
     const lecteur = new FileReader();
@@ -64,6 +73,33 @@ function reduire(fichier, largeurMax = 900, qualite = 0.82) {
         c.width = Math.round(img.width * ratio);
         c.height = Math.round(img.height * ratio);
         c.getContext("2d").drawImage(img, 0, 0, c.width, c.height);
+        resolve(c.toDataURL("image/jpeg", qualite));
+      };
+      img.src = lecteur.result;
+    };
+    lecteur.readAsDataURL(fichier);
+  });
+}
+
+/** Le portrait est CARRÉ et petit (360 px) : il sera tiré quarante
+    fois sur une planche de trombinoscope, et quarante portraits à
+    900 px dépasseraient à eux seuls le quota du `localStorage`. On
+    recadre au centre plutôt que de déformer — un visage étiré est pire
+    qu'un visage coupé. */
+function reduireCarre(fichier, cote = 360, qualite = 0.78) {
+  return new Promise((resolve, reject) => {
+    const lecteur = new FileReader();
+    lecteur.onerror = reject;
+    lecteur.onload = () => {
+      const img = new Image();
+      img.onerror = reject;
+      img.onload = () => {
+        const min = Math.min(img.width, img.height);
+        const sx = (img.width - min) / 2;
+        const sy = (img.height - min) / 2;
+        const c = document.createElement("canvas");
+        c.width = c.height = cote;
+        c.getContext("2d").drawImage(img, sx, sy, min, min, 0, 0, cote, cote);
         resolve(c.toDataURL("image/jpeg", qualite));
       };
       img.src = lecteur.result;
@@ -174,13 +210,24 @@ export const Fiche = {
       .join("");
     return (
       '<header class="fiche-entete">' +
+      '<div class="fiche-identite">' +
+      '<div class="fiche-portrait">' +
+      (p.portrait
+        ? `<img src="${Utils.escHtml(p.portrait)}" alt="" />`
+        : `<span class="silhouette">${Utils.escHtml(initiales(p.nom))}</span>`) +
+      '<span class="portrait-actions">' +
+      '<button type="button" id="portrait-fichier" title="Depuis un fichier">Photo</button>' +
+      '<button type="button" id="portrait-url" title="Depuis une adresse">URL</button>' +
+      (p.portrait ? '<button type="button" id="portrait-x" title="Retirer">✕</button>' : "") +
+      '<input id="fichier-portrait" type="file" accept="image/*" hidden /></span>' +
+      "</div><div class=\"fiche-identite-texte\">" +
       `<input class="fiche-titre" value="${Utils.escHtml(p.nom)}" aria-label="Nom du personnage" />` +
       '<div class="fiche-meta">' +
       `<input class="fiche-role" value="${Utils.escHtml(p.role)}" placeholder="Métier ou fonction…" aria-label="Métier ou fonction" />` +
       `<select class="fiche-fonction" aria-label="Fonction narrative"><option value="">— fonction narrative —</option>${opts}</select>` +
       `<label class="bascule"><input type="checkbox" class="fiche-pj"${p.pj ? " checked" : ""} /> PJ</label>` +
       `<label class="bascule"><input type="checkbox" class="fiche-surprise"${p.surprise ? " checked" : ""} /> Surprise en réserve</label>` +
-      "</div></header>"
+      "</div></div></div></header>"
     );
   },
 
@@ -388,6 +435,25 @@ export const Fiche = {
     Mentions.attach(carnet, { store: this._store, personnageId: this._id, onMention: surMention });
 
     q("#style-jeu").addEventListener("change", (e) => maj({ style: e.target.value }));
+
+    q("#portrait-fichier").addEventListener("click", () => q("#fichier-portrait").click());
+    q("#fichier-portrait").addEventListener("change", async (e) => {
+      const f = e.target.files && e.target.files[0];
+      e.target.value = "";
+      if (!f) return;
+      try {
+        this._store.majPortrait(this._id, await reduireCarre(f));
+      } catch {
+        this._signaler("Ce portrait n'a pas pu être lu.");
+      }
+    });
+    q("#portrait-url").addEventListener("click", () => {
+      const u = prompt("Adresse du portrait (https://…) :", "");
+      if (u && /^https?:\/\//i.test(u.trim())) this._store.majPortrait(this._id, u.trim());
+      else if (u) this._signaler("Une adresse d'image doit commencer par http:// ou https://.");
+    });
+    const px = q("#portrait-x");
+    if (px) px.addEventListener("click", () => this._store.majPortrait(this._id, ""));
     this._brancherExtras();
 
     // Une puce ouvre la fiche du personnage mentionné.

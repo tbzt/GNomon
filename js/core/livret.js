@@ -117,6 +117,7 @@ export function livret(personnageId, { reseau, monde, infos, casting = null }) {
       nom: p.nom,
       role: p.role || "",
       groupe: groupe ? groupe.nom : "",
+      portrait: p.portrait || "",
       joueur: casting ? etiquetteJoueur(casting, p.id) : "",
     },
     cadre: cadre(monde),
@@ -223,6 +224,7 @@ export function consigne(personnageId, { reseau, monde, infos, trames }) {
       nom: p.nom,
       role: p.role || "",
       groupe: groupe ? groupe.nom : "",
+      portrait: p.portrait || "",
     },
     cadre: cadre(monde),
     comediens,
@@ -330,6 +332,10 @@ const STYLE_DOC = `
   code { font-family: ui-monospace, monospace; font-size: .9em; background: #efece5;
     padding: 1px 4px; }
   .saut { break-after: page; height: 0; }
+  header.avec-portrait { display: flex; gap: 1.2em; align-items: flex-start; }
+  header.avec-portrait > div { flex: 1; min-width: 0; }
+  .portrait { width: 96px; height: 96px; object-fit: cover; border: 1px solid #1a1a1a;
+    flex: 0 0 auto; }
   .scene { border-left: 2px solid #d6d0c4; padding-left: .9em; margin-bottom: 1.4em; }
   .scene .quand { font-family: ui-monospace, monospace; font-size: 12px; color: #6b6257; }
   table { border-collapse: collapse; width: 100%; font-size: 15px; }
@@ -399,10 +405,13 @@ export function livretHtml(l) {
 
   return enveloppe(
     `${l.identite.nom}${c.titre ? " — " + c.titre : ""}`,
-    `<header>
+    `<header class="${l.identite.portrait ? "avec-portrait" : ""}">
+  ${l.identite.portrait ? `<img class="portrait" src="${esc(l.identite.portrait)}" alt="">` : ""}
+  <div>
   ${c.titre ? `<p class="sur">${esc(c.titre)}</p>` : ""}
   <h1>${esc(l.identite.nom)}</h1>
   <p class="role">${[l.identite.role, l.identite.groupe].filter(Boolean).map(esc).join(" · ")}</p>
+  </div>
 </header>
 ${cadreHtml(c)}
 ${images ? `<section>${images}</section>` : ""}
@@ -469,10 +478,13 @@ export function consigneHtml(k) {
 
   return enveloppe(
     `Consigne — ${k.identite.nom}`,
-    `<header>
+    `<header class="${k.identite.portrait ? "avec-portrait" : ""}">
+  ${k.identite.portrait ? `<img class="portrait" src="${esc(k.identite.portrait)}" alt="">` : ""}
+  <div>
   <p class="sur">Consigne d'équipe${c.titre ? " · " + esc(c.titre) : ""}</p>
   <h1>${esc(k.identite.nom)}</h1>
   <p class="role">${[k.identite.role, k.identite.groupe, `${k.comediens} comédien${k.comediens > 1 ? "s" : ""}`].filter(Boolean).map(esc).join(" · ")}</p>
+  </div>
 </header>
 <div class="encadre"><h2>Ce document ne se remet à personne</h2>
 <p>Il contient les vérités que les joueurs ignorent. Il est fait pour l'équipe.</p></div>
@@ -502,6 +514,96 @@ ${bloc(
 ${bloc("Comment le jouer", k.style ? proseHtml(k.style) : "")}
 ${bloc("Notes d'écriture", k.notes ? proseHtml(k.notes) : "")}
 ${cadreHtml(c, { pratique: false })}`,
+  );
+}
+
+/* ================= LE TROMBINOSCOPE =================
+   La planche remise à tout le monde pour se reconnaître. Elle obéit à
+   la MÊME règle que le livret : **rien que du public**. Nom, rôle,
+   groupe, visage — et rien d'autre. Y glisser la fonction narrative ou
+   un mot sur les intrigues transformerait l'objet le plus partagé du
+   GN en fuite générale.
+
+   Un portrait manquant n'est pas masqué : il devient une silhouette
+   aux initiales. Un trou visible se comble ; un trou caché reste. */
+
+export function trombinoscope(stores, { avecPnj = false } = {}) {
+  const { reseau, monde } = stores;
+  const gens = avecPnj ? reseau.personnages() : reseau.pj();
+  const groupes = [...reseau.groupes(), { id: null, nom: "Sans groupe" }];
+
+  const parGroupe = groupes
+    .map((g) => ({
+      nom: g.nom,
+      membres: gens
+        .filter((p) => p.groupeId === g.id)
+        .map((p) => ({
+          nom: p.nom,
+          role: p.role || "",
+          pj: p.pj,
+          portrait: p.portrait || "",
+          initiales: initiales(p.nom),
+        })),
+    }))
+    .filter((g) => g.membres.length);
+
+  return {
+    titre: monde.monde().titre,
+    parGroupe,
+    total: gens.length,
+    sansPortrait: gens.filter((p) => !(p.portrait || "").trim()).length,
+  };
+}
+
+function initiales(nom) {
+  return String(nom || "?")
+    .split(/\s+/)
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((m) => m[0].toUpperCase())
+    .join("");
+}
+
+export function trombinoscopeHtml(t) {
+  const carte = (m) =>
+    `<figure class="tb-carte${m.pj ? "" : " tb-pnj"}">` +
+    (m.portrait
+      ? `<img src="${esc(m.portrait)}" alt="">`
+      : `<span class="tb-silhouette">${esc(m.initiales)}</span>`) +
+    `<figcaption><b>${esc(m.nom)}</b>${m.role ? `<span>${esc(m.role)}</span>` : ""}</figcaption>` +
+    "</figure>";
+
+  return enveloppe(
+    `Trombinoscope${t.titre ? " — " + t.titre : ""}`,
+    `<header><div>
+  ${t.titre ? `<p class="sur">${esc(t.titre)}</p>` : ""}
+  <h1>Trombinoscope</h1>
+  <p class="role">${t.total} personnage${t.total > 1 ? "s" : ""}</p>
+</div></header>` +
+      t.parGroupe
+        .map(
+          (g) =>
+            `<section><h2>${esc(g.nom)}</h2>` +
+            `<div class="tb-grille">${g.membres.map(carte).join("")}</div></section>`,
+        )
+        .join(""),
+    `
+  body { max-width: 52em; }
+  .tb-grille { display: grid; grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+    gap: 1.1em; }
+  .tb-carte { margin: 0; break-inside: avoid; }
+  .tb-carte img, .tb-silhouette { width: 100%; aspect-ratio: 1; object-fit: cover;
+    border: 1px solid #1a1a1a; display: block; }
+  .tb-silhouette { display: grid; place-items: center; background: #efece5; color: #9a9184;
+    font-family: ui-sans-serif, system-ui, sans-serif; font-size: 2em; letter-spacing: .05em; }
+  .tb-pnj img, .tb-pnj .tb-silhouette { border-style: dashed; }
+  .tb-carte figcaption { margin-top: .4em; line-height: 1.3; }
+  .tb-carte figcaption b { display: block; font-size: .95em; }
+  .tb-carte figcaption span { font-family: ui-sans-serif, system-ui, sans-serif;
+    font-size: 11px; color: #6b6257; }
+  @media print { @page { size: A4 portrait; margin: 12mm; }
+    .tb-grille { grid-template-columns: repeat(4, 1fr); gap: .8em; }
+    body { font-size: 10pt; } }`,
   );
 }
 

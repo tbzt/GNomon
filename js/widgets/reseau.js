@@ -18,6 +18,15 @@ import { Utils } from "../core/utils.js";
 
 const SEUIL_ALERTE = 5;
 
+function inits(nom) {
+  return String(nom || "?")
+    .split(/\s+/)
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((m) => m[0].toUpperCase())
+    .join("");
+}
+
 export const Reseau = {
   _store: null,
   _hote: null,
@@ -79,12 +88,17 @@ export const Reseau = {
 
     return (
       `<article class="perso${p.pj ? "" : " pnj"}" data-personnage="${p.id}" tabindex="0" role="button">` +
-      "<header>" +
+      '<header class="perso-tete">' +
+      '<span class="perso-vignette">' +
+      (p.portrait
+        ? `<img src="${Utils.escHtml(p.portrait)}" alt="" />`
+        : `<span class="silhouette">${Utils.escHtml(inits(p.nom))}</span>`) +
+      "</span><span class=\"perso-texte\">" +
       `<h3>${Utils.escHtml(p.nom)}` +
       `<span class="cote${couvert < SEUIL_ALERTE ? " basse" : ""}" title="Couverture : ${couvert} composantes sur ${total}">${couvert}/${total}</span>` +
       "</h3>" +
       `<p class="role">${Utils.escHtml(p.role)}${p.fonction ? " · " + FONCTIONS[p.fonction] : ""} · ${p.pj ? "PJ" : "PNJ"}</p>` +
-      "</header>" +
+      "</span></header>" +
       (p.moral ? `<p class="moral">« ${Utils.escHtml(p.moral)} »</p>` : "") +
       `<p class="compte">${liens.length} ${Utils.plur(liens.length, "contact")} ${Utils.plur(liens.length, "déclaré")} · ` +
       `<span class="${primairesRecus ? "" : "alerte"}">${primairesRecus} ${Utils.plur(primairesRecus, "lien")} ${Utils.plur(primairesRecus, "primaire")} ${Utils.plur(primairesRecus, "reçu")}</span></p>` +

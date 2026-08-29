@@ -148,6 +148,7 @@ export const Storage = {
         if (p.background === undefined) p.background = "";
         if (p.style === undefined) p.style = "";
         if (!Array.isArray(p.images)) p.images = [];
+        if (p.portrait === undefined) p.portrait = "";
         if (p.notes && !p.background) {
           p.background = p.notes;
           p.notes = "";

@@ -125,6 +125,10 @@ Les **PNJ** ont leur propre document, opposé au livret : la **consigne d'équip
 **ce que les autres croient de faux, avec la vérité en face**. Un PNJ qui ignore la fausse
 croyance d'un PJ la contredit sans le vouloir et défait l'intrigue en une phrase.
 
+Chaque personnage a un **portrait**, et la planche de **trombinoscope** s'imprime en A4 — avec
+la même règle que le livret : rien que du public. Un portrait manquant devient une silhouette
+aux initiales plutôt que d'être masqué, parce qu'un trou caché ne se comble jamais.
+
 L'**archive** est un JSON unique qui porte tout le GN : c'est lui qu'on sauvegarde, qu'on
 s'envoie, qu'on met dans un dépôt d'équipe. Import en *remplacer* ou en *fusionner* — le second
 ajoute ce qui manque sans jamais toucher à l'existant, parce qu'on peut toujours réimporter,
