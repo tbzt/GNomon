@@ -166,10 +166,20 @@ export const App = {
   /* ---------------- navigation à deux niveaux ---------------- */
 
   _rendreNav() {
+    // GitHub Pages sert tout en `max-age=600` : dans les dix minutes qui
+    // suivent un déploiement, un visiteur qui revient peut récupérer un
+    // `index.html` et des modules désaccordés. Une navigation absente ne
+    // doit alors PAS emporter l'application — mieux vaut un écran sans
+    // barre qu'un écran blanc. La dégradation est gracieuse, et le même
+    // garde protège de toute dérive future du balisage.
+    const hoteModes = document.getElementById("modes");
+    const sous = document.getElementById("sous-barre");
+    if (!hoteModes || !sous) return;
+
     const modeActif = MODE_DE[this._ecran] || "ecrire";
     const alertes = this._alertesOuvertes();
 
-    document.getElementById("modes").innerHTML = MODES.map((m) => {
+    hoteModes.innerHTML = MODES.map((m) => {
       // Le compte d'alertes est porté par le moment « vérifier »
       // lui-même : le signal vit là où on va le traiter.
       const badge =
@@ -196,7 +206,6 @@ export const App = {
         ? `<span class="fil-ariane"><button type="button" data-ecran="reseau">Le réseau</button>` +
           `<span class="fil-sep">›</span>${Utils.escHtml(this._titre || "")}</span>`
         : "";
-    const sous = document.getElementById("sous-barre");
     sous.innerHTML = onglets + fil;
     sous.hidden = mode.ecrans.length < 2 && !fil;
 
@@ -409,6 +418,7 @@ export const App = {
 
   _statut(txt) {
     const el = document.getElementById("statut");
+    if (!el) return;
     el.textContent = txt;
     el.hidden = !txt;
   },
@@ -416,6 +426,7 @@ export const App = {
   _compteurs() {
     this._rendreNav();
     const el = document.getElementById("compteurs");
+    if (!el) return;
     if (this._ecran === "conduite") {
       const f = Object.keys(RunStore.fils()).length;
       const j = RunStore.journal().length;
