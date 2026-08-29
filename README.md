@@ -43,12 +43,24 @@ une erreur.
 
 ## État
 
-**Lot S0 livré** — la vérité racine. Personnages, liens orientés, groupes, avec les trois
-invariants du modèle tenus dans le store. L'écran « Le réseau » est nu exprès : il montre la
-vérité telle qu'elle est stockée, ce qu'il faut pouvoir vérifier avant de dessiner par-dessus.
+**Lots S0 et S1 livrés.**
 
-À venir : la fiche et sa jauge de couverture, l'atelier de trames, les informations, la
-conscience (douze validateurs tirés de la littérature), le temps, le casting.
+**S0 — la vérité racine.** Personnages, liens orientés, groupes, avec les trois invariants du
+modèle tenus dans le store.
+
+**S1 — la fiche.** Huit champs de structure (méthode eXpérience), un carnet en markdown léger,
+et surtout deux choses :
+
+- **La jauge de couverture** — neuf pastilles *calculées* depuis le réseau, jamais saisies.
+  Kröger donne neuf composantes qui font un bon personnage ; les faire remplir à la main
+  tuerait l'écriture. On clique une pastille grise, elle dit ce qui manque et pourquoi.
+- **Le `@mention` qui propose l'arête** — écrire « j'ai vu @Marek sortir du tunnel » dans la
+  fiche d'Elena propose de créer le lien. Le réseau s'entretient pendant qu'on rédige, au lieu
+  d'être une saisie parallèle qu'on abandonne. La tonalité n'est jamais devinée : un « neutre »
+  posé en douce désarmerait le validateur qu'il est censé nourrir.
+
+À venir : l'atelier de trames, les informations, la conscience (douze validateurs tirés de la
+littérature), le temps, le casting.
 
 ---
 

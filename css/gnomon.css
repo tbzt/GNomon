@@ -293,3 +293,442 @@ main {
     grid-column: 2;
   }
 }
+
+/* ============================================================
+   S1 — la fiche, la jauge, le carnet, les mentions.
+   ============================================================ */
+
+/* ---------- cote de couverture sur la carte ---------- */
+
+.perso header h3 {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+}
+
+.perso .cote {
+  font-family: var(--mono);
+  font-size: 11px;
+  letter-spacing: 0.05em;
+  color: var(--ink-faint);
+  border: 1px solid var(--rule);
+  border-radius: 2px;
+  padding: 1px 6px;
+  font-weight: 400;
+  cursor: help;
+}
+
+.perso .cote.basse {
+  color: var(--negatif);
+  border-color: var(--negatif);
+}
+
+.perso[data-personnage] {
+  cursor: pointer;
+}
+
+.perso[data-personnage]:hover {
+  border-color: var(--accent);
+}
+
+/* ---------- fiche ---------- */
+
+.fiche-entete {
+  margin: 0 0 22px;
+}
+
+.fiche-titre {
+  font-family: var(--serif);
+  font-size: 30px;
+  font-weight: 600;
+  letter-spacing: -0.015em;
+  width: 100%;
+  border: 0;
+  border-bottom: 1px solid transparent;
+  background: none;
+  color: var(--ink);
+  padding: 0 0 3px;
+}
+
+.fiche-titre:hover,
+.fiche-titre:focus {
+  border-bottom-color: var(--rule);
+  outline: none;
+}
+
+.fiche-meta {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  flex-wrap: wrap;
+  margin-top: 8px;
+}
+
+.fiche-role,
+.fiche-fonction {
+  font-family: var(--mono);
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--ink-soft);
+  background: var(--surface);
+  border: 1px solid var(--rule);
+  border-radius: 2px;
+  padding: 5px 8px;
+}
+
+.fiche-role {
+  min-width: 200px;
+}
+
+.bascule {
+  font-family: var(--mono);
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--ink-faint);
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+}
+
+.fiche-corps {
+  display: grid;
+  grid-template-columns: minmax(0, 1.6fr) minmax(280px, 1fr);
+  gap: 26px;
+  align-items: start;
+}
+
+@media (max-width: 900px) {
+  .fiche-corps {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* ---------- jauge de couverture ---------- */
+
+.jauge-bloc {
+  background: var(--surface);
+  border: 1px solid var(--rule);
+  border-radius: 3px;
+  padding: 14px 16px;
+  margin: 0 0 16px;
+}
+
+.jauge-titre {
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--ink-faint);
+  margin: 0 0 10px;
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+}
+
+.jauge-score {
+  font-size: 12px;
+  color: var(--ink);
+}
+
+.jauge {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  margin: 0 0 12px;
+}
+
+.pastille {
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  border: 1px solid var(--rule);
+  background: var(--panel);
+  padding: 0;
+  cursor: pointer;
+}
+
+.pastille.on {
+  background: var(--accent);
+  border-color: var(--accent);
+}
+
+.pastille[aria-pressed="true"] {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.jauge-dit {
+  font-size: 14px;
+  line-height: 1.45;
+  color: var(--ink-soft);
+  margin: 0;
+  border-top: 1px dashed var(--rule);
+  padding-top: 10px;
+  min-height: 4.2em;
+}
+
+.jauge-dit b {
+  color: var(--ink);
+}
+
+/* ---------- les huit champs ---------- */
+
+.champs-bloc {
+  background: var(--surface);
+  border: 1px solid var(--rule);
+  border-radius: 3px;
+  padding: 0 16px;
+}
+
+.champs-bloc > summary {
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--ink-faint);
+  cursor: pointer;
+  padding: 13px 0;
+  list-style-position: inside;
+}
+
+.champs-bloc[open] > summary {
+  border-bottom: 1px solid var(--rule);
+  margin-bottom: 12px;
+}
+
+.champ {
+  display: block;
+  margin: 0 0 12px;
+}
+
+.champ-label {
+  display: block;
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  color: var(--ink-faint);
+  margin-bottom: 3px;
+  cursor: help;
+}
+
+textarea {
+  width: 100%;
+  font-family: var(--serif);
+  font-size: 15.5px;
+  line-height: 1.5;
+  color: var(--ink);
+  background: var(--ground);
+  border: 1px solid var(--rule);
+  border-radius: 2px;
+  padding: 7px 9px;
+  resize: vertical;
+}
+
+textarea:focus {
+  border-color: var(--accent);
+  outline: none;
+}
+
+textarea::placeholder {
+  color: var(--ink-faint);
+  opacity: 0.75;
+}
+
+/* ---------- carnet ---------- */
+
+.carnet-titre {
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--ink-faint);
+  margin: 0 0 7px;
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 12px;
+}
+
+.carnet-aide {
+  text-transform: none;
+  letter-spacing: 0.02em;
+}
+
+#carnet {
+  font-size: 16.5px;
+  line-height: 1.6;
+}
+
+.carnet-apercu {
+  background: var(--surface);
+  border: 1px solid var(--rule);
+  border-radius: 2px;
+  padding: 13px 15px;
+  font-size: 16px;
+  line-height: 1.62;
+  min-height: 4em;
+  margin: 0 0 22px;
+}
+
+.carnet-apercu code {
+  font-family: var(--mono);
+  font-size: 0.88em;
+  background: var(--panel);
+  padding: 1px 4px;
+  border-radius: 2px;
+}
+
+.carnet > .carnet-titre:nth-of-type(2) {
+  margin-top: 18px;
+}
+
+/* ---------- puces de mention ---------- */
+
+.mention-chip {
+  background: var(--panel);
+  color: var(--accent-ink);
+  border-bottom: 1px solid var(--accent);
+  padding: 0 3px;
+  border-radius: 2px;
+  cursor: pointer;
+}
+
+.mention-chip:hover {
+  background: var(--accent);
+  color: var(--ground);
+}
+
+.mention-chip.morte {
+  color: var(--negatif);
+  border-bottom-color: var(--negatif);
+  text-decoration: line-through;
+  cursor: not-allowed;
+}
+
+/* ---------- liste d'autocomplétion ---------- */
+
+#mentions-box {
+  position: absolute;
+  z-index: 50;
+  background: var(--surface);
+  border: 1px solid var(--accent);
+  border-radius: 2px;
+  box-shadow: 0 6px 20px rgb(0 0 0 / 0.16);
+  max-height: 260px;
+  overflow-y: auto;
+}
+
+.mention-row {
+  display: grid;
+  grid-template-columns: 42px minmax(0, auto) 1fr;
+  gap: 10px;
+  align-items: baseline;
+  padding: 7px 11px;
+  cursor: pointer;
+  border-bottom: 1px solid var(--rule);
+}
+
+.mention-row:last-child {
+  border-bottom: 0;
+}
+
+.mention-row.sel {
+  background: var(--panel);
+}
+
+.mention-type {
+  font-family: var(--mono);
+  font-size: 9.5px;
+  letter-spacing: 0.09em;
+  color: var(--ink-faint);
+}
+
+.mention-nom {
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.mention-role {
+  font-size: 13px;
+  color: var(--ink-faint);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* ---------- proposition d'arête ---------- */
+
+#proposition {
+  border: 1px solid var(--accent);
+  background: var(--surface);
+  border-radius: 2px;
+  padding: 13px 15px;
+  margin: 10px 0 0;
+}
+
+.prop-titre {
+  margin: 0 0 10px;
+  font-size: 16px;
+}
+
+.prop-tons {
+  display: flex;
+  gap: 7px;
+  flex-wrap: wrap;
+  margin: 0 0 10px;
+}
+
+.prop-ton {
+  font-family: var(--mono);
+  font-size: 11px;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  padding: 7px 12px;
+  border: 1px solid var(--rule);
+  background: var(--ground);
+  border-radius: 2px;
+  cursor: pointer;
+  border-left-width: 4px;
+}
+
+.prop-ton.t-positif {
+  border-left-color: var(--positif);
+}
+.prop-ton.t-negatif {
+  border-left-color: var(--negatif);
+}
+.prop-ton.t-neutre {
+  border-left-color: var(--neutre);
+}
+.prop-ton.t-complique {
+  border-left-color: var(--complique);
+}
+
+.prop-ton:hover {
+  border-color: var(--accent);
+  border-left-width: 4px;
+  color: var(--accent-ink);
+}
+
+.prop-note {
+  font-size: 13.5px;
+  line-height: 1.45;
+  color: var(--ink-faint);
+  margin: 0 0 10px;
+}
+
+.prop-plus-tard {
+  font-size: 10px;
+}
+
+.liens-vide {
+  font-family: var(--mono);
+  font-size: 11.5px;
+  letter-spacing: 0.05em;
+  color: var(--ink-faint);
+  margin: 0;
+}

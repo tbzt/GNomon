@@ -14,7 +14,8 @@
 
        Personnage { id, nom, role, pj, groupeId,
                     fonction, moral, desir, besoin, faiblesse,
-                    pouvoirs, transformation, archetype, surprise }
+                    pouvoirs, transformation, archetype, surprise,
+                    notes }
        Lien       { id, de, vers, nature, tonalite, importance, miroir }
        Groupe     { id, nom }
 
@@ -164,6 +165,7 @@ export const ReseauStore = {
       transformation: "",
       archetype: "",
       surprise: false,
+      notes: "",
       ...champs,
     };
     this._d().personnages.push(p);
