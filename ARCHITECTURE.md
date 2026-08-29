@@ -380,6 +380,53 @@ un second registre créerait deux vérités qui divergeraient à la première co
 
 ---
 
+## 5h. Le système typographique — trois rôles, une règle
+
+Diagnostic **mesuré** avant d'agir : toutes les surfaces de données — cellules de matrice,
+libellés de casting, lignes de conscience, noms de la frise et des liens — étaient en serif à
+14,5 px. Une serif est faite pour être lue ligne à ligne, pas balayée en diagonale : dans une
+grille dense, elle coûte. Et la barre de navigation faisait 1265 px pour dix boutons, donc
+débordait sous 375 px.
+
+**La règle, en une phrase :**
+
+| Rôle | Ce qu'il porte | Où |
+|---|---|---|
+| **serif** | Ce qu'une personne a **rédigé pour être lu comme du texte** | le carnet, un pitch, le contenu d'une information, une citation, la main courante |
+| **sans** | Les noms, les états, les données de tableau, l'interface | tout le reste des écrans |
+| **mono** | Les chiffres, les étiquettes, les énumérations | compteurs, horloges, libellés en capitales |
+
+Le rôle « sans » manquait entièrement côté atelier — c'est précisément pour ça qu'il a fallu en
+inventer un pour la conduite. Il est maintenant déclaré une fois (`--sans`) et appliqué partout,
+des deux côtés de l'outil.
+
+Corollaire : partout où des chiffres se comparent en colonne, `font-variant-numeric:
+tabular-nums`. Sans ça, une cote qui passe de 9/9 à 10/9 fait sauter toute la colonne.
+
+## 5i. La barre dit l'ordre de fabrication
+
+Huit écrans en rangée ne disent rien de la manière dont on fabrique un GN. Regroupés, ils le
+disent — et le regroupement est de **l'information, pas de la décoration** :
+
+**Écrire** (le réseau · les trames · qui sait quoi) → **Vérifier** (la conscience · le temps) →
+**Distribuer** (le casting) → **Jouer** (la conduite).
+
+C'est la chronologie réelle. La barre devient une progression, la sous-barre donne les écrans du
+moment actif, et elle disparaît quand le moment n'en a qu'un.
+
+Deux conséquences qui valent mieux que ce qu'elles remplacent :
+
+1. **Le compte d'alertes est porté par le moment « Vérifier » lui-même**, au lieu d'un badge
+   séparé. Le signal vit là où on ira le traiter.
+2. **« La fiche » n'est pas une destination de la barre** — on n'y va pas depuis la navigation,
+   on y arrive depuis un personnage. Elle s'affiche en fil d'Ariane, et le bouton
+   « + Personnage » redescend sur l'écran du réseau, là où il a du sens.
+
+Enfin, **les écrans-instruments prennent la largeur** (1560 px) ; seule la fiche garde une
+colonne de lecture (1160 px), parce que c'est le seul écran qu'on lit vraiment.
+
+---
+
 ## 6. Le rendu en deux étages — et pourquoi ce n'est pas de l'optimisation
 
 `Fiche.rendre()` construit tout ; `Fiche.rafraichirDerives()` ne remet à jour que la jauge et

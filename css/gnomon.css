@@ -2282,7 +2282,7 @@ button[disabled] {
   background: var(--n-haut);
   border-bottom: 1px solid var(--n-trait);
   position: sticky;
-  top: 52px;
+  top: var(--haut-barres, 52px);
   z-index: 5;
 }
 .cd-bandeau.en-pause {
@@ -2785,4 +2785,286 @@ button[disabled] {
   color: var(--n-encre-faible);
   font-size: 15px;
   margin: 0;
+}
+
+/* ============================================================
+   REFONTE — trois rôles typographiques, et une barre qui dit l'ordre.
+   ------------------------------------------------------------
+   Diagnostic mesuré avant d'agir : TOUTES les surfaces de données
+   (cellules de matrice, libellés de casting, lignes de conscience, noms
+   de la frise, noms de liens) étaient en serif à 14,5 px. Une serif
+   dans une grille dense se scanne mal — c'est fait pour être lu ligne à
+   ligne, pas balayé en diagonale. Et la barre faisait 1265 px pour dix
+   boutons : elle débordait sous 375 px.
+
+   ── LA RÈGLE, EN UNE PHRASE ──
+   · **serif** = ce qu'une personne a RÉDIGÉ pour être lu comme du texte
+     (le carnet, un pitch, le contenu d'une information, une citation,
+     la main courante) ;
+   · **sans** = les noms, les états, les données de tableau, l'interface ;
+   · **mono** = les chiffres, les étiquettes, les énumérations.
+
+   Le rôle « sans » manquait entièrement côté atelier — c'est pour ça
+   qu'il a fallu en inventer un pour la conduite. Il est maintenant
+   déclaré une fois et appliqué partout.
+   ============================================================ */
+
+:root {
+  --sans: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue",
+    sans-serif;
+  --haut-barres: 96px;
+}
+
+/* ---------- la barre : quatre moments, pas dix boutons ---------- */
+
+.barre {
+  padding: 12px 24px;
+  gap: 20px;
+}
+
+.modes {
+  display: flex;
+  gap: 2px;
+}
+
+.mode {
+  font-family: var(--sans);
+  font-size: 13px;
+  font-weight: 500;
+  letter-spacing: 0.01em;
+  text-transform: none;
+  padding: 7px 14px;
+  border: 0;
+  border-bottom: 2px solid transparent;
+  border-radius: 0;
+  background: none;
+  color: var(--ink-faint);
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+}
+.mode:hover {
+  border-color: var(--rule);
+  color: var(--ink);
+  background: none;
+}
+.mode.actif {
+  color: var(--ink);
+  border-bottom-color: var(--accent);
+  font-weight: 600;
+}
+
+.mode-badge {
+  font-family: var(--mono);
+  font-size: 10px;
+  line-height: 1;
+  padding: 3px 5px;
+  border-radius: 2px;
+  background: var(--negatif);
+  color: var(--surface);
+  font-variant-numeric: tabular-nums;
+}
+
+/* ---------- la sous-barre : les écrans du moment actif ---------- */
+
+.sous-barre {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  flex-wrap: wrap;
+  padding: 0 24px;
+  background: var(--surface);
+  border-bottom: 1px solid var(--rule);
+  position: sticky;
+  top: 51px;
+  z-index: 9;
+  min-height: 44px;
+}
+.sous-barre[hidden] {
+  display: none;
+}
+
+.onglet {
+  font-family: var(--sans);
+  font-size: 13px;
+  letter-spacing: 0.01em;
+  text-transform: none;
+  padding: 11px 13px;
+  border: 0;
+  border-bottom: 2px solid transparent;
+  border-radius: 0;
+  background: none;
+  color: var(--ink-soft);
+}
+.onglet:hover {
+  border-color: var(--rule);
+  color: var(--ink);
+  background: none;
+}
+.onglet.actif {
+  color: var(--accent-ink);
+  border-bottom-color: var(--accent);
+  font-weight: 600;
+}
+
+.fil-ariane {
+  font-family: var(--sans);
+  font-size: 13px;
+  color: var(--ink);
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+.fil-ariane button {
+  font-family: var(--sans);
+  font-size: 13px;
+  text-transform: none;
+  letter-spacing: 0;
+  padding: 4px 0;
+  border: 0;
+  background: none;
+  color: var(--accent-ink);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+.fil-ariane button:hover {
+  border: 0;
+}
+.fil-sep {
+  color: var(--ink-faint);
+}
+
+/* ---------- les instruments prennent la largeur ---------- */
+
+main {
+  max-width: 1560px;
+}
+main[data-ecran="fiche"] {
+  max-width: 1160px;
+}
+main[data-ecran="conduite"] {
+  max-width: none;
+  padding: 0;
+}
+#ecran-conduite {
+  margin: 0;
+}
+
+/* ---------- la donnée passe en sans ---------- */
+
+.perso header h3,
+.lien b,
+.lien .nature,
+.gsc-title,
+.gsc-sub,
+table.matrice .info-cell,
+table.matrice .cell,
+.cast-label,
+.cast-role,
+.cast-col,
+.cs-nom,
+.cs-question,
+.cs-cible,
+.cs-detail,
+.cast-bloc li,
+.fr-nom,
+.fr-bandeau li,
+.cd-lancement,
+.concl-texte,
+.inf-txt,
+.ed-titre,
+.file-txt,
+.atelier-editeur select,
+.editeur-vide,
+.onglet-trame,
+.mention-nom,
+.mention-role,
+.sq-croit {
+  font-family: var(--sans);
+}
+
+/* Une grille se balaie : un peu plus petit, un peu plus serré. */
+table.matrice .info-cell,
+table.matrice .cell,
+.casting-grille .cast-label {
+  font-size: 14px;
+  line-height: 1.35;
+}
+.lien b,
+.lien .nature {
+  font-size: 14px;
+}
+
+/* Les chiffres s'alignent partout où ils se comparent. */
+.cote,
+.jauge-score,
+.onglet-compte,
+.cs-compte,
+.file-titre span,
+.cast-rangs,
+.fr-bloc,
+.ed-temps input,
+.cast-dispo input {
+  font-variant-numeric: tabular-nums;
+}
+
+/* ---------- la serif reste où elle a un sens ---------- */
+
+.carnet-apercu,
+#carnet,
+.perso .moral,
+#info-contenu,
+.sq-txt,
+.cd-txt,
+.prose-demo,
+.cd-pitch {
+  font-family: var(--serif);
+}
+
+/* ---------- création contextuelle, là où elle a du sens ---------- */
+
+.creer-perso {
+  font-family: var(--sans);
+  font-size: 13px;
+  text-transform: none;
+  letter-spacing: 0;
+  padding: 8px 14px;
+  margin: 0 0 20px;
+}
+
+/* ---------- mobile : la barre ne déborde plus ---------- */
+
+@media (max-width: 720px) {
+  .barre {
+    gap: 10px;
+    padding: 10px 16px;
+  }
+  .barre .titre {
+    font-size: 17px;
+  }
+  .modes {
+    order: 3;
+    width: 100%;
+    overflow-x: auto;
+  }
+  .mode {
+    padding: 7px 10px;
+    white-space: nowrap;
+  }
+  .sous-barre {
+    padding: 0 16px;
+    overflow-x: auto;
+    flex-wrap: nowrap;
+    top: auto;
+    position: static;
+  }
+  .onglet {
+    white-space: nowrap;
+  }
+  main {
+    padding: 20px 16px 60px;
+  }
+  #compteurs {
+    order: 4;
+  }
 }

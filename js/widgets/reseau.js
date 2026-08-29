@@ -22,12 +22,18 @@ export const Reseau = {
   _store: null,
   _hote: null,
   _onOuvrir: null,
+  _onCreer: null,
 
-  monter(hote, store, { onOuvrir = null } = {}) {
+  monter(hote, store, { onOuvrir = null, onCreer = null } = {}) {
     this._hote = hote;
     this._store = store;
     this._onOuvrir = onOuvrir;
+    this._onCreer = onCreer;
     this._hote.addEventListener("click", (e) => {
+      if (e.target.closest("[data-creer]")) {
+        if (this._onCreer) this._onCreer();
+        return;
+      }
       const carte = e.target.closest("[data-personnage]");
       if (carte && this._onOuvrir) this._onOuvrir(carte.dataset.personnage);
     });
@@ -36,14 +42,18 @@ export const Reseau = {
 
   rendre() {
     const persos = this._store.personnages();
+    const bouton = '<button type="button" class="creer-perso" data-creer>+ Personnage</button>';
     if (!persos.length) {
       this._hote.innerHTML =
-        '<p class="vide">Aucun personnage. Chargez le jeu d\'essai pour voir le modèle à l\'œuvre.</p>';
+        '<p class="vide">Aucun personnage. Chargez le jeu d\'essai pour voir le modèle à l\'œuvre.</p>' +
+        bouton;
       return;
     }
 
     const groupes = [...this._store.groupes(), { id: null, nom: "Sans groupe" }];
-    this._hote.innerHTML = groupes
+    this._hote.innerHTML =
+      bouton +
+      groupes
       .map((g) => {
         const membres = persos.filter((p) => p.groupeId === g.id);
         if (!membres.length) return "";

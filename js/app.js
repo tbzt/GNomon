@@ -50,6 +50,41 @@ import { Casting } from "./widgets/casting.js";
 import { Conduite } from "./widgets/conduite.js";
 import { Utils } from "./core/utils.js";
 
+/** ── LES QUATRE MOMENTS ──
+    Huit écrans en rangée ne disent rien de l'ordre dans lequel on
+    fabrique un GN. Regroupés, ils le disent : on écrit, on vérifie, on
+    distribue, on joue. La barre devient une **progression**, pas une
+    liste — et le regroupement est de l'information, pas de la
+    décoration.
+
+    « La fiche » n'y figure pas : on n'y va pas depuis la barre, on y
+    arrive depuis un personnage. Elle s'affiche en fil d'Ariane. */
+const MODES = [
+  {
+    cle: "ecrire",
+    nom: "Écrire",
+    ecrans: [
+      { cle: "reseau", nom: "Le réseau" },
+      { cle: "atelier", nom: "Les trames" },
+      { cle: "matrice", nom: "Qui sait quoi" },
+    ],
+  },
+  {
+    cle: "verifier",
+    nom: "Vérifier",
+    ecrans: [
+      { cle: "conscience", nom: "La conscience" },
+      { cle: "frise", nom: "Le temps" },
+    ],
+  },
+  { cle: "distribuer", nom: "Distribuer", ecrans: [{ cle: "casting", nom: "Le casting" }] },
+  { cle: "jouer", nom: "Jouer", ecrans: [{ cle: "conduite", nom: "La conduite" }] },
+];
+
+/** La fiche appartient au moment « écrire » sans en être une destination. */
+const MODE_DE = { fiche: "ecrire" };
+for (const m of MODES) for (const e of m.ecrans) MODE_DE[e.cle] = m.cle;
+
 const friseEtat = () => calculerFrise(ReseauStore, TrameStore);
 
 export const App = {
@@ -77,6 +112,7 @@ export const App = {
 
     Reseau.monter(this._hotes.reseau, ReseauStore, {
       onOuvrir: (id) => this.ouvrirFiche(id),
+      onCreer: () => this.ouvrirFiche(ReseauStore.creerPersonnage({ nom: "Sans nom" }).id),
     });
 
     ReseauStore.subscribe(() => this._surChangement());
@@ -118,10 +154,79 @@ export const App = {
 
   _basculer(ecran, titre) {
     this._ecran = ecran;
+    this._titre = titre;
     for (const [nom, el] of Object.entries(this._hotes)) el.hidden = nom !== ecran;
-    document.getElementById("act-retour").hidden = ecran === "reseau";
-    document.getElementById("fil").textContent = titre;
+    // Les écrans-instruments prennent la largeur ; seule la fiche garde
+    // une colonne de lecture — c'est le seul écran qu'on lit vraiment.
+    document.querySelector("main").dataset.ecran = ecran;
+    this._rendreNav();
     this._compteurs();
+  },
+
+  /* ---------------- navigation à deux niveaux ---------------- */
+
+  _rendreNav() {
+    const modeActif = MODE_DE[this._ecran] || "ecrire";
+    const alertes = this._alertesOuvertes();
+
+    document.getElementById("modes").innerHTML = MODES.map((m) => {
+      // Le compte d'alertes est porté par le moment « vérifier »
+      // lui-même : le signal vit là où on va le traiter.
+      const badge =
+        m.cle === "verifier" && alertes
+          ? `<span class="mode-badge">${alertes}</span>`
+          : "";
+      return (
+        `<button type="button" class="mode${m.cle === modeActif ? " actif" : ""}" ` +
+        `data-mode="${m.cle}" aria-current="${m.cle === modeActif}">` +
+        `${Utils.escHtml(m.nom)}${badge}</button>`
+      );
+    }).join("");
+
+    const mode = MODES.find((m) => m.cle === modeActif);
+    const onglets = mode.ecrans
+      .map(
+        (e) =>
+          `<button type="button" class="onglet${e.cle === this._ecran ? " actif" : ""}" ` +
+          `data-ecran="${e.cle}">${Utils.escHtml(e.nom)}</button>`,
+      )
+      .join("");
+    const fil =
+      this._ecran === "fiche"
+        ? `<span class="fil-ariane"><button type="button" data-ecran="reseau">Le réseau</button>` +
+          `<span class="fil-sep">›</span>${Utils.escHtml(this._titre || "")}</span>`
+        : "";
+    const sous = document.getElementById("sous-barre");
+    sous.innerHTML = onglets + fil;
+    sous.hidden = mode.ecrans.length < 2 && !fil;
+
+    for (const b of document.querySelectorAll("[data-mode]"))
+      b.addEventListener("click", () => {
+        const m = MODES.find((x) => x.cle === b.dataset.mode);
+        if (m) this._aller(m.ecrans[0].cle);
+      });
+    for (const b of document.querySelectorAll("[data-ecran]"))
+      b.addEventListener("click", () => this._aller(b.dataset.ecran));
+  },
+
+  _aller(ecran) {
+    const routes = {
+      reseau: () => this.ouvrirReseau(),
+      atelier: () => this.ouvrirAtelier(),
+      matrice: () => this.ouvrirMatrice(),
+      conscience: () => this.ouvrirConscience(),
+      frise: () => this.ouvrirFrise(),
+      casting: () => this.ouvrirCasting(),
+      conduite: () => this.ouvrirConduite(),
+    };
+    if (routes[ecran]) routes[ecran]();
+  },
+
+  _alertesOuvertes() {
+    let n = 0;
+    for (const r of conscience(ReseauStore, TrameStore, InformationStore))
+      for (const a of r.alertes) if (!Derogations.pour(r.cle, a.cible)) n++;
+    return n;
   },
 
   ouvrirReseau({ silencieux = false } = {}) {
@@ -144,7 +249,8 @@ export const App = {
     // et il s'attrape ici, une fois.
     if (this._ecran === "fiche" && Fiche.personnageId() === id) {
       if (!silencieux && location.hash !== `#/fiche/${id}`) location.hash = `#/fiche/${id}`;
-      document.getElementById("fil").textContent = p.nom;
+      this._titre = p.nom;
+      this._rendreNav();
       return;
     }
 
@@ -241,7 +347,7 @@ export const App = {
     if (this._ecran === "fiche") {
       Fiche.rafraichirDerives();
       const p = ReseauStore.personnage(Fiche.personnageId());
-      if (p) document.getElementById("fil").textContent = p.nom;
+      if (p) this._titre = p.nom;
     } else if (this._ecran === "atelier") {
       Atelier.rafraichir();
     } else if (this._ecran === "matrice") {
@@ -263,22 +369,6 @@ export const App = {
   /* ---------------- barre ---------------- */
 
   _brancherBarre() {
-    document.getElementById("act-retour").addEventListener("click", () => this.ouvrirReseau());
-    document.getElementById("act-trames").addEventListener("click", () => this.ouvrirAtelier());
-    document.getElementById("act-infos").addEventListener("click", () => this.ouvrirMatrice());
-    document
-      .getElementById("act-conscience")
-      .addEventListener("click", () => this.ouvrirConscience());
-    document.getElementById("act-temps").addEventListener("click", () => this.ouvrirFrise());
-    document.getElementById("act-casting").addEventListener("click", () => this.ouvrirCasting());
-    document.getElementById("act-conduite").addEventListener("click", () => this.ouvrirConduite());
-
-    document.getElementById("act-nouveau").addEventListener("click", () => {
-      if (this._ecran !== "reseau" && this._ecran !== "fiche") return;
-      const p = ReseauStore.creerPersonnage({ nom: "Sans nom" });
-      this.ouvrirFiche(p.id);
-    });
-
     document.getElementById("act-seed").addEventListener("click", () => {
       if (
         ReseauStore.personnages().length &&
@@ -323,20 +413,8 @@ export const App = {
     el.hidden = !txt;
   },
 
-  /** Le compteur de la barre — recalculé à chaque écriture, sur tous
-      les écrans. C'est lui qui fait de la conscience un linter plutôt
-      qu'un bouton « vérifier ». */
-  _badgeConscience() {
-    const b = document.getElementById("act-conscience");
-    let ouvertes = 0;
-    for (const r of conscience(ReseauStore, TrameStore, InformationStore))
-      for (const a of r.alertes) if (!Derogations.pour(r.cle, a.cible)) ouvertes++;
-    b.textContent = ouvertes ? `Conscience ${ouvertes}` : "Conscience";
-    b.classList.toggle("alerte", ouvertes > 0);
-  },
-
   _compteurs() {
-    this._badgeConscience();
+    this._rendreNav();
     const el = document.getElementById("compteurs");
     if (this._ecran === "conduite") {
       const f = Object.keys(RunStore.fils()).length;
