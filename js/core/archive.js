@@ -26,12 +26,30 @@
      bon prix, parce qu'on peut toujours réimporter en « remplacer »,
      alors qu'on ne peut pas ressusciter ce qui a été écrasé.
 
+   ── L'ARCHIVE CONTIENT TOUT, ET ÇA SE DIT ──
+   Le livret est calculé par soustraction avec beaucoup de soin ; la
+   consigne PNJ porte les vérités ; le carnet de l'auteur est privé.
+   **L'archive, elle, contient les trois.** L'envoyer à un joueur
+   annulerait d'un coup toutes ces précautions.
+
+   Le fichier porte donc un champ `avertissement` en clair — visible
+   dès qu'on l'ouvre dans un éditeur — et l'export le rappelle à
+   l'écran. Ce n'est pas une protection technique : c'en est une
+   humaine, et c'est la seule qui ait du sens pour un fichier qu'on
+   s'envoie soi-même.
+
    Feuille : ne dépend que de `Storage`.
    ============================================================ */
 import { Storage } from "./storage.js";
 
 export const FORMAT = "gnomon-archive";
 export const VERSION = 1;
+
+/** Écrit en clair dans le fichier, en tête. */
+export const AVERTISSEMENT =
+  "Ce fichier contient TOUT le GN : les vérités que les joueurs ignorent, " +
+  "les consignes PNJ et les carnets privés de l'équipe. Il se partage entre " +
+  "organisateurs, jamais avec un participant. Pour un joueur, exportez son livret.";
 
 /** Les clés du `localStorage` qui composent un GN. Ordre stable :
     c'est aussi celui de lecture du fichier. */
@@ -73,6 +91,7 @@ export const Archive = {
     return {
       format: FORMAT,
       version: VERSION,
+      avertissement: AVERTISSEMENT,
       date: new Date().toISOString(),
       titre,
       data,

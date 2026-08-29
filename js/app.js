@@ -38,7 +38,7 @@ import { Derogations } from "./core/derogations.js";
 import { CastingStore } from "./core/castingstore.js";
 import { RunStore } from "./core/runstore.js";
 import { MondeStore } from "./core/mondestore.js";
-import { Archive, telecharger } from "./core/archive.js";
+import { Archive, telecharger, AVERTISSEMENT } from "./core/archive.js";
 import { poids, conseil, formaterOctets, BORNE } from "./core/poids.js";
 import { SuiviStore } from "./core/suivistore.js";
 import { LiensStore } from "./core/liensstore.js";
@@ -468,7 +468,7 @@ export const App = {
       this._quitter();
       const titre = MondeStore.monde().titre;
       telecharger(Archive.nomFichier(titre), JSON.stringify(Archive.construire(titre), null, 1));
-      this._statut("Archive téléchargée — c'est ce fichier qui se partage et se sauvegarde.");
+      this._statut(`Archive téléchargée. ${AVERTISSEMENT}`);
     });
 
     document.getElementById("act-importer").addEventListener("click", () =>

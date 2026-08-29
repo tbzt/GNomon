@@ -13,13 +13,13 @@
   --panel: #dbe2e6;
   --ink: #14212c;
   --ink-soft: #485966;
-  --ink-faint: #7e93a1;
+  --ink-faint: #56646d;
   --rule: #c0cbd2;
   --accent: #1d4e7a;
   --accent-ink: #0e3557;
   --positif: #2f6e4f;
   --negatif: #9e2b25;
-  --neutre: #78868f;
+  --neutre: #5a646b;
   --complique: #6b4e9e;
 
   --serif: "Iowan Old Style", "Palatino Linotype", Palatino, "Book Antiqua", Georgia, serif;
@@ -33,13 +33,13 @@
     --panel: #0a1219;
     --ink: #dce6ec;
     --ink-soft: #9aaebb;
-    --ink-faint: #5f7688;
+    --ink-faint: #728ea3;
     --rule: #233440;
     --accent: #83b7e6;
     --accent-ink: #b5d5f2;
     --positif: #5fb88a;
     --negatif: #e27b72;
-    --neutre: #7a8894;
+    --neutre: #7c8b97;
     --complique: #ac91de;
   }
 }

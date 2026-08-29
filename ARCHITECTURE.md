@@ -527,6 +527,17 @@ Un portrait manquant **n'est pas masqué** : il devient une silhouette aux initi
 compte combien il en manque. Un trou visible se comble ; un trou caché reste. Impression en
 **A4 portrait**, quatre par rangée.
 
+### L'archive contient tout, et ça se dit
+
+Le livret est calculé par soustraction avec beaucoup de soin, la consigne PNJ porte les vérités,
+le carnet de l'auteur est privé. **L'archive, elle, contient les trois.** L'envoyer à un joueur
+annulerait d'un coup toutes ces précautions.
+
+Le fichier porte donc un champ `avertissement` en clair, lisible dès qu'on l'ouvre dans un
+éditeur, et l'export le rappelle à l'écran. Ce n'est pas une protection technique — il n'y en a
+pas de possible pour un fichier qu'on s'envoie soi-même — c'en est une humaine, et c'est la
+seule qui ait du sens ici.
+
 ### L'archive : deux modes aux sémantiques opposées
 
 - **remplacer** — le fichier devient la vérité. Pour restaurer, ou reprendre le travail de
