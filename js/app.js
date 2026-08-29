@@ -3,8 +3,9 @@
 /* ============================================================
    APP — bootstrap, écrans, routage.
 
-   Trois écrans depuis S2 : « Le réseau » (le casting), « La fiche »
-   (l'écriture d'un personnage) et « Les trames » (l'atelier). Le
+   Quatre écrans depuis S3 : « Le réseau » (le casting), « La fiche »
+   (l'écriture d'un personnage), « Les trames » (l'atelier) et
+   « Qui sait quoi » (la matrice des informations). Le
    routage est nu — un champ `_ecran` et un hash — parce qu'il n'y a
    rien à router de plus, et qu'un routeur qu'on ne remplit pas est un
    routeur qu'on maintient pour rien.
@@ -19,10 +20,12 @@
 import { Storage } from "./core/storage.js";
 import { ReseauStore } from "./core/reseaustore.js";
 import { TrameStore } from "./core/tramestore.js";
+import { InformationStore } from "./core/informationstore.js";
 import { chargerValmorel } from "./data/valmorel.js";
 import { Reseau } from "./widgets/reseau.js";
 import { Fiche } from "./widgets/fiche.js";
 import { Atelier } from "./widgets/atelier.js";
+import { Matrice } from "./widgets/matrice.js";
 import { Utils } from "./core/utils.js";
 
 export const App = {
@@ -32,11 +35,13 @@ export const App = {
     Storage.runMigrations();
     ReseauStore.load();
     TrameStore.load();
+    InformationStore.load();
 
     this._hotes = {
       reseau: document.getElementById("ecran-reseau"),
       fiche: document.getElementById("ecran-fiche"),
       atelier: document.getElementById("ecran-atelier"),
+      matrice: document.getElementById("ecran-matrice"),
     };
 
     Reseau.monter(this._hotes.reseau, ReseauStore, {
@@ -45,6 +50,7 @@ export const App = {
 
     ReseauStore.subscribe(() => this._surChangement());
     TrameStore.subscribe(() => this._surChangement());
+    InformationStore.subscribe(() => this._surChangement());
 
     this._brancherBarre();
     window.addEventListener("hashchange", () => this._lireHash());
@@ -58,6 +64,7 @@ export const App = {
     const f = h.match(/^#\/fiche\/(.+)$/);
     if (f && ReseauStore.personnage(f[1])) return this.ouvrirFiche(f[1], { silencieux: true });
     if (/^#\/trames/.test(h)) return this.ouvrirAtelier({ silencieux: true });
+    if (/^#\/informations/.test(h)) return this.ouvrirMatrice({ silencieux: true });
     this.ouvrirReseau({ silencieux: true });
   },
 
@@ -104,6 +111,7 @@ export const App = {
     this._basculer("fiche", p.nom);
     Fiche.monter(this._hotes.fiche, ReseauStore, id, {
       onOuvrir: (autreId) => this.ouvrirFiche(autreId),
+      infos: InformationStore,
     });
     if (!silencieux) location.hash = `#/fiche/${id}`;
   },
@@ -117,8 +125,19 @@ export const App = {
     }
     this._quitter();
     this._basculer("atelier", "Les trames");
-    Atelier.monter(this._hotes.atelier, TrameStore, ReseauStore);
+    Atelier.monter(this._hotes.atelier, TrameStore, ReseauStore, InformationStore);
     if (!silencieux) location.hash = "#/trames";
+  },
+
+  ouvrirMatrice({ silencieux = false } = {}) {
+    if (this._ecran === "matrice") {
+      if (!silencieux && location.hash !== "#/informations") location.hash = "#/informations";
+      return;
+    }
+    this._quitter();
+    this._basculer("matrice", "Qui sait quoi");
+    Matrice.monter(this._hotes.matrice, InformationStore, ReseauStore, TrameStore);
+    if (!silencieux) location.hash = "#/informations";
   },
 
   /* ---------------- réactions ---------------- */
@@ -130,6 +149,8 @@ export const App = {
       if (p) document.getElementById("fil").textContent = p.nom;
     } else if (this._ecran === "atelier") {
       Atelier.rafraichir();
+    } else if (this._ecran === "matrice") {
+      Matrice.rendre();
     } else {
       Reseau.rendre();
     }
@@ -141,9 +162,10 @@ export const App = {
   _brancherBarre() {
     document.getElementById("act-retour").addEventListener("click", () => this.ouvrirReseau());
     document.getElementById("act-trames").addEventListener("click", () => this.ouvrirAtelier());
+    document.getElementById("act-infos").addEventListener("click", () => this.ouvrirMatrice());
 
     document.getElementById("act-nouveau").addEventListener("click", () => {
-      if (this._ecran === "atelier") return;
+      if (this._ecran !== "reseau" && this._ecran !== "fiche") return;
       const p = ReseauStore.creerPersonnage({ nom: "Sans nom" });
       this.ouvrirFiche(p.id);
     });
@@ -157,12 +179,14 @@ export const App = {
       this._quitter();
       ReseauStore.vider();
       TrameStore.vider();
-      const n = chargerValmorel(ReseauStore, TrameStore);
+      InformationStore.vider();
+      const n = chargerValmorel(ReseauStore, TrameStore, InformationStore);
       this.ouvrirReseau();
       this._statut(
         `Valmorel chargé — ${n.personnages} personnages, ${n.liens} liens, ` +
           `${n.situations} situations, ${n.conclusions} conclusions ` +
-          `(dont ${n.orphelines} question${n.orphelines > 1 ? "s" : ""} ouverte${n.orphelines > 1 ? "s" : ""}).`,
+          `(dont ${n.orphelines} question${n.orphelines > 1 ? "s" : ""} ouverte${n.orphelines > 1 ? "s" : ""}), ` +
+          `${n.informations} informations.`,
       );
     });
 
@@ -172,8 +196,9 @@ export const App = {
       this._quitter();
       ReseauStore.vider();
       TrameStore.vider();
+      InformationStore.vider();
       this.ouvrirReseau();
-      this._statut("Réseau et trames vidés.");
+      this._statut("Tout est vidé.");
     });
   },
 
@@ -185,6 +210,13 @@ export const App = {
 
   _compteurs() {
     const el = document.getElementById("compteurs");
+    if (this._ecran === "matrice") {
+      const i = InformationStore.informations().length;
+      const d = InformationStore.informations().filter((x) => InformationStore.divergents(x.id).length).length;
+      el.textContent =
+        `${i} ${Utils.plur(i, "information")} · ${d} ${Utils.plur(d, "divergence")}`;
+      return;
+    }
     if (this._ecran === "atelier") {
       const t = TrameStore.trames().length;
       const s = TrameStore.situations().length;
@@ -206,5 +238,6 @@ export const App = {
 window.App = App;
 window.ReseauStore = ReseauStore;
 window.TrameStore = TrameStore;
+window.InformationStore = InformationStore;
 
 App.init();

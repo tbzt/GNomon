@@ -45,7 +45,8 @@ reviendrait à aplatir la différence qui fait tout le projet.
 2. Données d'essai   js/data/           fixtures (valmorel.js)
         ↑
 1. Socle             js/core/           storage, debug, utils, reseaustore,
-                                        couverture, tramestore
+                                        couverture, tramestore,
+                                        informationstore
 ```
 
 ### Couche 2b — Rendu (`js/widgets/`)
@@ -56,6 +57,7 @@ reviendrait à aplatir la différence qui fait tout le projet.
 | `fiche.js` | `Fiche` | L'écran d'écriture : huit champs saisis, jauge calculée, carnet. Rendu **en deux étages** (cf. §6). |
 | `journal/markdown.js` | `Markdown` | Gras / italique / code sur du texte **déjà échappé**. Copié tel quel de ShadowHerds. Pas de titres (collision `#`), pas de liens (collision `@[]()` + XSS `href`). |
 | `journal/mentions.js` | `Mentions` | Autocomplétion `@`, rendu des puces, et **proposition d'arête**. Réécrit : l'original dépend de six modules propres à son domaine. |
+| `matrice.js` | `Matrice` | L'écran « Qui sait quoi » : informations × personnages, une cellule se règle au clic. |
 | `atelier.js` | `Atelier` | L'écran des trames : graphe, éditeur de situation, file « et après ? ». Remonte le graphe **sur signature**, pas sur événement (cf. §6). |
 | `graph/graphengine.js` | `GraphEngine` | Moteur de graphe pur — layout de forces ou **layout auteur** (`static` + `onNodeMoved`), formes, motifs de trait, poches, pan/zoom. **Copié tel quel** de ShadowHerds : zéro import, aucune vérité détenue. Seul le pont `window` a sauté. |
 
@@ -71,6 +73,7 @@ reviendrait à aplatir la différence qui fait tout le projet.
 | `storage.js` | `Storage` | **Unique** dépositaire du `localStorage`. Clés `gnomon_v1_<clé>`. Observation des écritures (`subscribe`), entonnoir d'échec d'écriture, versionnement de schéma + migrations. |
 | `reseaustore.js` | `ReseauStore` | **La vérité racine.** Personnages, liens orientés, groupes. Détient les trois invariants du modèle (cf. §4). |
 | `utils.js` | `Utils` | `escHtml`, `searchNorm` (recherche sans accents), `plur`. Volontairement maigre : la version de ShadowHerds porte la résolution d'édition, dont il n'y a pas ici. |
+| `informationstore.js` | `InformationStore` | Les **informations** : le fait, son influence, et **qui sait quoi**. `sait` / `croit` par personnage ; **« ignore » n'est jamais stocké — c'est l'absence** (cf. §5c). |
 | `tramestore.js` | `TrameStore` | Les **trames**, les **situations** et leurs **conclusions**. Une conclusion sans cible est valide — c'est le moteur de la boucle « et après ? » (cf. §5b). |
 | `couverture.js` | `couverture()`, `scoreCouverture()` | Les **neuf composantes de Kröger, calculées** depuis le réseau. Module **pur** : lit le store, ne le mute jamais, ne touche pas au DOM — c'est ce qui permettra à la conscience (S4) de le rejouer après casting. |
 
@@ -163,6 +166,46 @@ survivrait pas à l'annulation d'une suppression. Une référence cassée doit s
 
 ---
 
+## 5c. L'information porte l'asymétrie
+
+ShadowHerds a des *indices* — des faits qu'on découvre. Il lui manque **l'asymétrie de
+connaissance**, qui est ce qui fait marcher une intrigue de GN. Kröger en fait une question
+obligatoire : « tous les participants savent-ils la même chose ? Y avait-il un témoin dont les
+autres ignorent la présence ? Est-ce un malentendu ? »
+
+**« Ignore » n'est jamais stocké.** C'est l'absence d'entrée : l'état par défaut du monde est
+un monde où l'on ne sait pas. Le stocker pour quarante personnages × trente informations
+remplirait la base de mille deux cents façons de ne rien dire. L'invariant se tient dans
+`poser()`, et nulle part ailleurs — deux portes pour écrire la même chose finiraient par
+diverger.
+
+**La croyance porte du texte.** Sans lui, « croit autre chose » ne serait qu'un drapeau, or
+c'est la fausse croyance qui se joue à table : Lucie ne croit pas autre chose dans l'abstrait,
+elle croit que son fils est mort de la fièvre. Et une croyance ne survit pas à la sortie de
+l'état « croit » — la garder produirait un texte fantôme qu'aucun écran n'affiche.
+
+**Requiert ≠ produit.** Une situation *requiert* ce qu'il faut savoir pour qu'elle arrive, et
+*produit* ce qui s'y apprend. Confondre les deux rendrait impossible la seule question qui
+compte au moment d'écrire les fiches : **qui doit savoir quoi AVANT le jeu ?**
+
+### Le squelette de fiche — dérivé, jamais écrit
+
+C'est le gain du lot. eXpérience décrit le mouvement : poser une information préliminaire sur
+une situation, c'est « commencer à rédiger le squelette de sa future fiche ». GNomon
+l'automatise — la fiche affiche ce que le personnage sait, et ce qu'il croit de faux, calculé
+depuis `InformationStore`.
+
+Le squelette **n'écrit pas dans le carnet**. Écrire à la place de l'auteur produirait du texte
+à démêler du sien, et qui se désynchroniserait au premier changement. Il est affiché à côté,
+toujours juste, et sert de liste de courses.
+
+Corollaire tenu après l'avoir vu casser : **le marqueur « croyance fausse » suit l'état, pas
+le fait qu'on ait déjà écrit la croyance.** Le lier au texte affichait un personnage qui croit
+autre chose comme s'il savait, tant que la croyance était vide — soit exactement le contraire
+de ce que l'auteur doit voir.
+
+---
+
 ## 6. Le rendu en deux étages — et pourquoi ce n'est pas de l'optimisation
 
 `Fiche.rendre()` construit tout ; `Fiche.rafraichirDerives()` ne remet à jour que la jauge et
@@ -213,5 +256,5 @@ python3 -m http.server 8000
 
 L'épine est décrite hors dépôt dans `PLANS/VISION_ATELIER_DE_TRAMES.md`. En résumé :
 **S0** l'arête typée *(livré)* · **S1** la fiche, la jauge de couverture et le `@mention` qui
-crée l'arête *(livré)* · **S2** l'atelier de trames *(livré)* · **S3** les informations · **S4** la conscience
+crée l'arête *(livré)* · **S2** l'atelier de trames *(livré)* · **S3** les informations *(livré)* · **S4** la conscience
 (douze validateurs) · **S5** le temps · **S6** le casting.

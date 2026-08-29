@@ -17,6 +17,18 @@
    3. **Le carnet** — de la prose, en markdown léger, où le `@mention`
       propose l'arête.
 
+   4. **Le squelette** — ce que ce personnage sait avant le jeu, DÉRIVÉ
+      des informations qu'on lui a posées. eXpérience décrit exactement
+      ce mouvement : poser une information préliminaire sur une
+      situation, c'est « commencer à rédiger le squelette de sa future
+      fiche ». On l'automatise, il ne reste qu'à romancer.
+
+      Le squelette n'écrit **pas** dans le carnet. Écrire à la place de
+      l'auteur produirait du texte qu'il faudrait ensuite démêler du
+      sien, et qui se désynchroniserait au premier changement. Il est
+      affiché à côté, toujours juste, et l'auteur s'en sert comme d'une
+      liste de courses.
+
    ── RENDU EN DEUX ÉTAGES, et ce n'est pas de l'optimisation ──
    `rendre()` construit tout ; `rafraichirDerives()` ne remet à jour que
    la jauge, les liens et les compteurs. Le store émet à chaque frappe
@@ -26,6 +38,7 @@
    focus.
    ============================================================ */
 import { couverture } from "../core/couverture.js";
+import { INFLUENCES } from "../core/informationstore.js";
 import { TONALITES, IMPORTANCES, FONCTIONS } from "../core/reseaustore.js";
 import { Mentions } from "./journal/mentions.js";
 import { Utils } from "../core/utils.js";
@@ -42,18 +55,20 @@ const CHAMPS = [
 
 export const Fiche = {
   _store: null,
+  _infos: null,
   _hote: null,
   _id: null,
   _onOuvrir: null,
   _tSave: null,
 
-  monter(hote, store, personnageId, { onOuvrir = null } = {}) {
+  monter(hote, store, personnageId, { onOuvrir = null, infos = null } = {}) {
     // On quitte peut-être une fiche en cours d'écriture : la sauvegarde
     // est débouncée, donc les dernières frappes ne sont pas encore au
     // store. Les écrire AVANT de changer de personnage.
     this.flush();
     this._hote = hote;
     this._store = store;
+    this._infos = infos;
     this._id = personnageId;
     this._onOuvrir = onOuvrir;
     this.rendre();
@@ -90,7 +105,8 @@ export const Fiche = {
       this._entete(p) +
       '<div class="fiche-corps">' +
       `<div class="fiche-gauche">${this._carnet(p)}<div id="fiche-liens">${this._liens(p)}</div></div>` +
-      `<aside class="fiche-droite"><div id="fiche-jauge">${this._jauge(p)}</div>${this._champs(p)}</aside>` +
+      `<aside class="fiche-droite"><div id="fiche-jauge">${this._jauge(p)}</div>` +
+      `<div id="fiche-squelette">${this._squelette(p)}</div>${this._champs(p)}</aside>` +
       "</div></article>";
 
     this._brancher();
@@ -102,8 +118,10 @@ export const Fiche = {
     if (!p || !this._hote.querySelector(".fiche")) return;
     const j = this._hote.querySelector("#fiche-jauge");
     const l = this._hote.querySelector("#fiche-liens");
+    const q = this._hote.querySelector("#fiche-squelette");
     if (j) j.innerHTML = this._jauge(p);
     if (l) l.innerHTML = this._liens(p);
+    if (q) q.innerHTML = this._squelette(p);
     const t = this._hote.querySelector(".fiche-titre");
     if (t && document.activeElement !== t) t.value = p.nom;
     this._brancherJauge();
@@ -149,6 +167,43 @@ export const Fiche = {
       '<p class="jauge-dit" id="jauge-dit">Les neuf pastilles sont <b>calculées</b> depuis le réseau, ' +
       "jamais saisies. Touchez-en une pour savoir ce qu'elle mesure.</p>" +
       "</div>"
+    );
+  },
+
+  /** Ce que ce personnage porte avant que le jeu commence. Dérivé,
+      jamais saisi ici — la vérité est dans `InformationStore`, posée
+      depuis les situations qui en ont besoin. */
+  _squelette(p) {
+    if (!this._infos) return "";
+    const { sait, croit } = this._infos.parPersonnage(p.id);
+    if (!sait.length && !croit.length)
+      return (
+        '<div class="squelette vide-sq"><p class="jauge-titre"><span>Ce qu\'il sait</span></p>' +
+        "<p>Rien pour l'instant. Les informations arrivent ici quand une situation " +
+        "déclare en avoir besoin — la fiche s'amorce toute seule.</p></div>"
+      );
+
+    // Le marqueur « faux » suit l'ÉTAT, jamais le fait qu'on ait déjà
+    // écrit la croyance. Le lier au texte affichait un personnage qui
+    // croit autre chose comme s'il savait, tant que la croyance était
+    // vide — soit exactement le contraire de ce que l'auteur doit voir.
+    const ligne = (i, faux = false, croyance = "") =>
+      `<li class="sq-item${faux ? " sq-faux" : ""}">` +
+      `<span class="sq-txt">${Utils.escHtml(i.contenu) || "<sans contenu>"}</span>` +
+      (faux
+        ? `<span class="sq-croit">il croit : ${Utils.escHtml(croyance) || "— reste à écrire"}</span>`
+        : `<span class="sq-infl">influence ${INFLUENCES[i.influence].toLowerCase()}</span>`) +
+      "</li>";
+
+    return (
+      '<div class="squelette">' +
+      `<p class="jauge-titre"><span>Ce qu'il sait</span><span class="jauge-score">${sait.length + croit.length}</span></p>` +
+      '<ul class="sq-liste">' +
+      sait.map((i) => ligne(i)).join("") +
+      croit.map((i) => ligne(i, true, this._infos.croyance(i.id, p.id))).join("") +
+      "</ul>" +
+      '<p class="sq-note">Le squelette de sa fiche. Il ne s\'écrit pas dans le carnet : ' +
+      "à vous de le romancer.</p></div>"
     );
   },
 

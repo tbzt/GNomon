@@ -43,7 +43,7 @@ une erreur.
 
 ## État
 
-**Lots S0, S1 et S2 livrés.**
+**Lots S0 à S3 livrés.**
 
 **S0 — la vérité racine.** Personnages, liens orientés, groupes, avec les trois invariants du
 modèle tenus dans le store.
@@ -65,8 +65,14 @@ une conclusion **sans cible** est valide, et c'est elle qui fait avancer l'écri
 « et après ? » liste les questions ouvertes, et y répondre crée la situation suivante et la
 relie. Les échappatoires se lisent en pointillé.
 
-À venir : les informations (qui sait quoi, qui croit autre chose), la conscience (douze
-validateurs tirés de la littérature), le temps, le casting.
+**S3 — les informations.** L'objet qui manquait : non pas des indices qu'on découvre, mais
+**l'asymétrie de connaissance** — qui sait, qui ignore, qui croit autre chose, et *quoi* à la
+place. Un écran « Qui sait quoi » où une cellule se règle au clic ; et le flux inversé
+d'eXpérience rendu mécanique : une situation déclare ce qu'il faut savoir pour qu'elle arrive,
+et **le squelette de chaque fiche s'écrit tout seul**. Plus jamais de page blanche — il ne
+reste qu'à romancer.
+
+À venir : la conscience (douze validateurs tirés de la littérature), le temps, le casting.
 
 ---
 

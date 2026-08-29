@@ -11,17 +11,26 @@
 
        Trame      { id, titre, porteurId, notes }
        Situation  { id, trameId, titre, pitch, pointDeVueId, castIds[],
+                    requiertIds[], produitIds[],
                     espace, debut, fin, miseEnScene, materiel,
                     joueurParticulier, regles, terminale, x, y }
        Conclusion { id, de, vers, texte, type }
 
    Les champs de la situation sont ceux de la méthode eXpérience
    (annexe « caractéristiques à déterminer pour chaque situation de
-   jeu »), **moins les quatre champs d'information** — préliminaires,
-   influence directe, influence latente, secondaires. Ceux-là ne sont
-   pas oubliés : ils deviennent l'objet `Information` au lot S3, avec
-   ses détenteurs et ses divergences. Les poser ici en texte libre
-   obligerait à les migrer dans trois semaines.
+   jeu »). Les quatre champs d'information — préliminaires, influence
+   directe, influence latente, secondaires — ne sont pas des textes
+   libres : ce sont des **références** à des objets `Information`
+   (`InformationStore`), portées par `requiertIds` et `produitIds`.
+
+   ── REQUIERT / PRODUIT, ET PAS UN SEUL LIEN ──
+   eXpérience inverse le flux : « pensez d'abord à ce que vous voulez
+   que les joueurs fassent, ensuite à ce que vous avez besoin de leur
+   donner pour ça ». Une situation **requiert** ce qu'il faut savoir
+   pour qu'elle arrive, et **produit** ce qui s'y apprend. Confondre les
+   deux ferait d'une chaîne narrative un sac : on ne pourrait plus
+   demander « qui doit savoir quoi AVANT le jeu ? », qui est exactement
+   la question à laquelle sert le squelette de fiche.
 
    ── UNE CONCLUSION SANS CIBLE EST VALIDE ──
    `vers: null` n'est pas un état dégradé, c'est **le moteur de
@@ -163,6 +172,8 @@ export const TrameStore = {
       pitch,
       pointDeVueId: null,
       castIds: [],
+      requiertIds: [],
+      produitIds: [],
       espace: "",
       debut: null,
       fin: null,
@@ -227,6 +238,56 @@ export const TrameStore = {
   estEbauche(s) {
     if (!s) return false;
     return !s.espace && !s.miseEnScene && s.debut == null && !s.castIds.length;
+  },
+
+  /* ================= Informations liées =================
+     Les listes sont lues défensivement (`|| []`) : le champ est
+     purement additif, une situation écrite avant S3 le lit `undefined`.
+     Une migration pour ça coûterait plus cher qu'elle ne rapporte. */
+
+  /** Ce qu'il faut savoir pour que la situation puisse arriver. */
+  requiert(situationId) {
+    const s = this.situation(situationId);
+    return (s && s.requiertIds) || [];
+  },
+
+  /** Ce qui s'y apprend. */
+  produit(situationId) {
+    const s = this.situation(situationId);
+    return (s && s.produitIds) || [];
+  },
+
+  /** Lie une information à une situation, dans l'un des deux sens.
+      Idempotent. `sens` vaut `"requiert"` ou `"produit"`. */
+  lierInformation(situationId, informationId, sens = "requiert") {
+    const s = this.situation(situationId);
+    if (!s || !informationId) return null;
+    const cle = sens === "produit" ? "produitIds" : "requiertIds";
+    const liste = s[cle] || (s[cle] = []);
+    if (!liste.includes(informationId)) liste.push(informationId);
+    this.save();
+    this._emit({ type: "situation:maj", id: situationId, sens });
+    return s;
+  },
+
+  delierInformation(situationId, informationId, sens = "requiert") {
+    const s = this.situation(situationId);
+    if (!s) return null;
+    const cle = sens === "produit" ? "produitIds" : "requiertIds";
+    s[cle] = (s[cle] || []).filter((x) => x !== informationId);
+    this.save();
+    this._emit({ type: "situation:maj", id: situationId, sens });
+    return s;
+  },
+
+  /** Recherche inverse : où cette information sert-elle ? */
+  situationsAvec(informationId) {
+    const out = { requiert: [], produit: [] };
+    for (const s of this._d().situations) {
+      if ((s.requiertIds || []).includes(informationId)) out.requiert.push(s);
+      if ((s.produitIds || []).includes(informationId)) out.produit.push(s);
+    }
+    return out;
   },
 
   /* ================= Conclusions ================= */

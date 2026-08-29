@@ -23,6 +23,10 @@
        marquée terminale                            → « suites »
      · trois conclusions écrites n'ont pas encore de suite
                                                     → la file « et après ? »
+     · Lucie CROIT que son fils est mort de la fièvre — c'est faux, et
+       trois personnes le savent                    → la divergence
+     · une information n'est branchée sur aucune situation
+                                                    → « branchée nulle part »
 
    Ne pas « réparer » ces défauts : ils sont le sujet.
    ============================================================ */
@@ -333,9 +337,61 @@ export const TRAMES = [
   },
 ];
 
+/* ── Les informations ──
+   `sait` et `croit` par clé de personnage ; l'absence vaut « ignore ».
+   `requise` / `produite` branchent l'information sur les situations,
+   par clé — c'est ce branchement qui alimente le squelette de fiche. */
+export const INFORMATIONS = [
+  {
+    cle: "rapport",
+    contenu: "Le rapport de sécurité a été truqué avant l'avalanche",
+    influence: "directe",
+    sait: ["marek", "joseph", "thomas"],
+    croit: {},
+    requise: ["negociation"],
+    produite: ["registre"],
+  },
+  {
+    cle: "enfant",
+    contenu: "Le fils de Lucie n'est pas mort de la fièvre : il était au tunnel",
+    influence: "latente",
+    sait: ["elena", "corvin"],
+    croit: { lucie: "Son fils est mort de la fièvre, comme le docteur l'a écrit" },
+    requise: [],
+    produite: [],
+  },
+  {
+    cle: "mutation",
+    contenu: "Marek a demandé sa mutation il y a un mois",
+    influence: "latente",
+    sait: ["marek"],
+    croit: { joseph: "Marek reste au village jusqu'au printemps" },
+    requise: ["negociation"],
+    produite: [],
+  },
+  {
+    cle: "cles",
+    contenu: "Thomas a gardé les clés du tunnel après l'accident",
+    influence: "directe",
+    sait: ["thomas", "marek"],
+    croit: {},
+    requise: ["chantage"],
+    produite: [],
+  },
+  {
+    cle: "signature",
+    contenu: "C'est Elena qui a signé la première page du registre",
+    influence: "directe",
+    sait: ["elena", "augustine"],
+    croit: {},
+    requise: ["registre"],
+    produite: ["confrontation"],
+  },
+];
+
 /** Charge le jeu d'essai. `trames` est optionnel — le réseau seul reste
     utilisable. Ne fusionne pas : appeler `vider()` avant si besoin. */
-export function chargerValmorel(reseau, trames = null) {
+export function chargerValmorel(reseau, trames = null, infos = null) {
   const idGroupe = {};
   for (const g of VALMOREL.groupes) idGroupe[g.cle] = reseau.creerGroupe(g.nom).id;
 
@@ -369,6 +425,7 @@ export function chargerValmorel(reseau, trames = null) {
     situations: 0,
     conclusions: 0,
     orphelines: 0,
+    informations: 0,
   };
   if (!trames) return bilan;
 
@@ -401,6 +458,19 @@ export function chargerValmorel(reseau, trames = null) {
           if (!pose.vers) bilan.orphelines++;
         }
       }
+
+  if (!infos) return bilan;
+
+  for (const inf of INFORMATIONS) {
+    const objet = infos.creer({ contenu: inf.contenu, influence: inf.influence });
+    if (!objet) continue;
+    bilan.informations++;
+    for (const k of inf.sait) if (idPerso[k]) infos.poser(objet.id, idPerso[k], "sait");
+    for (const [k, texte] of Object.entries(inf.croit || {}))
+      if (idPerso[k]) infos.poser(objet.id, idPerso[k], "croit", texte);
+    for (const k of inf.requise) if (idSit[k]) trames.lierInformation(idSit[k], objet.id, "requiert");
+    for (const k of inf.produite) if (idSit[k]) trames.lierInformation(idSit[k], objet.id, "produit");
+  }
 
   return bilan;
 }

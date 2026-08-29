@@ -25,13 +25,15 @@
    situation ne touche pas au graphe — et ne le fait pas sauter.
    ============================================================ */
 import { GraphEngine } from "./graph/graphengine.js";
-import { TrameStore, TYPES_CONCLUSION } from "../core/tramestore.js";
+import { TYPES_CONCLUSION } from "../core/tramestore.js";
+import { INFLUENCES, ETATS } from "../core/informationstore.js";
 import { Utils } from "../core/utils.js";
 
 const ACCENT = "#1d4e7a";
 
-/** Champs du second rang — eXpérience, moins les quatre champs
-    d'information qui deviendront l'objet `Information` en S3. */
+/** Champs du second rang — eXpérience. Les quatre champs
+    d'information ne sont pas ici : ce sont des références, gérées par
+    la section « Informations » (cf. `_informations`). */
 const CHAMPS_RESTE = [
   { cle: "espace", label: "Espace dédié", aide: "Où la scène se tient, et ce qu'il faut que le lieu permette." },
   { cle: "miseEnScene", label: "Mise en scène", aide: "Ce que l'équipe doit préparer pour que la scène puisse arriver." },
@@ -44,14 +46,16 @@ export const Atelier = {
   _hote: null,
   _trames: null,
   _reseau: null,
+  _infos: null,
   _trameId: null,
   _situationId: null,
   _signature: "",
 
-  monter(hote, trames, reseau) {
+  monter(hote, trames, reseau, infos) {
     this._hote = hote;
     this._trames = trames;
     this._reseau = reseau;
+    this._infos = infos;
     if (!this._trameId) this._trameId = (trames.trames()[0] || {}).id || null;
     this.rendre();
   },
@@ -281,6 +285,7 @@ export const Atelier = {
       `<select data-s-select="pointDeVueId"><option value="">— personne —</option>${optPdv}</select></label>` +
       `<div class="champ"><span class="champ-label">Casting</span>${this._cast(s, persos)}</div>` +
       this._conclusions(s) +
+      this._informations(s) +
       '<details class="champs-bloc"><summary>Le reste — ce qu\'il faut pour que ça arrive</summary>' +
       '<label class="champ"><span class="champ-label">Temps dédié</span><span class="ed-temps">' +
       `<input type="number" step="0.5" min="0" max="48" data-s-num="debut" value="${s.debut ?? ""}" placeholder="début" aria-label="Heure de début" /> → ` +
@@ -338,6 +343,97 @@ export const Atelier = {
     );
   },
 
+  /** ── LE FLUX INVERSÉ ──
+      eXpérience : « pensez d'abord à ce que vous voulez que les joueurs
+      fassent, ensuite à ce que vous avez besoin de leur donner pour
+      ça ». Une situation **requiert** ce qu'il faut savoir pour
+      qu'elle arrive, et **produit** ce qui s'y apprend.
+
+      Sous chaque information requise, on montre **le cast et son état** :
+      c'est là que la question « qui doit savoir quoi avant le jeu ? »
+      se règle, d'un clic par personne. Le squelette de sa fiche suit
+      tout seul. */
+  _informations(s) {
+    if (!this._infos) return "";
+    const bloc = (sens, titre, aide) => {
+      const ids = sens === "produit" ? this._trames.produit(s.id) : this._trames.requiert(s.id);
+      const lignes = ids
+        .map((id) => {
+          const i = this._infos.information(id);
+          if (!i)
+            return `<li class="inf-item morte" data-inf="${id}" data-sens="${sens}"><span class="inf-txt">information supprimée</span><button type="button" data-delier>✕</button></li>`;
+          const cast =
+            sens === "requiert"
+              ? '<span class="inf-cast">' +
+                s.castIds
+                  .map((pid) => {
+                    const p = this._reseau.personnage(pid);
+                    const e = this._infos.etat(id, pid);
+                    return (
+                      `<button type="button" class="inf-etat k-${e}" data-etat="${pid}" data-inf2="${id}" ` +
+                      `title="${Utils.escHtml(p ? p.nom : "supprimé")} — ${ETATS[e]}">` +
+                      `${Utils.escHtml(p ? p.nom.split(" ")[0] : "?")}</button>`
+                    );
+                  })
+                  .join("") +
+                (s.castIds.length ? "" : '<span class="inf-vide">aucun casting sur cette situation</span>') +
+                "</span>"
+              : "";
+          return (
+            `<li class="inf-item" data-inf="${id}" data-sens="${sens}">` +
+            `<span class="inf-txt">${Utils.escHtml(i.contenu) || "<sans contenu>"}` +
+            `<span class="infl">${INFLUENCES[i.influence].toLowerCase()}</span></span>` +
+            cast +
+            '<button type="button" data-delier title="Retirer de cette situation">✕</button></li>'
+          );
+        })
+        .join("");
+      const dispo = this._infos
+        .informations()
+        .filter((i) => !ids.includes(i.id))
+        .map((i) => `<option value="${i.id}">${Utils.escHtml(i.contenu || "<sans contenu>")}</option>`)
+        .join("");
+      return (
+        `<div class="champ"><span class="champ-label" title="${Utils.escHtml(aide)}">${titre}</span>` +
+        `<ul class="infs">${lignes || '<li class="inf-item vide">rien pour l\'instant</li>'}</ul>` +
+        `<span class="inf-ajout"><select data-ajout="${sens}"><option value="">+ lier une information…</option>${dispo}</select>` +
+        `<button type="button" data-neuve="${sens}">Neuve</button></span></div>`
+      );
+    };
+    return (
+      bloc(
+        "requiert",
+        "Ce qu'il faut savoir",
+        "Les informations préliminaires : sans elles, la scène ne peut pas arriver. Cliquez un nom du cast pour régler ce qu'il en sait.",
+      ) + bloc("produit", "Ce qui s'y apprend", "Ce que la scène révèle — la matière des situations suivantes.")
+    );
+  },
+
+  _brancherInformations(s) {
+    const hote = this._hote.querySelector("#editeur");
+    for (const li of hote.querySelectorAll(".inf-item[data-inf]")) {
+      const b = li.querySelector("[data-delier]");
+      if (b)
+        b.addEventListener("click", () =>
+          this._trames.delierInformation(s.id, li.dataset.inf, li.dataset.sens),
+        );
+    }
+    for (const b of hote.querySelectorAll("[data-etat]"))
+      b.addEventListener("click", () => this._infos.cycler(b.dataset.inf2, b.dataset.etat));
+    for (const sel of hote.querySelectorAll("[data-ajout]"))
+      sel.addEventListener("change", (e) => {
+        if (!e.target.value) return;
+        this._trames.lierInformation(s.id, e.target.value, sel.dataset.ajout);
+      });
+    for (const b of hote.querySelectorAll("[data-neuve]"))
+      b.addEventListener("click", () => {
+        const contenu = prompt("L'information, telle qu'elle est vraie :", "");
+        if (contenu === null || !contenu.trim()) return;
+        const i = this._infos.creer({ contenu: contenu.trim(), influence: "latente" });
+        if (i) this._trames.lierInformation(s.id, i.id, b.dataset.neuve);
+      });
+  },
+
   _brancherEditeur(s) {
     const hote = this._hote.querySelector("#editeur");
     const maj = (patch) => this._trames.majSituation(s.id, patch);
@@ -393,6 +489,8 @@ export const Atelier = {
           this.rafraichir();
         });
     }
+
+    this._brancherInformations(s);
 
     hote.querySelector(".ed-supprimer").addEventListener("click", () => {
       if (!confirm(`Supprimer « ${s.titre || "Sans titre"} » ?`)) return;

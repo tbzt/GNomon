@@ -1237,3 +1237,333 @@ textarea::placeholder {
     grid-template-columns: 1fr;
   }
 }
+
+/* ============================================================
+   S3 — les informations : la matrice, le squelette, le branchement.
+   ============================================================ */
+
+.matrice-tete {
+  display: flex;
+  align-items: baseline;
+  gap: 16px;
+  margin-bottom: 12px;
+}
+.matrice-tete .carnet-titre {
+  margin: 0;
+  flex: 1;
+}
+
+.scroll-x {
+  overflow-x: auto;
+  border: 1px solid var(--rule);
+  border-radius: 3px;
+}
+
+table.matrice {
+  border-collapse: collapse;
+  width: 100%;
+  font-size: 13px;
+}
+
+table.matrice th,
+table.matrice td {
+  border: 1px solid var(--rule);
+  padding: 7px 9px;
+  text-align: left;
+  vertical-align: top;
+}
+
+table.matrice thead th {
+  background: var(--panel);
+  font-family: var(--mono);
+  font-size: 9.5px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--ink-faint);
+  font-weight: 400;
+  white-space: nowrap;
+  position: sticky;
+  top: 0;
+}
+table.matrice thead th.col-pnj {
+  font-style: italic;
+}
+
+table.matrice .info-cell {
+  background: var(--surface);
+  font-weight: 400;
+  font-size: 14.5px;
+  line-height: 1.35;
+  min-width: 260px;
+  max-width: 360px;
+  cursor: pointer;
+}
+table.matrice tr.sel .info-cell {
+  box-shadow: inset 3px 0 0 var(--accent);
+}
+table.matrice .info-cell:hover {
+  color: var(--accent-ink);
+}
+
+.infl {
+  display: block;
+  font-family: var(--mono);
+  font-size: 9px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--ink-faint);
+  margin-top: 3px;
+}
+.infl .orph {
+  color: var(--negatif);
+}
+
+table.matrice .cell {
+  text-align: center;
+  font-size: 15px;
+  cursor: pointer;
+  user-select: none;
+  background: var(--surface);
+}
+table.matrice .cell:hover {
+  background: var(--panel);
+}
+
+.k-sait {
+  color: var(--positif);
+}
+.k-croit {
+  color: var(--complique);
+}
+.k-ignore {
+  color: var(--ink-faint);
+  opacity: 0.5;
+}
+
+/* ---------- panneau de l'information ---------- */
+
+.info-detail {
+  background: var(--surface);
+  border: 1px solid var(--rule);
+  border-radius: 3px;
+  padding: 14px 16px;
+  margin-top: 16px;
+}
+
+.info-ligne {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin: 10px 0;
+}
+.info-ligne .champ-label {
+  margin: 0 4px 0 0;
+}
+
+.infl-btn {
+  text-transform: none;
+  letter-spacing: 0.03em;
+  font-family: var(--serif);
+  font-size: 14px;
+  padding: 4px 11px;
+}
+.infl-btn.actif {
+  border-color: var(--accent);
+  color: var(--accent-ink);
+  background: var(--panel);
+}
+.info-suppr {
+  margin-left: auto;
+  border-color: var(--negatif);
+  color: var(--negatif);
+}
+
+.info-croyances {
+  border-top: 1px dashed var(--rule);
+  padding-top: 10px;
+  margin-bottom: 10px;
+}
+.croyance {
+  display: grid;
+  grid-template-columns: minmax(120px, auto) 1fr;
+  gap: 10px;
+  align-items: center;
+  margin-top: 6px;
+}
+.croyance > span {
+  font-size: 14px;
+  color: var(--complique);
+}
+.croyance input {
+  font-family: var(--serif);
+  font-size: 14.5px;
+  color: var(--ink);
+  background: var(--ground);
+  border: 1px solid var(--rule);
+  border-radius: 2px;
+  padding: 5px 8px;
+}
+.croyance input:focus {
+  border-color: var(--complique);
+  outline: none;
+}
+
+.info-usages {
+  font-size: 13.5px;
+  line-height: 1.5;
+  color: var(--ink-soft);
+  margin: 0;
+  border-top: 1px dashed var(--rule);
+  padding-top: 10px;
+}
+.info-usages b {
+  font-family: var(--mono);
+  font-size: 9.5px;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  color: var(--ink-faint);
+  font-weight: 400;
+}
+
+/* ---------- le squelette de fiche ---------- */
+
+.squelette {
+  background: var(--surface);
+  border: 1px solid var(--rule);
+  border-radius: 3px;
+  padding: 14px 16px;
+  margin: 0 0 16px;
+}
+.squelette.vide-sq p:last-child {
+  font-size: 14px;
+  color: var(--ink-faint);
+  line-height: 1.45;
+  margin: 0;
+}
+
+.sq-liste {
+  list-style: none;
+  margin: 0 0 10px;
+  padding: 0;
+  display: grid;
+  gap: 8px;
+}
+.sq-item {
+  border-left: 3px solid var(--positif);
+  padding-left: 10px;
+}
+.sq-item.sq-faux {
+  border-left-color: var(--complique);
+}
+.sq-txt {
+  display: block;
+  font-size: 15px;
+  line-height: 1.4;
+}
+.sq-infl,
+.sq-croit {
+  display: block;
+  font-family: var(--mono);
+  font-size: 9.5px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--ink-faint);
+  margin-top: 2px;
+}
+.sq-croit {
+  color: var(--complique);
+  text-transform: none;
+  letter-spacing: 0.01em;
+  font-size: 12px;
+}
+.sq-note {
+  font-size: 13px;
+  color: var(--ink-faint);
+  line-height: 1.4;
+  margin: 0;
+  border-top: 1px dashed var(--rule);
+  padding-top: 9px;
+}
+
+/* ---------- informations sur la situation ---------- */
+
+.infs {
+  list-style: none;
+  margin: 0 0 7px;
+  padding: 0;
+  display: grid;
+  gap: 5px;
+}
+.inf-item {
+  border: 1px solid var(--rule);
+  border-left-width: 3px;
+  border-left-color: var(--positif);
+  border-radius: 2px;
+  padding: 6px 8px;
+  background: var(--ground);
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 6px;
+  align-items: start;
+}
+.inf-item.morte {
+  border-left-color: var(--negatif);
+  color: var(--negatif);
+}
+.inf-item.vide {
+  grid-template-columns: 1fr;
+  border-left-color: var(--rule);
+  font-family: var(--mono);
+  font-size: 10.5px;
+  letter-spacing: 0.05em;
+  color: var(--ink-faint);
+}
+.inf-txt {
+  font-size: 14px;
+  line-height: 1.35;
+}
+.inf-item > button {
+  font-size: 9.5px;
+  padding: 2px 6px;
+}
+
+.inf-cast {
+  grid-column: 1 / -1;
+  display: flex;
+  gap: 4px;
+  flex-wrap: wrap;
+  margin-top: 4px;
+}
+.inf-etat {
+  font-family: var(--mono);
+  font-size: 9.5px;
+  padding: 2px 7px;
+  text-transform: none;
+  letter-spacing: 0.03em;
+}
+.inf-etat.k-sait {
+  border-color: var(--positif);
+  color: var(--positif);
+}
+.inf-etat.k-croit {
+  border-color: var(--complique);
+  color: var(--complique);
+}
+.inf-vide {
+  font-family: var(--mono);
+  font-size: 9.5px;
+  color: var(--ink-faint);
+}
+
+.inf-ajout {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+}
+.inf-ajout select {
+  flex: 1;
+  min-width: 0;
+  font-size: 13px;
+  padding: 4px 6px;
+}
