@@ -159,6 +159,13 @@ lisent pas de la même façon.
 
 ---
 
+## Les tests
+
+Ouvrir **`tests.html`**. Aucun build, aucune dépendance : la même règle que l'application.
+Ils couvrent les modules purs, alimentés par des stores factices — ce qui prouve au passage
+qu'ils ne dépendent que d'une interface de lecture. Le premier d'entre eux vérifie qu'une
+croyance fausse ne sort jamais accompagnée de la vérité.
+
 ## Lancer en local
 
 Les modules ES imposent un vrai serveur HTTP — le `file://` ne les charge pas.

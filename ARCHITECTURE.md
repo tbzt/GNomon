@@ -686,6 +686,10 @@ Deux gardes découlent de là, et toutes deux ont été posées après avoir vu 
    et le texte à l'écran disparaît.
 2. **`Fiche.flush()` avant toute navigation et au blur du carnet.** Quitter l'écran dans les
    400 ms perdrait les dernières frappes.
+3. **`_quitter()` est idempotent.** Il peut être appelé deux fois pour une seule sortie —
+   l'import le fait avant d'écrire, puis `ouvrirReseau()` le refait. Sans marque, le second
+   `Monde.flush()` réécrivait le DOM **périmé** par-dessus les données fraîchement importées :
+   importer depuis l'écran du monde perdait l'archive. Trouvé en testant l'accueil.
 
 Troisième garde, du même genre, posée après avoir vu le bug : **la sélection d'un module ne
 survit pas au vidage de son store.** L'atelier garde son `_trameId` entre deux montages, ce qui
@@ -718,6 +722,37 @@ curseur de l'auteur pendant qu'il écrit.
 `subscribe` renvoie une fonction de désabonnement.
 
 ---
+
+## 7b. Les tests
+
+Ouvrir **`tests.html`**. Aucun build, aucune dépendance — c'est la même règle d'installation que
+l'application : on ouvre le fichier, ça marche.
+
+Ils couvrent les modules **purs** (`couverture`, `defection`, `temps`, `besoins`, `livret`,
+`affectation`, `conscience`, `archive`, `liensstore`), alimentés par des **stores factices**
+(`tests/faux.js`) plutôt que par les vrais : rien n'est écrit dans le `localStorage`, chaque cas
+est monté à la main, et l'exercice **prouve** que ces modules ne dépendent que d'une interface
+de lecture. Si l'un d'eux se mettait à appeler un singleton, son test casserait aussitôt.
+`faux.js` est accessoirement la documentation du contrat que chaque pur exige.
+
+Le test le plus important du projet est le premier de `documents.test.js` : **une croyance
+fausse ne doit jamais sortir accompagnée de la vérité**. C'est la seule régression qui ne se
+rattraperait pas — elle ne casse rien à l'écran, elle gâche un GN.
+
+`neContientPas()` compare sur le texte **dé-balisé et dés-échappé**. L'erreur avait déjà été
+commise une fois à la main : chercher une chaîne contenant une apostrophe dans du HTML où
+`esc()` l'a transformée en `&#39;` fait passer le test pour la mauvaise raison.
+
+Ce qui n'est pas testé ici : le rendu. Il se vérifie dans le navigateur, et l'a été à chaque lot.
+
+## 7c. L'accueil
+
+Un projet entièrement vierge — ni monde, ni personnage — affiche l'ordre de fabrication en
+quatre lignes et trois portes. **Pas une visite guidée** : une visite pas-à-pas se subit une
+fois, s'annule, et ne revient jamais quand on en aurait besoin.
+
+Il ne réapparaît pas par surprise : vider son casting en cours de route ne ramène pas la page
+d'accueil au milieu du travail, parce que la condition regarde aussi le monde.
 
 ## 8. Lancer en local
 

@@ -1,0 +1,130 @@
+<!doctype html>
+<html lang="fr">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>GNomon — tests</title>
+    <style>
+      :root {
+        color-scheme: light dark;
+        --fond: #f5f8f9;
+        --encre: #14212c;
+        --douce: #56646d;
+        --trait: #c0cbd2;
+        --vert: #2f6e4f;
+        --rouge: #9e2b25;
+      }
+      @media (prefers-color-scheme: dark) {
+        :root {
+          --fond: #0e1820;
+          --encre: #dce6ec;
+          --douce: #728ea3;
+          --trait: #233440;
+          --vert: #5fb88a;
+          --rouge: #e27b72;
+        }
+      }
+      body {
+        margin: 0 auto;
+        max-width: 60em;
+        padding: 2.5em 1.5em 5em;
+        background: var(--fond);
+        color: var(--encre);
+        font-family: ui-sans-serif, system-ui, sans-serif;
+        font-size: 15px;
+        line-height: 1.5;
+      }
+      h1 {
+        font-size: 1.7em;
+        margin: 0 0 0.2em;
+      }
+      .sur {
+        color: var(--douce);
+        margin: 0 0 2em;
+        max-width: 64ch;
+      }
+      .bilan {
+        font-family: ui-monospace, monospace;
+        font-size: 1.5em;
+        font-weight: 600;
+        padding: 0.6em 0.8em;
+        border: 1px solid var(--trait);
+        border-left-width: 4px;
+        margin: 0 0 1.6em;
+        font-variant-numeric: tabular-nums;
+      }
+      .bilan.ok {
+        border-left-color: var(--vert);
+        color: var(--vert);
+      }
+      .bilan.ko {
+        border-left-color: var(--rouge);
+        color: var(--rouge);
+      }
+      h2 {
+        font-size: 12px;
+        letter-spacing: 0.12em;
+        text-transform: uppercase;
+        color: var(--douce);
+        margin: 1.8em 0 0.5em;
+        font-weight: 600;
+      }
+      ul {
+        list-style: none;
+        margin: 0;
+        padding: 0;
+        display: grid;
+        gap: 2px;
+      }
+      li {
+        display: grid;
+        grid-template-columns: 1.4em 1fr;
+        gap: 0.5em;
+        align-items: baseline;
+      }
+      li.ok > span:first-child {
+        color: var(--vert);
+      }
+      li.ko {
+        color: var(--rouge);
+        font-weight: 600;
+      }
+      li i {
+        display: block;
+        font-style: normal;
+        font-family: ui-monospace, monospace;
+        font-size: 12px;
+        font-weight: 400;
+        opacity: 0.85;
+      }
+      code {
+        font-family: ui-monospace, monospace;
+        font-size: 0.9em;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>Tests de GNomon</h1>
+    <p class="sur">
+      Les modules <b>purs</b> — ceux qui prennent des stores en paramètre et n'en mutent aucun.
+      Ils sont alimentés par des stores factices : rien n'est écrit dans le
+      <code>localStorage</code>, et l'exercice prouve au passage qu'ils ne dépendent que d'une
+      interface de lecture. Aucun build, aucune dépendance : cette page s'ouvre, comme
+      l'application.
+    </p>
+    <div id="sortie">Chargement…</div>
+
+    <script type="module">
+      import { lancer, rendre } from "./tests/harnais.js";
+      import "./tests/modeles.test.js";
+      import "./tests/documents.test.js";
+      import "./tests/calculs.test.js";
+
+      const bilan = lancer();
+      rendre(bilan, document.getElementById("sortie"));
+      // Exposé pour une vérification automatisée depuis la console.
+      window.__bilan = bilan;
+      document.title = `${bilan.echecs ? "✗" : "✓"} ${bilan.passes}/${bilan.total} — GNomon`;
+    </script>
+  </body>
+</html>

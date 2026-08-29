@@ -138,6 +138,12 @@ export const App = {
       onOuvrir: (id) => this.ouvrirFiche(id),
       onCreer: () => this.ouvrirFiche(ReseauStore.creerPersonnage({ nom: "Sans nom" }).id),
       stores: this._stores(),
+      actions: {
+        monde_store: MondeStore,
+        monde: () => this.ouvrirMonde(),
+        essai: () => document.getElementById("act-seed").click(),
+        import: () => document.getElementById("act-importer").click(),
+      },
     });
 
     ReseauStore.subscribe(() => this._surChangement());
@@ -185,6 +191,13 @@ export const App = {
     // Le moteur de graphe est un singleton : deux écrans ne peuvent pas
     // le tenir en même temps. On le rend en sortant.
     if (this._ecran === "reseau") Reseau.demonter();
+    // ── IDEMPOTENCE ──
+    // `_quitter()` peut être appelé deux fois pour une seule sortie :
+    // l'import le fait avant d'écrire, puis `ouvrirReseau()` le refait.
+    // Sans cette marque, le second `Monde.flush()` réécrivait le DOM
+    // PÉRIMÉ par-dessus les données fraîchement importées. On note donc
+    // qu'on a déjà quitté ; `_basculer` repose l'écran juste après.
+    this._ecran = null;
   },
 
   _basculer(ecran, titre) {
@@ -492,6 +505,9 @@ export const App = {
       }
       const v = Archive.verifier(paquet);
       if (!v.ok) return this._statut(v.raison);
+      // Ce qui est en cours de saisie part au store AVANT l'import :
+      // après, il serait écrasé sans qu'on sache lequel a gagné.
+      this._quitter();
       const inv = Archive.inventaire(paquet);
       const resume =
         `${inv.titre || "Archive sans titre"} (${inv.date}) — ${inv.personnages} personnages, ` +

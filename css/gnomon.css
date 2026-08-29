@@ -4114,3 +4114,126 @@ main[data-ecran="monde"] {
   letter-spacing: 0;
   padding: 8px;
 }
+
+/* ============================================================
+   ACCUEIL — l'écran vierge.
+   Quinze secondes de lecture, trois portes. Il disparaît dès qu'il y a
+   un personnage et ne revient pas par surprise.
+   ============================================================ */
+
+.ac {
+  max-width: 66ch;
+  margin: 3vh auto 0;
+}
+.ac-sur {
+  font-family: var(--mono);
+  font-size: 10.5px;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  color: var(--ink-faint);
+  margin: 0 0 14px;
+}
+.ac h1 {
+  font-family: var(--serif);
+  font-size: clamp(30px, 5vw, 42px);
+  line-height: 1.1;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  margin: 0 0 14px;
+}
+.ac-lede {
+  font-size: 17px;
+  line-height: 1.55;
+  color: var(--ink-soft);
+  margin: 0 0 30px;
+}
+
+.ac-moments {
+  list-style: none;
+  counter-reset: moment;
+  margin: 0 0 34px;
+  padding: 0;
+  display: grid;
+  gap: 14px;
+}
+.ac-moments li {
+  counter-increment: moment;
+  display: grid;
+  grid-template-columns: 1.6em minmax(90px, auto) 1fr;
+  gap: 12px;
+  align-items: baseline;
+  padding-bottom: 13px;
+  border-bottom: 1px solid var(--rule-soft);
+}
+.ac-moments li::before {
+  content: counter(moment);
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--ink-faint);
+  font-variant-numeric: tabular-nums;
+}
+.ac-moments b {
+  font-family: var(--sans);
+  font-size: 15px;
+  font-weight: 600;
+}
+.ac-moments span {
+  font-size: 14.5px;
+  line-height: 1.5;
+  color: var(--ink-soft);
+}
+
+.ac-portes {
+  display: grid;
+  gap: 8px;
+  margin-bottom: 22px;
+}
+.ac-porte {
+  display: block;
+  text-align: left;
+  text-transform: none;
+  letter-spacing: 0;
+  font-family: var(--sans);
+  padding: 14px 16px;
+  border: 1px solid var(--rule);
+  border-left-width: 3px;
+  border-radius: 3px;
+  background: var(--surface);
+}
+.ac-porte:hover {
+  border-color: var(--accent);
+  border-left-color: var(--accent);
+  color: inherit;
+}
+.ac-porte b {
+  display: block;
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--ink);
+  margin-bottom: 3px;
+}
+.ac-porte span {
+  font-size: 14px;
+  line-height: 1.45;
+  color: var(--ink-soft);
+}
+.ac-porte.principale {
+  border-left-color: var(--accent);
+  background: var(--panel);
+}
+
+.ac-note {
+  font-size: 13.5px;
+  line-height: 1.5;
+  color: var(--ink-faint);
+  margin: 0;
+}
+
+@media (max-width: 600px) {
+  .ac-moments li {
+    grid-template-columns: 1.4em 1fr;
+  }
+  .ac-moments span {
+    grid-column: 2;
+  }
+}

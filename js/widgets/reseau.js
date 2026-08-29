@@ -19,6 +19,7 @@
 import { scoreCouverture } from "../core/couverture.js";
 import { TONALITES, IMPORTANCES, FONCTIONS } from "../core/reseaustore.js";
 import { ReseauGraphe } from "./reseaugraphe.js";
+import { Accueil } from "./accueil.js";
 import { Utils } from "../core/utils.js";
 
 const SEUIL_ALERTE = 5;
@@ -40,12 +41,13 @@ export const Reseau = {
   _stores: null,
   _lentille: "liste",
 
-  monter(hote, store, { onOuvrir = null, onCreer = null, stores = null } = {}) {
+  monter(hote, store, { onOuvrir = null, onCreer = null, stores = null, actions = null } = {}) {
     this._hote = hote;
     this._store = store;
     this._stores = stores;
     this._onOuvrir = onOuvrir;
     this._onCreer = onCreer;
+    this._actions = actions;
     this._hote.addEventListener("click", (e) => {
       const lent = e.target.closest("[data-lentille]");
       if (lent) {
@@ -79,9 +81,16 @@ export const Reseau = {
 
     if (!persos.length) {
       ReseauGraphe.demonter();
+      // Le projet entièrement vierge mérite mieux qu'une phrase : on
+      // ne sait ni par où commencer ni que dix autres écrans existent.
+      if (this._actions && Accueil.estVierge(this._store, this._actions.monde_store)) {
+        this._hote.innerHTML = Accueil.html();
+        Accueil.brancher(this._hote, this._actions);
+        return;
+      }
       this._hote.innerHTML =
         barre +
-        '<p class="vide">Aucun personnage. Chargez le jeu d\'essai pour voir le modèle à l\'œuvre.</p>';
+        '<p class="vide">Aucun personnage. Ajoutez-en un, ou chargez le jeu d\'essai.</p>';
       return;
     }
 
