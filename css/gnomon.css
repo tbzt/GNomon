@@ -3594,3 +3594,35 @@ main[data-ecran="monde"] {
   letter-spacing: 0;
   color: var(--ink-soft);
 }
+
+/* ---------- indicateur de poids ----------
+   Discret tant qu'il n'y a rien à dire. Il prévient AVANT que le quota
+   ne morde : `storage.js` sait signaler un échec d'écriture, mais à ce
+   moment-là la modification en cours est déjà perdue. */
+
+.poids {
+  font-family: var(--mono);
+  font-size: 10.5px;
+  letter-spacing: 0.05em;
+  text-transform: none;
+  padding: 4px 8px;
+  border: 1px solid transparent;
+  border-radius: 2px;
+  background: none;
+  color: var(--ink-faint);
+  font-variant-numeric: tabular-nums;
+  cursor: help;
+}
+.poids:hover {
+  border-color: var(--rule);
+  color: var(--ink-soft);
+}
+.poids.n-attention {
+  color: var(--complique);
+  border-color: var(--complique);
+}
+.poids.n-critique {
+  color: var(--negatif);
+  border-color: var(--negatif);
+  font-weight: 600;
+}

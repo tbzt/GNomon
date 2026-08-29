@@ -39,6 +39,7 @@ import { CastingStore } from "./core/castingstore.js";
 import { RunStore } from "./core/runstore.js";
 import { MondeStore } from "./core/mondestore.js";
 import { Archive, telecharger } from "./core/archive.js";
+import { poids, conseil, formaterOctets, BORNE } from "./core/poids.js";
 import { conscience } from "./core/conscience.js";
 import { frise as calculerFrise } from "./core/temps.js";
 import { chargerValmorel } from "./data/valmorel.js";
@@ -436,6 +437,8 @@ export const App = {
   /* ---------------- barre ---------------- */
 
   _brancherBarre() {
+    document.getElementById("poids").addEventListener("click", () => this._detailPoids());
+
     document.getElementById("act-exporter").addEventListener("click", () => {
       this._quitter();
       const titre = MondeStore.monde().titre;
@@ -528,8 +531,32 @@ export const App = {
     el.hidden = !txt;
   },
 
+  /** L'indicateur de poids. Discret tant qu'il n'y a rien à dire, il
+      change de couleur avant que le quota ne morde — `storage.js` sait
+      signaler un échec d'écriture, mais c'est trop tard : la
+      modification en cours est déjà perdue. */
+  _rendrePoids() {
+    const el = document.getElementById("poids");
+    if (!el) return;
+    const p = poids();
+    el.textContent = formaterOctets(p.octets);
+    el.className = `poids n-${p.niveau}`;
+    el.title = `${Math.round(p.part * 100)} % d'une borne prudente de ${formaterOctets(BORNE)}. Cliquez pour le détail.`;
+    el.hidden = false;
+  },
+
+  _detailPoids() {
+    const p = poids();
+    const gros = p.parCle
+      .slice(0, 3)
+      .map((x) => `${x.cle} ${formaterOctets(x.octets)}`)
+      .join(" · ");
+    this._statut(`${conseil(p).replace(/\*\*/g, "")} — ${gros}.`);
+  },
+
   _compteurs() {
     this._rendreNav();
+    this._rendrePoids();
     const el = document.getElementById("compteurs");
     if (!el) return;
     if (this._ecran === "conduite") {

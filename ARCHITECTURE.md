@@ -51,7 +51,7 @@ reviendrait à aplatir la différence qui fait tout le projet.
                                         castingstore, affectation,
                                         bilancasting, runstore,
                                         conduite, mondestore, livret,
-                                        archive
+                                        archive, poids
 ```
 
 ### Couche 2b — Rendu (`js/widgets/`)
@@ -87,6 +87,7 @@ reviendrait à aplatir la différence qui fait tout le projet.
 | `conscience.js` | `conscience()` | **Les douze règles, calculées.** Module pur : lit trois stores, n'en mute aucun, ne touche pas au DOM — S6 pourra le rejouer après casting. Ne connaît pas les dérogations : le calcul reste rejouable tel quel. |
 | `mondestore.js` | `MondeStore` | **Les fondamentaux** — prémisse, propos, thématique, contexte commun, lieux. Les étapes 1 à 3 d'eXpérience, qui manquaient (cf. §5j). |
 | `livret.js` | `livret()`, `livretHtml()` | Le background remis à un joueur. **Calculé par soustraction** (cf. §5j). |
+| `poids.js` | `poids()`, `conseil()` | Ce que pèse le GN et **ce qui pèse dedans**. On mesure ce qu'on écrit plutôt que d'interroger le navigateur (cf. §5k). |
 | `archive.js` | `Archive`, `telecharger()` | Sauvegarder, exporter, partager. Enveloppe versionnée, deux modes d'import. |
 | `runstore.js` | `RunStore` | L'état vivant du GN : fils en cours, main courante, horloge de fiction avec pauses. |
 | `conduite.js` | `tableau()` | Ce que le tableau doit montrer : fils triés par urgence, **délaissés**, ce qui vient. Module pur. |
@@ -534,6 +535,24 @@ compte combien il en manque. Un trou visible se comble ; un trou caché reste. I
 L'enveloppe (`format`, `version`) est lue **avant** le contenu. Un fichier étranger ou d'une
 version future est refusé avec une phrase claire plutôt qu'importé à moitié : un import partiel
 laisserait un GN incohérent qu'on croirait entier.
+
+---
+
+## 5k. Le poids — prévenir avant que le quota morde
+
+`storage.js` sait signaler un échec d'écriture, mais **c'est trop tard** : quand le quota est
+atteint, la modification en cours est déjà perdue. L'indicateur monte avant, ce qui laisse le
+temps d'exporter.
+
+**On n'interroge pas `navigator.storage.estimate()`.** Il mesure l'origine entière — caches,
+IndexedDB, service workers — et renvoie des quotas sans rapport avec la limite propre au
+`localStorage`. Il dirait « 2 % utilisés » à un GN sur le point de ne plus pouvoir écrire. On
+mesure donc ce qu'on écrit vraiment, et on le compare à une **borne prudente de 5 Mo annoncée
+comme telle** : viser bas fait prévenir tôt, ce qui est le but.
+
+Le message **nomme la cause et l'action**, pas seulement l'état : « les images en occupent
+100 % (6 portraits) — une adresse web à la place d'un fichier ne pèse rien ». Un indicateur qui
+se contente d'un pourcentage laisse l'auteur deviner quoi faire.
 
 ---
 
