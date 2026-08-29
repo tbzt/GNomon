@@ -27,6 +27,10 @@
        trois personnes le savent                    → la divergence
      · une information n'est branchée sur aucune situation
                                                     → « branchée nulle part »
+     · Marek est au casting de TROIS situations qui se chevauchent à
+       21 h — défaut non prémédité, trouvé par la conscience elle-même
+       au lot S4, et conservé parce qu'il est parfaitement réaliste
+                                                    → « miroir disponible »
 
    Ne pas « réparer » ces défauts : ils sont le sujet.
    ============================================================ */

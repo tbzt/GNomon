@@ -43,7 +43,7 @@ une erreur.
 
 ## État
 
-**Lots S0 à S3 livrés.**
+**Lots S0 à S4 livrés.**
 
 **S0 — la vérité racine.** Personnages, liens orientés, groupes, avec les trois invariants du
 modèle tenus dans le store.
@@ -72,7 +72,13 @@ d'eXpérience rendu mécanique : une situation déclare ce qu'il faut savoir pou
 et **le squelette de chaque fiche s'écrit tout seul**. Plus jamais de page blanche — il ne
 reste qu'à romancer.
 
-À venir : la conscience (douze validateurs tirés de la littérature), le temps, le casting.
+**S4 — la conscience.** Douze règles tirées de la littérature, chacune avec sa source, calculées
+en continu — un compteur vivant dans la barre, pas un bouton « vérifier ». **Aucun outil de GN
+existant n'en implémente une seule.** Trois interdits, et ils viennent du corpus lui-même :
+jamais bloquant ; toute alerte s'écarte **avec une justification écrite**, qui reste lisible
+pour le crosschecker ; et jamais de score global — douze compteurs, jamais une moyenne.
+
+À venir : le temps (frise, collisions, charge PNJ), le casting.
 
 ---
 

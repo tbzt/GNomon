@@ -3,9 +3,17 @@
 /* ============================================================
    APP — bootstrap, écrans, routage.
 
-   Quatre écrans depuis S3 : « Le réseau » (le casting), « La fiche »
-   (l'écriture d'un personnage), « Les trames » (l'atelier) et
-   « Qui sait quoi » (la matrice des informations). Le
+   Cinq écrans depuis S4 : « Le réseau » (le casting), « La fiche »
+   (l'écriture d'un personnage), « Les trames » (l'atelier), « Qui sait
+   quoi » (la matrice) et « La conscience » (les douze règles).
+
+   ── LA CONSCIENCE VIT DANS LA BARRE ──
+   La vision la voulait en panneau latéral permanent. Un panneau sur
+   chaque écran aurait imposé de restructurer les quatre autres ; le
+   compromis est un **compteur vivant dans la barre**, recalculé à
+   chaque écriture, et un écran pour le détail. L'intention tient : la
+   conscience n'est pas un bouton « vérifier » qu'on pense à cliquer,
+   c'est un chiffre qu'on voit bouger pendant qu'on écrit. Le
    routage est nu — un champ `_ecran` et un hash — parce qu'il n'y a
    rien à router de plus, et qu'un routeur qu'on ne remplit pas est un
    routeur qu'on maintient pour rien.
@@ -21,11 +29,14 @@ import { Storage } from "./core/storage.js";
 import { ReseauStore } from "./core/reseaustore.js";
 import { TrameStore } from "./core/tramestore.js";
 import { InformationStore } from "./core/informationstore.js";
+import { Derogations } from "./core/derogations.js";
+import { conscience } from "./core/conscience.js";
 import { chargerValmorel } from "./data/valmorel.js";
 import { Reseau } from "./widgets/reseau.js";
 import { Fiche } from "./widgets/fiche.js";
 import { Atelier } from "./widgets/atelier.js";
 import { Matrice } from "./widgets/matrice.js";
+import { Conscience } from "./widgets/conscience.js";
 import { Utils } from "./core/utils.js";
 
 export const App = {
@@ -36,12 +47,14 @@ export const App = {
     ReseauStore.load();
     TrameStore.load();
     InformationStore.load();
+    Derogations.load();
 
     this._hotes = {
       reseau: document.getElementById("ecran-reseau"),
       fiche: document.getElementById("ecran-fiche"),
       atelier: document.getElementById("ecran-atelier"),
       matrice: document.getElementById("ecran-matrice"),
+      conscience: document.getElementById("ecran-conscience"),
     };
 
     Reseau.monter(this._hotes.reseau, ReseauStore, {
@@ -51,6 +64,7 @@ export const App = {
     ReseauStore.subscribe(() => this._surChangement());
     TrameStore.subscribe(() => this._surChangement());
     InformationStore.subscribe(() => this._surChangement());
+    Derogations.subscribe(() => this._surChangement());
 
     this._brancherBarre();
     window.addEventListener("hashchange", () => this._lireHash());
@@ -65,6 +79,7 @@ export const App = {
     if (f && ReseauStore.personnage(f[1])) return this.ouvrirFiche(f[1], { silencieux: true });
     if (/^#\/trames/.test(h)) return this.ouvrirAtelier({ silencieux: true });
     if (/^#\/informations/.test(h)) return this.ouvrirMatrice({ silencieux: true });
+    if (/^#\/conscience/.test(h)) return this.ouvrirConscience({ silencieux: true });
     this.ouvrirReseau({ silencieux: true });
   },
 
@@ -140,6 +155,23 @@ export const App = {
     if (!silencieux) location.hash = "#/informations";
   },
 
+  ouvrirConscience({ silencieux = false } = {}) {
+    if (this._ecran === "conscience") {
+      if (!silencieux && location.hash !== "#/conscience") location.hash = "#/conscience";
+      return;
+    }
+    this._quitter();
+    this._basculer("conscience", "La conscience");
+    Conscience.monter(
+      this._hotes.conscience,
+      ReseauStore,
+      TrameStore,
+      InformationStore,
+      Derogations,
+    );
+    if (!silencieux) location.hash = "#/conscience";
+  },
+
   /* ---------------- réactions ---------------- */
 
   _surChangement() {
@@ -151,6 +183,8 @@ export const App = {
       Atelier.rafraichir();
     } else if (this._ecran === "matrice") {
       Matrice.rendre();
+    } else if (this._ecran === "conscience") {
+      Conscience.rendre();
     } else {
       Reseau.rendre();
     }
@@ -163,6 +197,9 @@ export const App = {
     document.getElementById("act-retour").addEventListener("click", () => this.ouvrirReseau());
     document.getElementById("act-trames").addEventListener("click", () => this.ouvrirAtelier());
     document.getElementById("act-infos").addEventListener("click", () => this.ouvrirMatrice());
+    document
+      .getElementById("act-conscience")
+      .addEventListener("click", () => this.ouvrirConscience());
 
     document.getElementById("act-nouveau").addEventListener("click", () => {
       if (this._ecran !== "reseau" && this._ecran !== "fiche") return;
@@ -180,6 +217,7 @@ export const App = {
       ReseauStore.vider();
       TrameStore.vider();
       InformationStore.vider();
+      Derogations.vider();
       const n = chargerValmorel(ReseauStore, TrameStore, InformationStore);
       this.ouvrirReseau();
       this._statut(
@@ -197,6 +235,7 @@ export const App = {
       ReseauStore.vider();
       TrameStore.vider();
       InformationStore.vider();
+      Derogations.vider();
       this.ouvrirReseau();
       this._statut("Tout est vidé.");
     });
@@ -208,8 +247,26 @@ export const App = {
     el.hidden = !txt;
   },
 
+  /** Le compteur de la barre — recalculé à chaque écriture, sur tous
+      les écrans. C'est lui qui fait de la conscience un linter plutôt
+      qu'un bouton « vérifier ». */
+  _badgeConscience() {
+    const b = document.getElementById("act-conscience");
+    let ouvertes = 0;
+    for (const r of conscience(ReseauStore, TrameStore, InformationStore))
+      for (const a of r.alertes) if (!Derogations.pour(r.cle, a.cible)) ouvertes++;
+    b.textContent = ouvertes ? `Conscience ${ouvertes}` : "Conscience";
+    b.classList.toggle("alerte", ouvertes > 0);
+  },
+
   _compteurs() {
+    this._badgeConscience();
     const el = document.getElementById("compteurs");
+    if (this._ecran === "conscience") {
+      const d = Derogations.compte();
+      el.textContent = d ? `${d} ${Utils.plur(d, "dérogation")}` : "aucune dérogation";
+      return;
+    }
     if (this._ecran === "matrice") {
       const i = InformationStore.informations().length;
       const d = InformationStore.informations().filter((x) => InformationStore.divergents(x.id).length).length;
@@ -239,5 +296,6 @@ window.App = App;
 window.ReseauStore = ReseauStore;
 window.TrameStore = TrameStore;
 window.InformationStore = InformationStore;
+window.Derogations = Derogations;
 
 App.init();

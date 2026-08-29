@@ -1567,3 +1567,222 @@ table.matrice .cell:hover {
   font-size: 13px;
   padding: 4px 6px;
 }
+
+/* ============================================================
+   S4 — la conscience : le compteur vivant et les douze règles.
+   ============================================================ */
+
+#act-conscience.alerte {
+  border-color: var(--negatif);
+  color: var(--negatif);
+}
+
+.cs-entete {
+  border-bottom: 1px solid var(--rule);
+  padding-bottom: 14px;
+  margin-bottom: 18px;
+}
+
+.cs-total {
+  font-size: 20px;
+  margin: 0 0 6px;
+}
+.cs-total b {
+  font-size: 26px;
+  font-weight: 600;
+}
+.cs-ecartees {
+  color: var(--ink-faint);
+  font-size: 16px;
+}
+
+.cs-note {
+  margin: 0;
+  font-size: 14.5px;
+  line-height: 1.5;
+  color: var(--ink-soft);
+  max-width: 62ch;
+}
+
+.cs-regles {
+  display: grid;
+  gap: 1px;
+  background: var(--rule);
+  border: 1px solid var(--rule);
+  border-radius: 3px;
+}
+
+.cs-regle {
+  background: var(--surface);
+}
+
+.cs-tete {
+  display: grid;
+  grid-template-columns: minmax(180px, auto) 1fr auto;
+  gap: 16px;
+  align-items: baseline;
+  width: 100%;
+  text-align: left;
+  border: 0;
+  border-left: 3px solid var(--rule);
+  border-radius: 0;
+  background: none;
+  padding: 11px 14px;
+  text-transform: none;
+  letter-spacing: 0;
+  font-family: var(--serif);
+  font-size: 16px;
+}
+.cs-tete:hover {
+  background: var(--panel);
+  color: inherit;
+}
+
+.cs-regle.ko > .cs-tete {
+  border-left-color: var(--negatif);
+}
+.cs-regle.traitee > .cs-tete {
+  border-left-color: var(--complique);
+}
+.cs-regle.ok > .cs-tete {
+  border-left-color: var(--positif);
+}
+
+.cs-nom {
+  font-weight: 600;
+}
+.cs-question {
+  font-size: 14.5px;
+  color: var(--ink-faint);
+}
+.cs-compte {
+  font-family: var(--mono);
+  font-size: 10.5px;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  color: var(--ink-faint);
+}
+.cs-regle.ko .cs-compte {
+  color: var(--negatif);
+}
+.cs-regle.traitee .cs-compte {
+  color: var(--complique);
+}
+
+.cs-corps {
+  padding: 4px 14px 16px 17px;
+  border-left: 3px solid transparent;
+}
+
+.cs-source {
+  font-size: 13.5px;
+  line-height: 1.45;
+  color: var(--ink-faint);
+  font-style: italic;
+  margin: 0 0 10px;
+  max-width: 70ch;
+}
+
+.cs-transpose {
+  font-size: 13.5px;
+  line-height: 1.45;
+  color: var(--ink-soft);
+  margin: 0 0 12px;
+  padding: 9px 11px;
+  border: 1px dashed var(--rule);
+  border-radius: 2px;
+  max-width: 70ch;
+}
+.cs-transpose b {
+  color: var(--complique);
+}
+
+.cs-rien {
+  font-family: var(--mono);
+  font-size: 11px;
+  letter-spacing: 0.05em;
+  color: var(--positif);
+  margin: 0;
+}
+
+.cs-alertes {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 8px;
+}
+
+.cs-alerte {
+  display: grid;
+  grid-template-columns: minmax(150px, auto) 1fr auto;
+  gap: 12px;
+  align-items: baseline;
+  padding: 9px 11px;
+  background: var(--ground);
+  border: 1px solid var(--rule);
+  border-left: 3px solid var(--negatif);
+  border-radius: 2px;
+}
+.cs-alerte.ecartee {
+  border-left-color: var(--complique);
+  opacity: 0.92;
+}
+
+.cs-cible {
+  font-weight: 600;
+  font-size: 15px;
+}
+.cs-detail {
+  font-size: 14.5px;
+  color: var(--ink-soft);
+  line-height: 1.4;
+}
+
+.cs-ecarter,
+.cs-retablir {
+  font-size: 9.5px;
+  padding: 3px 8px;
+  white-space: nowrap;
+}
+
+.cs-justif {
+  grid-column: 1 / -1;
+  margin: 4px 0 0;
+  font-size: 14px;
+  line-height: 1.45;
+  color: var(--ink-soft);
+  border-top: 1px dashed var(--rule);
+  padding-top: 7px;
+}
+.cs-justif b {
+  font-family: var(--mono);
+  font-size: 9.5px;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  color: var(--complique);
+  font-weight: 400;
+}
+
+.cs-saisie {
+  grid-column: 1 / -1;
+  display: grid;
+  gap: 7px;
+  margin-top: 5px;
+}
+.cs-saisie span {
+  display: flex;
+  gap: 6px;
+}
+.cs-saisie textarea {
+  font-size: 14.5px;
+}
+
+@media (max-width: 760px) {
+  .cs-tete,
+  .cs-alerte {
+    grid-template-columns: 1fr;
+    gap: 4px;
+  }
+}

@@ -46,7 +46,8 @@ reviendrait à aplatir la différence qui fait tout le projet.
         ↑
 1. Socle             js/core/           storage, debug, utils, reseaustore,
                                         couverture, tramestore,
-                                        informationstore
+                                        informationstore, conscience,
+                                        derogations
 ```
 
 ### Couche 2b — Rendu (`js/widgets/`)
@@ -57,6 +58,7 @@ reviendrait à aplatir la différence qui fait tout le projet.
 | `fiche.js` | `Fiche` | L'écran d'écriture : huit champs saisis, jauge calculée, carnet. Rendu **en deux étages** (cf. §6). |
 | `journal/markdown.js` | `Markdown` | Gras / italique / code sur du texte **déjà échappé**. Copié tel quel de ShadowHerds. Pas de titres (collision `#`), pas de liens (collision `@[]()` + XSS `href`). |
 | `journal/mentions.js` | `Mentions` | Autocomplétion `@`, rendu des puces, et **proposition d'arête**. Réécrit : l'original dépend de six modules propres à son domaine. |
+| `conscience.js` | `Conscience` | L'écran des douze règles. Tient les trois interdits **dans le rendu** autant que dans les stores (cf. §5d). |
 | `matrice.js` | `Matrice` | L'écran « Qui sait quoi » : informations × personnages, une cellule se règle au clic. |
 | `atelier.js` | `Atelier` | L'écran des trames : graphe, éditeur de situation, file « et après ? ». Remonte le graphe **sur signature**, pas sur événement (cf. §6). |
 | `graph/graphengine.js` | `GraphEngine` | Moteur de graphe pur — layout de forces ou **layout auteur** (`static` + `onNodeMoved`), formes, motifs de trait, poches, pan/zoom. **Copié tel quel** de ShadowHerds : zéro import, aucune vérité détenue. Seul le pont `window` a sauté. |
@@ -73,6 +75,8 @@ reviendrait à aplatir la différence qui fait tout le projet.
 | `storage.js` | `Storage` | **Unique** dépositaire du `localStorage`. Clés `gnomon_v1_<clé>`. Observation des écritures (`subscribe`), entonnoir d'échec d'écriture, versionnement de schéma + migrations. |
 | `reseaustore.js` | `ReseauStore` | **La vérité racine.** Personnages, liens orientés, groupes. Détient les trois invariants du modèle (cf. §4). |
 | `utils.js` | `Utils` | `escHtml`, `searchNorm` (recherche sans accents), `plur`. Volontairement maigre : la version de ShadowHerds porte la résolution d'édition, dont il n'y a pas ici. |
+| `conscience.js` | `conscience()` | **Les douze règles, calculées.** Module pur : lit trois stores, n'en mute aucun, ne touche pas au DOM — S6 pourra le rejouer après casting. Ne connaît pas les dérogations : le calcul reste rejouable tel quel. |
+| `derogations.js` | `Derogations` | Les alertes écartées **et leur justification écrite**. `ecarter()` refuse une justification vide — c'est l'invariant du module, pas une validation de formulaire. |
 | `informationstore.js` | `InformationStore` | Les **informations** : le fait, son influence, et **qui sait quoi**. `sait` / `croit` par personnage ; **« ignore » n'est jamais stocké — c'est l'absence** (cf. §5c). |
 | `tramestore.js` | `TrameStore` | Les **trames**, les **situations** et leurs **conclusions**. Une conclusion sans cible est valide — c'est le moteur de la boucle « et après ? » (cf. §5b). |
 | `couverture.js` | `couverture()`, `scoreCouverture()` | Les **neuf composantes de Kröger, calculées** depuis le réseau. Module **pur** : lit le store, ne le mute jamais, ne touche pas au DOM — c'est ce qui permettra à la conscience (S4) de le rejouer après casting. |
@@ -206,6 +210,43 @@ de ce que l'auteur doit voir.
 
 ---
 
+## 5d. La conscience — trois interdits, et ils viennent du corpus
+
+Douze règles tirées de la littérature, chacune avec sa source nommée. **Aucun outil de GN
+existant n'en implémente une seule** : c'est le produit.
+
+**1. Jamais bloquant.** Rien n'empêche d'écrire. La conscience signale, elle n'arrête pas.
+
+**2. Toute alerte s'écarte avec une justification écrite, et reste affichée.** Kröger : « si tu
+peux argumenter pourquoi ce personnage n'a pas besoin de cet élément, il n'en a probablement
+pas besoin ; sinon, il en a besoin. » Toute la valeur est dans l'argument — d'où le refus
+d'une justification vide, tenu dans `Derogations.ecarter()`. Un bouton « ignorer » nu
+transformerait la conscience en gêne à faire taire, et au bout de trois semaines toutes les
+alertes seraient éteintes sans qu'aucune décision n'ait été prise. Une alerte écartée est une
+**décision prise** : elle reste visible, avec sa date et son motif, à l'intention du
+*crosschecker* que Kröger nomme dans son processus.
+
+**3. Jamais de score global.** Fredou avertit explicitement contre les barèmes de points
+artificiels. Douze compteurs indépendants, jamais une moyenne.
+
+> **Argument empirique, trouvé en vérifiant le lot.** Rendre un lien de Marek positif au lieu
+> de compliqué fait tomber une alerte « pas que du noir » et en lève une « personne n'est
+> seul » — le total reste à seize pendant que la nature des problèmes change entièrement. Une
+> note unique aurait dit « rien n'a bougé ». C'est faux, et c'est précisément ce qu'un barème
+> ferait croire.
+
+### Les transpositions sont écrites, pas dissimulées
+
+Là où la donnée du projet ne permet pas de vérifier une règle *à la lettre*, le champ
+`transpose` le dit à l'écran. Deux règles en portent une : **Défection** (mesurée comme « une
+situation dont la jouabilité tient à un seul PJ » — les nombres exacts de Morningstar restent à
+vérifier à la source) et **Mixité des intrigues** (l'objet Intrigue n'existe pas ; « interne »
+est lu comme un désir écrit ou une situation portée, « externe » comme une situation qu'un
+autre porte). Une règle qui prétend mesurer autre chose que ce qu'elle mesure est pire que pas
+de règle du tout.
+
+---
+
 ## 6. Le rendu en deux étages — et pourquoi ce n'est pas de l'optimisation
 
 `Fiche.rendre()` construit tout ; `Fiche.rafraichirDerives()` ne remet à jour que la jauge et
@@ -257,4 +298,4 @@ python3 -m http.server 8000
 L'épine est décrite hors dépôt dans `PLANS/VISION_ATELIER_DE_TRAMES.md`. En résumé :
 **S0** l'arête typée *(livré)* · **S1** la fiche, la jauge de couverture et le `@mention` qui
 crée l'arête *(livré)* · **S2** l'atelier de trames *(livré)* · **S3** les informations *(livré)* · **S4** la conscience
-(douze validateurs) · **S5** le temps · **S6** le casting.
+(douze validateurs) *(livré)* · **S5** le temps · **S6** le casting.
