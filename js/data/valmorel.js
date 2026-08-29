@@ -35,6 +35,27 @@
    Ne pas « réparer » ces défauts : ils sont le sujet.
    ============================================================ */
 
+/* ── Les fondamentaux ──
+   Les étapes 1 à 3 de la méthode eXpérience. Le contexte est ce qui
+   ouvre chaque livret : le sol partagé, jamais les secrets. */
+export const MONDE = {
+  titre: "Les Cendres de Valmorel",
+  premisse:
+    "Une doctoresse revient au village pour rouvrir l'enquête sur l'avalanche, et découvre sa propre signature au bas du premier rapport.",
+  propos: "Se taire pour protéger les siens finit par les détruire.",
+  thematique:
+    "Montagne, hiver 1912. Drame rural, peu de violence, beaucoup de silences. Registre sobre, jeu d'intérieur.",
+  contexte:
+    "Il y a trois semaines, une avalanche a emporté le tunnel haut de la mine. Sept hommes n'en sont pas revenus.\n\nLa compagnie a produit un rapport en quarante-huit heures : cause naturelle, aucune faute. Le village l'a lu, l'a cru, et a enterré ses morts. Depuis, la neige n'a pas fondu et personne n'est remonté là-haut.\n\nCe soir, le conseil se réunit à la mairie pour signer le rachat des terrains hauts. C'est la dernière soirée où tout le monde sera au même endroit avant le dégel.",
+  references: "La Grande Illusion · Les Révoltés de l'an 2000 · les photographies de mineurs de Bourgogne",
+  lieux: [
+    { nom: "Le dispensaire", note: "Chaud, exigu. On y parle bas parce qu'il y a des blessés à côté." },
+    { nom: "La mairie", note: "La grande salle. Une porte, un poêle, le registre sous clé." },
+    { nom: "L'église", note: "Glaciale. Le seul endroit où l'on peut être seul à deux." },
+    { nom: "Le tunnel", note: "Interdit d'accès. Thomas a les clés. Il faut vingt minutes pour y monter." },
+  ],
+};
+
 export const VALMOREL = {
   groupes: [
     { cle: "dispensaire", nom: "Le dispensaire" },
@@ -412,7 +433,13 @@ export const CANDIDATURES = [
 
 /** Charge le jeu d'essai. `trames` est optionnel — le réseau seul reste
     utilisable. Ne fusionne pas : appeler `vider()` avant si besoin. */
-export function chargerValmorel(reseau, trames = null, infos = null, casting = null) {
+export function chargerValmorel(reseau, trames = null, infos = null, casting = null, monde = null) {
+  if (monde) {
+    const { lieux, ...champs } = MONDE;
+    monde.maj(champs);
+    for (const l of lieux) monde.ajouterLieu(l.nom, l.note);
+  }
+
   const idGroupe = {};
   for (const g of VALMOREL.groupes) idGroupe[g.cle] = reseau.creerGroupe(g.nom).id;
 

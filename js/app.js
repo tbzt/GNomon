@@ -37,6 +37,8 @@ import { InformationStore } from "./core/informationstore.js";
 import { Derogations } from "./core/derogations.js";
 import { CastingStore } from "./core/castingstore.js";
 import { RunStore } from "./core/runstore.js";
+import { MondeStore } from "./core/mondestore.js";
+import { Archive, telecharger } from "./core/archive.js";
 import { conscience } from "./core/conscience.js";
 import { frise as calculerFrise } from "./core/temps.js";
 import { chargerValmorel } from "./data/valmorel.js";
@@ -48,6 +50,8 @@ import { Conscience } from "./widgets/conscience.js";
 import { Frise } from "./widgets/frise.js";
 import { Casting } from "./widgets/casting.js";
 import { Conduite } from "./widgets/conduite.js";
+import { Monde } from "./widgets/monde.js";
+import { Livrets } from "./widgets/livrets.js";
 import { Utils } from "./core/utils.js";
 
 /** ── LES QUATRE MOMENTS ──
@@ -64,6 +68,7 @@ const MODES = [
     cle: "ecrire",
     nom: "Écrire",
     ecrans: [
+      { cle: "monde", nom: "Le monde" },
       { cle: "reseau", nom: "Le réseau" },
       { cle: "atelier", nom: "Les trames" },
       { cle: "matrice", nom: "Qui sait quoi" },
@@ -77,7 +82,14 @@ const MODES = [
       { cle: "frise", nom: "Le temps" },
     ],
   },
-  { cle: "distribuer", nom: "Distribuer", ecrans: [{ cle: "casting", nom: "Le casting" }] },
+  {
+    cle: "distribuer",
+    nom: "Distribuer",
+    ecrans: [
+      { cle: "casting", nom: "Le casting" },
+      { cle: "livrets", nom: "Les livrets" },
+    ],
+  },
   { cle: "jouer", nom: "Jouer", ecrans: [{ cle: "conduite", nom: "La conduite" }] },
 ];
 
@@ -98,6 +110,7 @@ export const App = {
     Derogations.load();
     CastingStore.load();
     RunStore.load();
+    MondeStore.load();
 
     this._hotes = {
       reseau: document.getElementById("ecran-reseau"),
@@ -108,6 +121,8 @@ export const App = {
       frise: document.getElementById("ecran-frise"),
       casting: document.getElementById("ecran-casting"),
       conduite: document.getElementById("ecran-conduite"),
+      monde: document.getElementById("ecran-monde"),
+      livrets: document.getElementById("ecran-livrets"),
     };
 
     Reseau.monter(this._hotes.reseau, ReseauStore, {
@@ -121,6 +136,7 @@ export const App = {
     Derogations.subscribe(() => this._surChangement());
     CastingStore.subscribe(() => this._surChangement());
     RunStore.subscribe(() => this._surChangement());
+    MondeStore.subscribe(() => this._surChangement());
 
     this._brancherBarre();
     window.addEventListener("hashchange", () => this._lireHash());
@@ -139,6 +155,8 @@ export const App = {
     if (/^#\/temps/.test(h)) return this.ouvrirFrise({ silencieux: true });
     if (/^#\/casting/.test(h)) return this.ouvrirCasting({ silencieux: true });
     if (/^#\/conduite/.test(h)) return this.ouvrirConduite({ silencieux: true });
+    if (/^#\/monde/.test(h)) return this.ouvrirMonde({ silencieux: true });
+    if (/^#\/livrets/.test(h)) return this.ouvrirLivrets({ silencieux: true });
     this.ouvrirReseau({ silencieux: true });
   },
 
@@ -150,6 +168,7 @@ export const App = {
     // Le tableau bat toutes les 15 s : le laisser tourner en fond
     // ferait vivre une minuterie sur un écran que personne ne regarde.
     if (this._ecran === "conduite") Conduite.demonter();
+    if (this._ecran === "monde") Monde.flush();
   },
 
   _basculer(ecran, titre) {
@@ -227,6 +246,8 @@ export const App = {
       frise: () => this.ouvrirFrise(),
       casting: () => this.ouvrirCasting(),
       conduite: () => this.ouvrirConduite(),
+      monde: () => this.ouvrirMonde(),
+      livrets: () => this.ouvrirLivrets(),
     };
     if (routes[ecran]) routes[ecran]();
   },
@@ -350,6 +371,39 @@ export const App = {
     if (!silencieux) location.hash = "#/conduite";
   },
 
+  ouvrirMonde({ silencieux = false } = {}) {
+    if (this._ecran === "monde") {
+      if (!silencieux && location.hash !== "#/monde") location.hash = "#/monde";
+      return;
+    }
+    this._quitter();
+    this._basculer("monde", "Le monde");
+    Monde.monter(this._hotes.monde, MondeStore);
+    if (!silencieux) location.hash = "#/monde";
+  },
+
+  ouvrirLivrets({ silencieux = false } = {}) {
+    if (this._ecran === "livrets") {
+      if (!silencieux && location.hash !== "#/livrets") location.hash = "#/livrets";
+      return;
+    }
+    this._quitter();
+    this._basculer("livrets", "Les livrets");
+    Livrets.monter(this._hotes.livrets, this._stores());
+    if (!silencieux) location.hash = "#/livrets";
+  },
+
+  /** Le paquet de stores passé aux modules qui en lisent plusieurs. */
+  _stores() {
+    return {
+      reseau: ReseauStore,
+      trames: TrameStore,
+      infos: InformationStore,
+      monde: MondeStore,
+      casting: CastingStore,
+    };
+  },
+
   /* ---------------- réactions ---------------- */
 
   _surChangement() {
@@ -369,6 +423,10 @@ export const App = {
       Casting.rendre();
     } else if (this._ecran === "conduite") {
       Conduite.rendre();
+    } else if (this._ecran === "monde") {
+      Monde.rafraichirDerives();
+    } else if (this._ecran === "livrets") {
+      Livrets.rendre();
     } else {
       Reseau.rendre();
     }
@@ -378,6 +436,51 @@ export const App = {
   /* ---------------- barre ---------------- */
 
   _brancherBarre() {
+    document.getElementById("act-exporter").addEventListener("click", () => {
+      this._quitter();
+      const titre = MondeStore.monde().titre;
+      telecharger(Archive.nomFichier(titre), JSON.stringify(Archive.construire(titre), null, 1));
+      this._statut("Archive téléchargée — c'est ce fichier qui se partage et se sauvegarde.");
+    });
+
+    document.getElementById("act-importer").addEventListener("click", () =>
+      document.getElementById("fichier-archive").click(),
+    );
+
+    document.getElementById("fichier-archive").addEventListener("change", async (e) => {
+      const f = e.target.files && e.target.files[0];
+      e.target.value = "";
+      if (!f) return;
+      let paquet;
+      try {
+        paquet = JSON.parse(await f.text());
+      } catch {
+        this._statut("Ce fichier n'est pas un JSON lisible.");
+        return;
+      }
+      const v = Archive.verifier(paquet);
+      if (!v.ok) return this._statut(v.raison);
+      const inv = Archive.inventaire(paquet);
+      const resume =
+        `${inv.titre || "Archive sans titre"} (${inv.date}) — ${inv.personnages} personnages, ` +
+        `${inv.liens} liens, ${inv.trames} trames, ${inv.situations} situations, ` +
+        `${inv.informations} informations, ${inv.candidatures} candidatures.`;
+      // Deux sémantiques opposées : on nomme laquelle avant d'écrire.
+      const remplacer = confirm(
+        `${resume}\n\nOK = REMPLACER tout ce qui est ici par l'archive.\n` +
+          "Annuler = FUSIONNER (ajoute ce qui manque, ne touche pas à l'existant).",
+      );
+      const r = Archive.appliquer(paquet, remplacer ? "remplacer" : "fusionner");
+      if (!r.ok) return this._statut(r.raison);
+      for (const st of [ReseauStore, TrameStore, InformationStore, CastingStore, RunStore, MondeStore, Derogations])
+        st.load();
+      this.ouvrirReseau();
+      this._statut(
+        `Archive ${remplacer ? "appliquée en remplacement" : "fusionnée"} — ` +
+          Object.entries(r.bilan).map(([k, v]) => `${k} : ${v}`).join(" · "),
+      );
+    });
+
     document.getElementById("act-seed").addEventListener("click", () => {
       if (
         ReseauStore.personnages().length &&
@@ -391,7 +494,8 @@ export const App = {
       Derogations.vider();
       CastingStore.vider();
       RunStore.vider();
-      const n = chargerValmorel(ReseauStore, TrameStore, InformationStore, CastingStore);
+      MondeStore.vider();
+      const n = chargerValmorel(ReseauStore, TrameStore, InformationStore, CastingStore, MondeStore);
       this.ouvrirReseau();
       this._statut(
         `Valmorel chargé — ${n.personnages} personnages, ${n.liens} liens, ` +
@@ -411,6 +515,7 @@ export const App = {
       Derogations.vider();
       CastingStore.vider();
       RunStore.vider();
+      MondeStore.vider();
       this.ouvrirReseau();
       this._statut("Tout est vidé.");
     });
@@ -485,5 +590,6 @@ window.InformationStore = InformationStore;
 window.Derogations = Derogations;
 window.CastingStore = CastingStore;
 window.RunStore = RunStore;
+window.MondeStore = MondeStore;
 
 App.init();

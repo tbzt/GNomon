@@ -50,7 +50,8 @@ reviendrait à aplatir la différence qui fait tout le projet.
                                         derogations, temps,
                                         castingstore, affectation,
                                         bilancasting, runstore,
-                                        conduite
+                                        conduite, mondestore, livret,
+                                        archive
 ```
 
 ### Couche 2b — Rendu (`js/widgets/`)
@@ -61,6 +62,8 @@ reviendrait à aplatir la différence qui fait tout le projet.
 | `fiche.js` | `Fiche` | L'écran d'écriture : huit champs saisis, jauge calculée, carnet. Rendu **en deux étages** (cf. §6). |
 | `journal/markdown.js` | `Markdown` | Gras / italique / code sur du texte **déjà échappé**. Copié tel quel de ShadowHerds. Pas de titres (collision `#`), pas de liens (collision `@[]()` + XSS `href`). |
 | `journal/mentions.js` | `Mentions` | Autocomplétion `@`, rendu des puces, et **proposition d'arête**. Réécrit : l'original dépend de six modules propres à son domaine. |
+| `monde.js` | `Monde` | L'écran des fondamentaux. Écran de **document** : serif, colonne de lecture. |
+| `livrets.js` | `Livrets` | Relecture avant remise, avec l'aperçu réel dans une `iframe`. |
 | `conduite.js` | `Conduite` | Le tableau de la nuit. **Son propre monde visuel** (cf. §5g), et un battement qui ne touche qu'au temps. |
 | `casting.js` | `Casting` | L'écran des vœux : grille, import à colonne choisie, affectation, bilan. |
 | `frise.js` | `Frise` | L'écran du temps : planning, collisions, charge. Un clic sur un bloc ouvre l'atelier **sur cette situation** (`Atelier.viser`). |
@@ -82,6 +85,9 @@ reviendrait à aplatir la différence qui fait tout le projet.
 | `reseaustore.js` | `ReseauStore` | **La vérité racine.** Personnages, liens orientés, groupes. Détient les trois invariants du modèle (cf. §4). |
 | `utils.js` | `Utils` | `escHtml`, `searchNorm` (recherche sans accents), `plur`. Volontairement maigre : la version de ShadowHerds porte la résolution d'édition, dont il n'y a pas ici. |
 | `conscience.js` | `conscience()` | **Les douze règles, calculées.** Module pur : lit trois stores, n'en mute aucun, ne touche pas au DOM — S6 pourra le rejouer après casting. Ne connaît pas les dérogations : le calcul reste rejouable tel quel. |
+| `mondestore.js` | `MondeStore` | **Les fondamentaux** — prémisse, propos, thématique, contexte commun, lieux. Les étapes 1 à 3 d'eXpérience, qui manquaient (cf. §5j). |
+| `livret.js` | `livret()`, `livretHtml()` | Le background remis à un joueur. **Calculé par soustraction** (cf. §5j). |
+| `archive.js` | `Archive`, `telecharger()` | Sauvegarder, exporter, partager. Enveloppe versionnée, deux modes d'import. |
 | `runstore.js` | `RunStore` | L'état vivant du GN : fils en cours, main courante, horloge de fiction avec pauses. |
 | `conduite.js` | `tableau()` | Ce que le tableau doit montrer : fils triés par urgence, **délaissés**, ce qui vient. Module pur. |
 | `castingstore.js` | `CastingStore` | Les candidatures, les vœux, l'affectation. **Ne connaît qu'un libellé** — la ligne rouge RGPD (cf. §5f). |
@@ -424,6 +430,50 @@ Deux conséquences qui valent mieux que ce qu'elles remplacent :
 
 Enfin, **les écrans-instruments prennent la largeur** (1560 px) ; seule la fiche garde une
 colonne de lecture (1160 px), parce que c'est le seul écran qu'on lit vraiment.
+
+---
+
+## 5j. Le monde, le livret, l'archive
+
+### Un manque structurel
+
+Tout l'outil a été bâti sur « la vérité racine est l'arête ». C'était le bon parti — un
+personnage de GN n'existe que par ses liens — mais il a laissé un trou : **les étapes 1 à 3 de
+la méthode eXpérience** (prémisse, propos, thématique) n'existaient nulle part. Or c'est par
+elles qu'on commence, et c'est d'elles que sort le livret de contexte remis à tout le monde.
+
+Le **contexte commun** n'est pas une information au sens d'`InformationStore`. Ce dernier porte
+l'*asymétrie* — qui sait ce que les autres ignorent. Le savoir commun est le sol, pas une
+asymétrie : le mélanger aux informations noierait les vraies divergences sous le décor.
+
+### Le livret est calculé par soustraction
+
+C'est le seul document de GNomon qui sorte de l'équipe. La question n'est donc pas « que
+sait-on ? » mais **« que peut-il lire ? »**. Quatre exclusions, et chacune détruirait le jeu :
+
+| Retiré | Pourquoi |
+|---|---|
+| La **fonction narrative** | Écrire « tu es le faux allié » dit au joueur comment son histoire finit. |
+| La **transformation possible** | C'est le pronostic de l'auteur — la lire, c'est jouer le résultat. |
+| L'**importance** d'un lien et le **miroir** | Instruments de construction. Aucun personnage ne pense « ce contact est secondaire » de quelqu'un qu'il connaît. |
+| **La vérité derrière une croyance fausse** | LE point critique. Quand un personnage *croit autre chose*, le livret n'écrit QUE ce qu'il croit. Sortir les deux — ce que fait tout tableur — livre l'intrigue au joueur dans le document censé la lui cacher. |
+
+Les **avertissements** (carnet vide, croyance sans texte, aucun contact) s'adressent à l'auteur
+et ne sortent jamais dans le document.
+
+### L'archive : deux modes aux sémantiques opposées
+
+- **remplacer** — le fichier devient la vérité. Pour restaurer, ou reprendre le travail de
+  quelqu'un en entier.
+- **fusionner** — le fichier *complète* : ce qui manque est ajouté, **ce qui existe n'est pas
+  touché**. Deux personnes qui ont écrit chacune de leur côté ne doivent pas se voir écraser par
+  l'ordre d'import. Le prix est qu'un objet modifié des deux côtés garde la version locale — et
+  c'est le bon prix : on peut toujours réimporter en « remplacer », jamais ressusciter ce qui a
+  été écrasé.
+
+L'enveloppe (`format`, `version`) est lue **avant** le contenu. Un fichier étranger ou d'une
+version future est refusé avec une phrase claire plutôt qu'importé à moitié : un import partiel
+laisserait un GN incohérent qu'on croirait entier.
 
 ---
 

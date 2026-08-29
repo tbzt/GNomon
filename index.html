@@ -16,6 +16,9 @@
       <nav class="modes" id="modes" aria-label="Moments de fabrication"></nav>
       <span class="spacer"></span>
       <span id="compteurs"></span>
+      <button id="act-exporter" type="button">Exporter</button>
+      <button id="act-importer" type="button">Importer</button>
+      <input id="fichier-archive" type="file" accept="application/json,.json" hidden />
       <button id="act-seed" type="button">Jeu d'essai</button>
       <button id="act-vider" type="button">Vider</button>
     </div>
@@ -25,6 +28,7 @@
     <p id="statut" hidden></p>
 
     <main>
+      <div id="ecran-monde" hidden></div>
       <div id="ecran-reseau"></div>
       <div id="ecran-fiche" hidden></div>
       <div id="ecran-atelier" hidden></div>
@@ -33,6 +37,7 @@
       <div id="ecran-frise" hidden></div>
       <div id="ecran-casting" hidden></div>
       <div id="ecran-conduite" hidden></div>
+      <div id="ecran-livrets" hidden></div>
     </main>
 
     <script type="module" src="js/app.js"></script>

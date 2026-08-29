@@ -99,6 +99,22 @@ qu'on presse à 3 h du matin ; le tableau se réordonne par ce qui a le plus bes
 et il dit **qui est en train de ne rien vivre** — la question que remplace « ce texte est-il
 bon ? » une fois que le jeu a commencé.
 
+**Le monde, les livrets, l'archive.** Les étapes 1 à 3 de la méthode eXpérience — prémisse,
+propos, thématique, contexte commun — manquaient : l'outil était bâti sur le réseau, et un GN
+a aussi une histoire générale. Elles ont maintenant leur écran, et c'est le **contexte commun**
+qui ouvre chaque livret.
+
+Le **livret** est le seul document qui sorte de l'équipe, et il est calculé pour ça : on en
+retire la fonction narrative, la transformation possible, l'importance des liens, le
+contact-miroir — et surtout **la vérité derrière une croyance fausse**. Quand un personnage
+croit autre chose, son livret n'écrit que ce qu'il croit. Sortir les deux livrerait l'intrigue
+au joueur dans le document censé la lui cacher.
+
+L'**archive** est un JSON unique qui porte tout le GN : c'est lui qu'on sauvegarde, qu'on
+s'envoie, qu'on met dans un dépôt d'équipe. Import en *remplacer* ou en *fusionner* — le second
+ajoute ce qui manque sans jamais toucher à l'existant, parce qu'on peut toujours réimporter,
+mais pas ressusciter ce qui a été écrasé.
+
 Cet écran a son propre monde visuel — noir chaud, ambre, horloge énorme, aucun angle arrondi —
 et ce n'est pas une coquetterie : un bureau à J-30 et une salle de veille à 3 h du matin ne se
 lisent pas de la même façon.
