@@ -19,6 +19,10 @@
                                                     → « différenciation »
      · Elena déclare Marek en miroir ; Marek ne la compte que secondaire
                                                     → miroir non réciproque
+     · « Le chantage au tunnel » n'a aucune conclusion et n'est pas
+       marquée terminale                            → « suites »
+     · trois conclusions écrites n'ont pas encore de suite
+                                                    → la file « et après ? »
 
    Ne pas « réparer » ces défauts : ils sont le sujet.
    ============================================================ */
@@ -234,20 +238,114 @@ export const VALMOREL = {
   ],
 };
 
-/** Charge le jeu d'essai dans un store vide. Renvoie le nombre de
-    personnages et de liens posés. Ne fusionne pas : appeler
-    `store.vider()` avant si besoin. */
-export function chargerValmorel(store) {
+/* ── Les trames ──
+   Deux fils parallèles, comme en GN : l'enquête et le rachat. Chacun a
+   un porteur — le personnage (souvent PNJ) qui le tient en jeu. */
+export const TRAMES = [
+  {
+    cle: "avalanche",
+    titre: "L'avalanche",
+    porteur: "corvin",
+    situations: [
+      {
+        cle: "registre",
+        titre: "L'ouverture du registre",
+        pitch: "Elena exige de consulter le registre des charges. Augustine sait où il est, et sait aussi ce qu'il coûterait de le montrer.",
+        pointDeVue: "elena",
+        cast: ["elena", "augustine"],
+        espace: "Le dispensaire",
+        debut: 20,
+        fin: 21,
+        x: 150,
+        y: 130,
+        conclusions: [
+          { texte: "Elena reconnaît la signature", vers: "confrontation" },
+          { texte: "Le registre a disparu", vers: null },
+        ],
+      },
+      {
+        cle: "confrontation",
+        titre: "La confrontation",
+        pitch: "Elena met Marek devant la signature. Il peut avouer, mentir, ou retourner l'accusation contre elle — c'est elle qui a signé la première page.",
+        pointDeVue: "elena",
+        cast: ["elena", "marek"],
+        espace: "Le dispensaire",
+        debut: 21,
+        fin: 22,
+        x: 420,
+        y: 130,
+        conclusions: [
+          { texte: "Marek avoue", vers: "aveu" },
+          { texte: "Personne ne parle : Augustine intervient", vers: null, type: "echappatoire" },
+        ],
+      },
+      {
+        cle: "aveu",
+        titre: "L'aveu",
+        pitch: "Devant témoins, ce qui a été tu depuis trois semaines est dit à voix haute.",
+        pointDeVue: "marek",
+        cast: ["marek", "elena", "corvin"],
+        espace: "L'église",
+        debut: 23,
+        fin: 24,
+        terminale: true,
+        x: 690,
+        y: 130,
+        conclusions: [],
+      },
+    ],
+  },
+  {
+    cle: "rachat",
+    titre: "Le rachat des terrains",
+    porteur: "joseph",
+    situations: [
+      {
+        cle: "negociation",
+        titre: "La négociation du rachat",
+        pitch: "Joseph a besoin de la signature de Marek avant minuit. Marek a besoin que personne ne relise le rapport.",
+        pointDeVue: "marek",
+        cast: ["marek", "joseph"],
+        espace: "La mairie",
+        debut: 20.5,
+        fin: 22.5,
+        x: 150,
+        y: 130,
+        conclusions: [
+          { texte: "Thomas surgit et demande sa part", vers: "chantage" },
+          { texte: "Lucie refuse de céder la parcelle de son fils", vers: null },
+        ],
+      },
+      {
+        cle: "chantage",
+        titre: "Le chantage au tunnel",
+        pitch: "Thomas a les clés, et il a bu. Il veut qu'on lui dise qu'il compte.",
+        pointDeVue: "thomas",
+        cast: ["thomas", "marek"],
+        espace: "Le tunnel",
+        debut: 21,
+        fin: 21.5,
+        x: 420,
+        y: 130,
+        conclusions: [], // cul-de-sac assumé : le validateur « suites » doit le voir
+      },
+    ],
+  },
+];
+
+/** Charge le jeu d'essai. `trames` est optionnel — le réseau seul reste
+    utilisable. Ne fusionne pas : appeler `vider()` avant si besoin. */
+export function chargerValmorel(reseau, trames = null) {
   const idGroupe = {};
-  for (const g of VALMOREL.groupes) idGroupe[g.cle] = store.creerGroupe(g.nom).id;
+  for (const g of VALMOREL.groupes) idGroupe[g.cle] = reseau.creerGroupe(g.nom).id;
 
   const idPerso = {};
   for (const p of VALMOREL.personnages) {
     const { cle, groupe, ...champs } = p;
-    idPerso[cle] = store.creerPersonnage({ ...champs, groupeId: idGroupe[groupe] }).id;
+    idPerso[cle] = reseau.creerPersonnage({ ...champs, groupeId: idGroupe[groupe] }).id;
   }
 
-  let n = 0;
+  let nLiens = 0;
   for (const l of VALMOREL.liens) {
     const base = {
       de: idPerso[l.de],
@@ -258,12 +356,51 @@ export function chargerValmorel(store) {
       miroir: !!l.miroir,
     };
     if (l.retour === null) {
-      if (store.upsertLien(base)) n++;
+      if (reseau.upsertLien(base)) nLiens++;
     } else {
-      const paire = store.upsertPaire(base, l.retour || {});
-      if (paire) n += paire.filter(Boolean).length;
+      const paire = reseau.upsertPaire(base, l.retour || {});
+      if (paire) nLiens += paire.filter(Boolean).length;
     }
   }
 
-  return { personnages: VALMOREL.personnages.length, liens: n };
+  const bilan = {
+    personnages: VALMOREL.personnages.length,
+    liens: nLiens,
+    situations: 0,
+    conclusions: 0,
+    orphelines: 0,
+  };
+  if (!trames) return bilan;
+
+  // Deux passes : toutes les situations d'abord, les conclusions
+  // ensuite — un fil peut se relier en arrière, et une cible doit
+  // exister avant qu'on pointe dessus.
+  const idSit = {};
+  for (const t of TRAMES) {
+    const trame = trames.creerTrame({ titre: t.titre, porteurId: idPerso[t.porteur] || null });
+    for (const s of t.situations) {
+      const { cle, pointDeVue, cast, conclusions, ...champs } = s;
+      idSit[cle] = trames.creerSituation(trame.id, {
+        ...champs,
+        pointDeVueId: idPerso[pointDeVue] || null,
+        castIds: (cast || []).map((k) => idPerso[k]).filter(Boolean),
+      }).id;
+      bilan.situations++;
+    }
+  }
+  for (const t of TRAMES)
+    for (const s of t.situations)
+      for (const c of s.conclusions || []) {
+        const pose = trames.ajouterConclusion(idSit[s.cle], {
+          texte: c.texte,
+          type: c.type || "normale",
+          vers: c.vers ? idSit[c.vers] : null,
+        });
+        if (pose) {
+          bilan.conclusions++;
+          if (!pose.vers) bilan.orphelines++;
+        }
+      }
+
+  return bilan;
 }

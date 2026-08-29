@@ -44,7 +44,8 @@ reviendrait à aplatir la différence qui fait tout le projet.
         ↑
 2. Données d'essai   js/data/           fixtures (valmorel.js)
         ↑
-1. Socle             js/core/           storage, debug, utils, reseaustore, couverture
+1. Socle             js/core/           storage, debug, utils, reseaustore,
+                                        couverture, tramestore
 ```
 
 ### Couche 2b — Rendu (`js/widgets/`)
@@ -55,6 +56,8 @@ reviendrait à aplatir la différence qui fait tout le projet.
 | `fiche.js` | `Fiche` | L'écran d'écriture : huit champs saisis, jauge calculée, carnet. Rendu **en deux étages** (cf. §6). |
 | `journal/markdown.js` | `Markdown` | Gras / italique / code sur du texte **déjà échappé**. Copié tel quel de ShadowHerds. Pas de titres (collision `#`), pas de liens (collision `@[]()` + XSS `href`). |
 | `journal/mentions.js` | `Mentions` | Autocomplétion `@`, rendu des puces, et **proposition d'arête**. Réécrit : l'original dépend de six modules propres à son domaine. |
+| `atelier.js` | `Atelier` | L'écran des trames : graphe, éditeur de situation, file « et après ? ». Remonte le graphe **sur signature**, pas sur événement (cf. §6). |
+| `graph/graphengine.js` | `GraphEngine` | Moteur de graphe pur — layout de forces ou **layout auteur** (`static` + `onNodeMoved`), formes, motifs de trait, poches, pan/zoom. **Copié tel quel** de ShadowHerds : zéro import, aucune vérité détenue. Seul le pont `window` a sauté. |
 
 ---
 
@@ -68,6 +71,7 @@ reviendrait à aplatir la différence qui fait tout le projet.
 | `storage.js` | `Storage` | **Unique** dépositaire du `localStorage`. Clés `gnomon_v1_<clé>`. Observation des écritures (`subscribe`), entonnoir d'échec d'écriture, versionnement de schéma + migrations. |
 | `reseaustore.js` | `ReseauStore` | **La vérité racine.** Personnages, liens orientés, groupes. Détient les trois invariants du modèle (cf. §4). |
 | `utils.js` | `Utils` | `escHtml`, `searchNorm` (recherche sans accents), `plur`. Volontairement maigre : la version de ShadowHerds porte la résolution d'édition, dont il n'y a pas ici. |
+| `tramestore.js` | `TrameStore` | Les **trames**, les **situations** et leurs **conclusions**. Une conclusion sans cible est valide — c'est le moteur de la boucle « et après ? » (cf. §5b). |
 | `couverture.js` | `couverture()`, `scoreCouverture()` | Les **neuf composantes de Kröger, calculées** depuis le réseau. Module **pur** : lit le store, ne le mute jamais, ne touche pas au DOM — c'est ce qui permettra à la conscience (S4) de le rejouer après casting. |
 
 ### Couche 2 — Données d'essai (`js/data/`)
@@ -136,6 +140,29 @@ fausse aucun compte.
 
 ---
 
+## 5b. La conclusion porte l'embranchement
+
+Chaque **conclusion potentielle** d'une situation est une arête sortante — le modèle vient de
+la méthode eXpérience, il n'y avait rien à inventer.
+
+**Une conclusion sans cible (`vers: null`) est valide.** Ce n'est pas un état dégradé : c'est
+la question « et après ? », en attente. eXpérience la pose en contrôle qualité — « a-t-elle
+des suites envisageables ? Lesquelles ? Vous devriez alors trouver d'autres situations de
+jeu ». `creerSuite()` y répond en un geste : la situation suivante naît dans la même trame,
+posée à droite, et la conclusion s'y relie. La checklist devient une file de travail.
+
+**Une conclusion appartient à sa situation d'origine.** Supprimer une situation emporte ses
+conclusions *sortantes*, mais les conclusions qui pointaient *vers* elle redeviennent
+orphelines au lieu d'être détruites. L'auteur les a écrites ; elles survivent à la
+disparition de leur cible, et la question se repose d'elle-même.
+
+**Les références aux personnages ne sont jamais purgées.** `TrameStore` ne connaît pas
+`ReseauStore`. Un personnage supprimé laisse une référence morte, affichée comme telle — même
+convention que les puces de mention. Purger silencieusement détruirait du travail écrit et ne
+survivrait pas à l'annulation d'une suppression. Une référence cassée doit se voir.
+
+---
+
 ## 6. Le rendu en deux étages — et pourquoi ce n'est pas de l'optimisation
 
 `Fiche.rendre()` construit tout ; `Fiche.rafraichirDerives()` ne remet à jour que la jauge et
@@ -151,6 +178,13 @@ Deux gardes découlent de là, et toutes deux ont été posées après avoir vu 
    et le texte à l'écran disparaît.
 2. **`Fiche.flush()` avant toute navigation et au blur du carnet.** Quitter l'écran dans les
    400 ms perdrait les dernières frappes.
+
+L'atelier a la même maladie sous une autre forme : `GraphEngine.mount()` se remonte
+entièrement et **remet la vue à zéro**, donc un auteur qui a cadré son fil le perdrait à
+chaque champ sauvegardé. La parade est une **signature** de ce qui est réellement dessiné
+(titres, formes, positions, arêtes) : on ne remonte que si elle change. Modifier le matériel
+ou les règles d'une situation ne fait pas sauter le graphe ; déplacer un nœud non plus
+(`poserSituation` persiste **sans émettre**).
 
 ---
 
@@ -179,5 +213,5 @@ python3 -m http.server 8000
 
 L'épine est décrite hors dépôt dans `PLANS/VISION_ATELIER_DE_TRAMES.md`. En résumé :
 **S0** l'arête typée *(livré)* · **S1** la fiche, la jauge de couverture et le `@mention` qui
-crée l'arête *(livré)* · **S2** l'atelier de trames · **S3** les informations · **S4** la conscience
+crée l'arête *(livré)* · **S2** l'atelier de trames *(livré)* · **S3** les informations · **S4** la conscience
 (douze validateurs) · **S5** le temps · **S6** le casting.

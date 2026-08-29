@@ -43,7 +43,7 @@ une erreur.
 
 ## État
 
-**Lots S0 et S1 livrés.**
+**Lots S0, S1 et S2 livrés.**
 
 **S0 — la vérité racine.** Personnages, liens orientés, groupes, avec les trois invariants du
 modèle tenus dans le store.
@@ -59,8 +59,14 @@ et surtout deux choses :
   d'être une saisie parallèle qu'on abandonne. La tonalité n'est jamais devinée : un « neutre »
   posé en douce désarmerait le validateur qu'il est censé nourrir.
 
-À venir : l'atelier de trames, les informations, la conscience (douze validateurs tirés de la
-littérature), le temps, le casting.
+**S2 — l'atelier de trames.** Plusieurs fils en parallèle, comme en GN, et non un arbre de
+décision unique. Chaque **conclusion potentielle** d'une situation est une arête sortante ;
+une conclusion **sans cible** est valide, et c'est elle qui fait avancer l'écriture — la file
+« et après ? » liste les questions ouvertes, et y répondre crée la situation suivante et la
+relie. Les échappatoires se lisent en pointillé.
+
+À venir : les informations (qui sait quoi, qui croit autre chose), la conscience (douze
+validateurs tirés de la littérature), le temps, le casting.
 
 ---
 

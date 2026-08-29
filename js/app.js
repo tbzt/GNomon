@@ -3,24 +3,26 @@
 /* ============================================================
    APP — bootstrap, écrans, routage.
 
-   Deux écrans depuis S1 : « Le réseau » (le casting) et « La fiche »
-   (l'écriture d'un personnage). Le routage est nu — un champ `_ecran`
-   et un hash — parce qu'il n'y a rien à router de plus, et qu'un
-   routeur qu'on ne remplit pas est un routeur qu'on maintient pour
-   rien.
+   Trois écrans depuis S2 : « Le réseau » (le casting), « La fiche »
+   (l'écriture d'un personnage) et « Les trames » (l'atelier). Le
+   routage est nu — un champ `_ecran` et un hash — parce qu'il n'y a
+   rien à router de plus, et qu'un routeur qu'on ne remplit pas est un
+   routeur qu'on maintient pour rien.
 
    ── L'ÉVÉNEMENT VA À L'ÉCRAN ACTIF, ET LUI SEUL ──
-   `ReseauStore` émet à chaque écriture, y compris pendant que l'auteur
-   tape dans le carnet (sauvegarde débouncée). Si l'app re-rendait tout,
-   elle écraserait le textarea sous le curseur : sélection perdue,
-   position perdue. Alors l'écran fiche ne rafraîchit **que son
-   dérivé** — la jauge et les liens — et jamais les champs de saisie.
+   Les stores émettent à chaque écriture, y compris pendant que l'auteur
+   tape (sauvegarde débouncée). Si l'app re-rendait tout, elle écraserait
+   le champ sous le curseur : sélection perdue, position perdue. Chaque
+   écran expose donc un rafraîchissement partiel, et l'app ne réveille
+   que celui qui est à l'écran.
    ============================================================ */
 import { Storage } from "./core/storage.js";
 import { ReseauStore } from "./core/reseaustore.js";
+import { TrameStore } from "./core/tramestore.js";
 import { chargerValmorel } from "./data/valmorel.js";
 import { Reseau } from "./widgets/reseau.js";
 import { Fiche } from "./widgets/fiche.js";
+import { Atelier } from "./widgets/atelier.js";
 import { Utils } from "./core/utils.js";
 
 export const App = {
@@ -29,15 +31,21 @@ export const App = {
   init() {
     Storage.runMigrations();
     ReseauStore.load();
+    TrameStore.load();
 
-    this._hoteReseau = document.getElementById("ecran-reseau");
-    this._hoteFiche = document.getElementById("ecran-fiche");
+    this._hotes = {
+      reseau: document.getElementById("ecran-reseau"),
+      fiche: document.getElementById("ecran-fiche"),
+      atelier: document.getElementById("ecran-atelier"),
+    };
 
-    Reseau.monter(this._hoteReseau, ReseauStore, {
+    Reseau.monter(this._hotes.reseau, ReseauStore, {
       onOuvrir: (id) => this.ouvrirFiche(id),
     });
 
     ReseauStore.subscribe(() => this._surChangement());
+    TrameStore.subscribe(() => this._surChangement());
+
     this._brancherBarre();
     window.addEventListener("hashchange", () => this._lireHash());
     this._lireHash();
@@ -46,21 +54,33 @@ export const App = {
   /* ---------------- routage ---------------- */
 
   _lireHash() {
-    const m = (location.hash || "").match(/^#\/fiche\/(.+)$/);
-    if (m && ReseauStore.personnage(m[1])) this.ouvrirFiche(m[1], { silencieux: true });
-    else this.ouvrirReseau({ silencieux: true });
+    const h = location.hash || "";
+    const f = h.match(/^#\/fiche\/(.+)$/);
+    if (f && ReseauStore.personnage(f[1])) return this.ouvrirFiche(f[1], { silencieux: true });
+    if (/^#\/trames/.test(h)) return this.ouvrirAtelier({ silencieux: true });
+    this.ouvrirReseau({ silencieux: true });
+  },
+
+  /** Sortie propre de l'écran courant : écrire ce qui est en attente et
+      démonter ce qui tient des ressources. */
+  _quitter() {
+    if (this._ecran === "fiche") Fiche.flush();
+    if (this._ecran === "atelier") Atelier.demonter();
+  },
+
+  _basculer(ecran, titre) {
+    this._ecran = ecran;
+    for (const [nom, el] of Object.entries(this._hotes)) el.hidden = nom !== ecran;
+    document.getElementById("act-retour").hidden = ecran === "reseau";
+    document.getElementById("fil").textContent = titre;
+    this._compteurs();
   },
 
   ouvrirReseau({ silencieux = false } = {}) {
-    if (this._ecran === "fiche") Fiche.flush();
-    this._ecran = "reseau";
-    this._hoteReseau.hidden = false;
-    this._hoteFiche.hidden = true;
-    document.getElementById("act-retour").hidden = true;
-    document.getElementById("fil").textContent = "Le réseau";
+    this._quitter();
+    this._basculer("reseau", "Le réseau");
     Reseau.rendre();
     if (!silencieux && location.hash) location.hash = "";
-    this._compteurs();
   },
 
   ouvrirFiche(id, { silencieux = false } = {}) {
@@ -80,16 +100,25 @@ export const App = {
       return;
     }
 
-    this._ecran = "fiche";
-    this._hoteReseau.hidden = true;
-    this._hoteFiche.hidden = false;
-    document.getElementById("act-retour").hidden = false;
-    document.getElementById("fil").textContent = p.nom;
-    Fiche.monter(this._hoteFiche, ReseauStore, id, {
+    this._quitter();
+    this._basculer("fiche", p.nom);
+    Fiche.monter(this._hotes.fiche, ReseauStore, id, {
       onOuvrir: (autreId) => this.ouvrirFiche(autreId),
     });
     if (!silencieux) location.hash = `#/fiche/${id}`;
-    this._compteurs();
+  },
+
+  ouvrirAtelier({ silencieux = false } = {}) {
+    // Même garde que pour la fiche : le hashchange rappellerait ici, et
+    // remonter le graphe remettrait la vue de l'auteur à zéro.
+    if (this._ecran === "atelier") {
+      if (!silencieux && location.hash !== "#/trames") location.hash = "#/trames";
+      return;
+    }
+    this._quitter();
+    this._basculer("atelier", "Les trames");
+    Atelier.monter(this._hotes.atelier, TrameStore, ReseauStore);
+    if (!silencieux) location.hash = "#/trames";
   },
 
   /* ---------------- réactions ---------------- */
@@ -99,6 +128,8 @@ export const App = {
       Fiche.rafraichirDerives();
       const p = ReseauStore.personnage(Fiche.personnageId());
       if (p) document.getElementById("fil").textContent = p.nom;
+    } else if (this._ecran === "atelier") {
+      Atelier.rafraichir();
     } else {
       Reseau.rendre();
     }
@@ -108,11 +139,11 @@ export const App = {
   /* ---------------- barre ---------------- */
 
   _brancherBarre() {
-    document.getElementById("act-retour").addEventListener("click", () =>
-      this.ouvrirReseau(),
-    );
+    document.getElementById("act-retour").addEventListener("click", () => this.ouvrirReseau());
+    document.getElementById("act-trames").addEventListener("click", () => this.ouvrirAtelier());
 
     document.getElementById("act-nouveau").addEventListener("click", () => {
+      if (this._ecran === "atelier") return;
       const p = ReseauStore.creerPersonnage({ nom: "Sans nom" });
       this.ouvrirFiche(p.id);
     });
@@ -120,23 +151,29 @@ export const App = {
     document.getElementById("act-seed").addEventListener("click", () => {
       if (
         ReseauStore.personnages().length &&
-        !confirm("Remplacer le réseau actuel par le jeu d'essai « Valmorel » ?")
+        !confirm("Remplacer le réseau et les trames par le jeu d'essai « Valmorel » ?")
       )
         return;
+      this._quitter();
       ReseauStore.vider();
-      const n = chargerValmorel(ReseauStore);
+      TrameStore.vider();
+      const n = chargerValmorel(ReseauStore, TrameStore);
       this.ouvrirReseau();
       this._statut(
-        `Valmorel chargé — ${n.personnages} personnages, ${n.liens} liens orientés.`,
+        `Valmorel chargé — ${n.personnages} personnages, ${n.liens} liens, ` +
+          `${n.situations} situations, ${n.conclusions} conclusions ` +
+          `(dont ${n.orphelines} question${n.orphelines > 1 ? "s" : ""} ouverte${n.orphelines > 1 ? "s" : ""}).`,
       );
     });
 
     document.getElementById("act-vider").addEventListener("click", () => {
-      if (!ReseauStore.personnages().length) return;
-      if (!confirm("Vider le réseau ? Cette action n'est pas annulable.")) return;
+      if (!ReseauStore.personnages().length && !TrameStore.situations().length) return;
+      if (!confirm("Tout vider ? Cette action n'est pas annulable.")) return;
+      this._quitter();
       ReseauStore.vider();
+      TrameStore.vider();
       this.ouvrirReseau();
-      this._statut("Réseau vidé.");
+      this._statut("Réseau et trames vidés.");
     });
   },
 
@@ -147,10 +184,20 @@ export const App = {
   },
 
   _compteurs() {
+    const el = document.getElementById("compteurs");
+    if (this._ecran === "atelier") {
+      const t = TrameStore.trames().length;
+      const s = TrameStore.situations().length;
+      const o = TrameStore.orphelines().length;
+      el.textContent =
+        `${t} ${Utils.plur(t, "trame")} · ${s} ${Utils.plur(s, "situation")} · ` +
+        `${o} ${Utils.plur(o, "question")} ${Utils.plur(o, "ouverte")}`;
+      return;
+    }
     const p = ReseauStore.personnages().length;
     const l = ReseauStore.liens().length;
     const m = ReseauStore.liens().filter((x) => x.miroir).length;
-    document.getElementById("compteurs").textContent =
+    el.textContent =
       `${p} ${Utils.plur(p, "personnage")} · ${l} ${Utils.plur(l, "lien")} ${Utils.plur(l, "orienté")} · ${m} ${Utils.plur(m, "miroir")}`;
   },
 };
@@ -158,5 +205,6 @@ export const App = {
 // Accès console pour explorer la vérité à la main.
 window.App = App;
 window.ReseauStore = ReseauStore;
+window.TrameStore = TrameStore;
 
 App.init();
