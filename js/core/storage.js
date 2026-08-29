@@ -26,7 +26,7 @@ import { Debug } from "./debug.js";
 const PREFIX = "gnomon_v1_";
 
 export const Storage = {
-  SCHEMA_VERSION: 1,
+  SCHEMA_VERSION: 2,
   _observers: [],
   _writeFailNotified: false,
 
@@ -128,7 +128,36 @@ export const Storage = {
      version n à n+1. Tableau vide au départ, mais la boucle existe :
      le jour où le modèle bouge, on ajoute une entrée et rien d'autre. */
 
-  _MIGRATIONS: [],
+  _MIGRATIONS: [
+    // v0 → v1 : rien, la v1 est l'origine.
+    null,
+
+    /* v1 → v2 — SÉPARER LE CARNET DE L'AUTEUR DU TEXTE REMIS.
+       Jusqu'ici, `notes` servait aux deux : l'auteur y écrivait ses
+       remarques ET le livret le publiait. Un auteur qui notait « à
+       révéler plus tard » l'envoyait donc au joueur. On migre le
+       contenu existant vers `background` — c'est lui qui était publié,
+       il reste publié, aucun changement de comportement — et `notes`
+       redevient ce que son nom dit : privé. */
+    (S) => {
+      const reseau = S.get("reseau", null);
+      if (!reseau || !Array.isArray(reseau.personnages)) return;
+      let bouges = 0;
+      for (const p of reseau.personnages) {
+        if (!p) continue;
+        if (p.background === undefined) p.background = "";
+        if (p.style === undefined) p.style = "";
+        if (!Array.isArray(p.images)) p.images = [];
+        if (p.notes && !p.background) {
+          p.background = p.notes;
+          p.notes = "";
+          bouges++;
+        }
+      }
+      S.set("reseau", reseau);
+      Debug.log("storage", "migration v2 : carnet → background", { bouges });
+    },
+  ],
 
   runMigrations() {
     const from = this.get("schema_version", 0);

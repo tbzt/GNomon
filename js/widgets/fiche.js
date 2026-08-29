@@ -14,8 +14,11 @@
       réseau (cf. `core/couverture.js`). Aucune n'est saisissable. On
       clique une pastille grise, elle dit ce qui manque et pourquoi.
 
-   3. **Le carnet** — de la prose, en markdown léger, où le `@mention`
-      propose l'arête.
+   3. **Le background** — le texte REMIS au joueur : long, en pages
+      (`---` seul sur sa ligne = saut de page), avec ses images et ses
+      indications de style. Et **le carnet**, qui ne sort jamais : c'est
+      là qu'on note « à révéler en S3 » sans l'envoyer au joueur.
+      Les deux acceptent le `@mention` qui propose l'arête.
 
    4. **Le squelette** — ce que ce personnage sait avant le jeu, DÉRIVÉ
       des informations qu'on lui a posées. eXpérience décrit exactement
@@ -43,6 +46,32 @@ import { TONALITES, IMPORTANCES, FONCTIONS } from "../core/reseaustore.js";
 import { Mentions } from "./journal/mentions.js";
 import { Utils } from "../core/utils.js";
 
+/** Réduit une image avant de l'embarquer en `data:` — une photo de
+    téléphone fait 4 Mo, et le quota du `localStorage` en fait 5 au
+    total. 900 px de large suffisent largement à un livret imprimé en
+    A5 ; sans cette étape, la première image ferait échouer toutes les
+    écritures suivantes. */
+function reduire(fichier, largeurMax = 900, qualite = 0.82) {
+  return new Promise((resolve, reject) => {
+    const lecteur = new FileReader();
+    lecteur.onerror = reject;
+    lecteur.onload = () => {
+      const img = new Image();
+      img.onerror = reject;
+      img.onload = () => {
+        const ratio = Math.min(1, largeurMax / img.width);
+        const c = document.createElement("canvas");
+        c.width = Math.round(img.width * ratio);
+        c.height = Math.round(img.height * ratio);
+        c.getContext("2d").drawImage(img, 0, 0, c.width, c.height);
+        resolve(c.toDataURL("image/jpeg", qualite));
+      };
+      img.src = lecteur.result;
+    };
+    lecteur.readAsDataURL(fichier);
+  });
+}
+
 const CHAMPS = [
   { cle: "moral", label: "Point de vue moral", aide: "Sa position sur le problème central. Différente de celle des autres, surtout de son adversaire." },
   { cle: "desir", label: "Désir", aide: "Sa carotte. On doit pouvoir dire QUAND il sera réalisé." },
@@ -60,6 +89,7 @@ export const Fiche = {
   _id: null,
   _onOuvrir: null,
   _tSave: null,
+  _tCarnet: null,
 
   monter(hote, store, personnageId, { onOuvrir = null, infos = null } = {}) {
     // On quitte peut-être une fiche en cours d'écriture : la sauvegarde
@@ -83,12 +113,17 @@ export const Fiche = {
       quitter l'écran dans les 400 ms perd les dernières frappes. */
   flush() {
     clearTimeout(this._tSave);
-    this._tSave = null;
+    clearTimeout(this._tCarnet);
+    this._tSave = this._tCarnet = null;
     if (!this._hote || !this._id) return;
-    const carnet = this._hote.querySelector("#carnet");
-    if (!carnet) return;
     const p = this._store.personnage(this._id);
-    if (p && p.notes !== carnet.value) this._store.majPersonnage(this._id, { notes: carnet.value });
+    if (!p) return;
+    const patch = {};
+    const fond = this._hote.querySelector("#background");
+    if (fond && p.background !== fond.value) patch.background = fond.value;
+    const carnet = this._hote.querySelector("#carnet");
+    if (carnet && p.notes !== carnet.value) patch.notes = carnet.value;
+    if (Object.keys(patch).length) this._store.majPersonnage(this._id, patch);
   },
 
   /* ================= rendu complet ================= */
@@ -104,7 +139,8 @@ export const Fiche = {
       `<article class="fiche${p.pj ? "" : " pnj"}">` +
       this._entete(p) +
       '<div class="fiche-corps">' +
-      `<div class="fiche-gauche">${this._carnet(p)}<div id="fiche-liens">${this._liens(p)}</div></div>` +
+      `<div class="fiche-gauche">${this._background(p)}${this._carnet(p)}${this._extras(p)}` +
+      `<div id="fiche-liens">${this._liens(p)}</div></div>` +
       `<aside class="fiche-droite"><div id="fiche-jauge">${this._jauge(p)}</div>` +
       `<div id="fiche-squelette">${this._squelette(p)}</div>${this._champs(p)}</aside>` +
       "</div></article>";
@@ -219,14 +255,68 @@ export const Fiche = {
     );
   },
 
-  _carnet(p) {
+  /** Le texte REMIS. `---` seul sur sa ligne fait un saut de page à
+      l'impression : c'est ainsi qu'un background tient en plusieurs
+      pages voulues plutôt qu'en un bloc qui déborde. */
+  _background(p) {
     return (
       '<section class="carnet">' +
-      '<p class="carnet-titre">Le carnet <span class="carnet-aide">markdown léger · <b>@</b> pour mentionner</span></p>' +
-      `<textarea id="carnet" rows="14" placeholder="Écrivez. Tapez @ pour mentionner quelqu'un — le lien vous sera proposé.">${Utils.escHtml(p.notes || "")}</textarea>` +
+      '<p class="carnet-titre">Le background <span class="carnet-aide">remis au joueur · <b>@</b> mentionne · <b>---</b> saut de page</span></p>' +
+      `<textarea id="background" rows="16" placeholder="Le texte que la personne lira avant de venir. Prenez la place qu'il faut — une ligne « --- » commence une nouvelle page.">${Utils.escHtml(p.background || "")}</textarea>` +
       '<div id="proposition" hidden></div>' +
       '<p class="carnet-titre">Aperçu</p>' +
-      `<div class="carnet-apercu" id="apercu">${Mentions.renderText(p.notes || "", this._store)}</div>` +
+      `<div class="carnet-apercu" id="apercu">${Mentions.renderText(p.background || "", this._store)}</div>` +
+      "</section>"
+    );
+  },
+
+  /** Le carnet PRIVÉ. Depuis la migration v2 du schéma, il ne part
+      jamais dans un livret — c'est là qu'on écrit ce qu'il ne faut
+      surtout pas remettre. */
+  _carnet(p) {
+    return (
+      '<details class="carnet-prive"><summary>Le carnet de l\'auteur <span>privé — ne sort d\'aucun document remis</span></summary>' +
+      `<textarea id="carnet" rows="7" placeholder="Vos remarques : ce qui reste à écrire, ce qu'il ne faut pas dire, les pistes.">${Utils.escHtml(p.notes || "")}</textarea>` +
+      "</details>"
+    );
+  },
+
+  _extras(p) {
+    const objectifs = (p.objectifs || []).length
+      ? (p.objectifs || [])
+          .map(
+            (o, i) =>
+              `<li><input data-obj="${i}" value="${Utils.escHtml(o)}" placeholder="Ce qu'il cherche à obtenir" aria-label="Objectif" />` +
+              `<button type="button" data-obj-x="${i}" title="Retirer">✕</button></li>`,
+          )
+          .join("")
+      : '<li class="vide-obj">Aucun objectif. Ce sont les missions concrètes, distinctes du désir.</li>';
+
+    const images = (p.images || []).length
+      ? (p.images || [])
+          .map(
+            (im) =>
+              `<li><img src="${Utils.escHtml(im.src)}" alt="" />` +
+              `<input data-img-leg="${im.id}" value="${Utils.escHtml(im.legende || "")}" placeholder="Légende" aria-label="Légende" />` +
+              `<button type="button" data-img-x="${im.id}" title="Retirer">✕</button></li>`,
+          )
+          .join("")
+      : '<li class="vide-obj">Aucune image.</li>';
+
+    return (
+      '<section class="extras">' +
+      '<p class="carnet-titre">Ce qu\'il cherche<span class="carnet-aide">les missions concrètes, distinctes du désir</span></p>' +
+      `<ul class="objectifs">${objectifs}</ul>` +
+      '<button type="button" id="ajout-obj">+ Objectif</button>' +
+      '<p class="carnet-titre" style="margin-top:18px">Comment le jouer<span class="carnet-aide">costume, allure, voix — ce bloc part dans le livret</span></p>' +
+      `<textarea id="style-jeu" rows="3" placeholder="Se tient droite, parle peu. Tablier de dispensaire, mains abîmées.">${Utils.escHtml(p.style || "")}</textarea>` +
+      '<p class="carnet-titre" style="margin-top:18px">Images<span class="carnet-aide">intégrées au livret</span></p>' +
+      `<ul class="images">${images}</ul>` +
+      '<span class="img-actions"><button type="button" id="ajout-img">+ Fichier</button>' +
+      '<button type="button" id="ajout-url">+ Adresse</button>' +
+      '<input id="fichier-image" type="file" accept="image/*" hidden /></span>' +
+      '<p class="img-note">Un fichier est <b>intégré</b> au livret (autonome, mais il pèse sur le stockage — ' +
+      "il est réduit à 900 px). Une adresse ne pèse rien, mais le livret aura besoin du réseau.</p>" +
       "</section>"
     );
   },
@@ -275,22 +365,30 @@ export const Fiche = {
     for (const ta of this._hote.querySelectorAll("[data-champ]"))
       ta.addEventListener("change", (e) => maj({ [e.target.dataset.champ]: e.target.value }));
 
+    const surMention = ({ cible, existe }) => {
+      if (existe) this._propositionFermer();
+      else this._proposer(cible);
+    };
+
+    const fond = q("#background");
+    fond.addEventListener("input", () => {
+      q("#apercu").innerHTML = Mentions.renderText(fond.value, this._store);
+      clearTimeout(this._tSave);
+      this._tSave = setTimeout(() => maj({ background: fond.value }), 400);
+    });
+    fond.addEventListener("blur", () => this.flush());
+    Mentions.attach(fond, { store: this._store, personnageId: this._id, onMention: surMention });
+
     const carnet = q("#carnet");
     carnet.addEventListener("input", () => {
-      q("#apercu").innerHTML = Mentions.renderText(carnet.value, this._store);
-      clearTimeout(this._tSave);
-      this._tSave = setTimeout(() => maj({ notes: carnet.value }), 400);
+      clearTimeout(this._tCarnet);
+      this._tCarnet = setTimeout(() => maj({ notes: carnet.value }), 400);
     });
     carnet.addEventListener("blur", () => this.flush());
+    Mentions.attach(carnet, { store: this._store, personnageId: this._id, onMention: surMention });
 
-    Mentions.attach(carnet, {
-      store: this._store,
-      personnageId: this._id,
-      onMention: ({ cible, existe }) => {
-        if (existe) this._propositionFermer();
-        else this._proposer(cible);
-      },
-    });
+    q("#style-jeu").addEventListener("change", (e) => maj({ style: e.target.value }));
+    this._brancherExtras();
 
     // Une puce ouvre la fiche du personnage mentionné.
     q("#apercu").addEventListener("click", (e) => {
@@ -299,6 +397,61 @@ export const Fiche = {
     });
 
     this._brancherJauge();
+  },
+
+  /* ---- objectifs, style, images ---- */
+
+  _brancherExtras() {
+    const h = this._hote;
+    const maj = (patch) => this._store.majPersonnage(this._id, patch);
+    const objs = () => [...(this._store.personnage(this._id).objectifs || [])];
+
+    h.querySelector("#ajout-obj").addEventListener("click", () => maj({ objectifs: [...objs(), ""] }));
+    for (const el of h.querySelectorAll("[data-obj]"))
+      el.addEventListener("change", (e) => {
+        const o = objs();
+        o[Number(el.dataset.obj)] = e.target.value;
+        maj({ objectifs: o });
+      });
+    for (const b of h.querySelectorAll("[data-obj-x]"))
+      b.addEventListener("click", () => {
+        const o = objs();
+        o.splice(Number(b.dataset.objX), 1);
+        maj({ objectifs: o });
+      });
+
+    h.querySelector("#ajout-img").addEventListener("click", () =>
+      h.querySelector("#fichier-image").click(),
+    );
+    h.querySelector("#fichier-image").addEventListener("change", async (e) => {
+      const f = e.target.files && e.target.files[0];
+      e.target.value = "";
+      if (!f) return;
+      try {
+        const src = await reduire(f);
+        this._store.ajouterImage(this._id, src);
+      } catch {
+        this._signaler("Cette image n'a pas pu être lue.");
+      }
+    });
+    h.querySelector("#ajout-url").addEventListener("click", () => {
+      const u = prompt("Adresse de l'image (https://…) :", "");
+      if (u && /^https?:\/\//i.test(u.trim())) this._store.ajouterImage(this._id, u.trim());
+      else if (u) this._signaler("Une adresse d'image doit commencer par http:// ou https://.");
+    });
+    for (const el of h.querySelectorAll("[data-img-leg]"))
+      el.addEventListener("change", (e) =>
+        this._store.majImage(this._id, el.dataset.imgLeg, { legende: e.target.value }),
+      );
+    for (const b of h.querySelectorAll("[data-img-x]"))
+      b.addEventListener("click", () => this._store.supprimerImage(this._id, b.dataset.imgX));
+  },
+
+  _signaler(txt) {
+    const el = document.getElementById("statut");
+    if (!el) return;
+    el.textContent = txt;
+    el.hidden = false;
   },
 
   _brancherJauge() {

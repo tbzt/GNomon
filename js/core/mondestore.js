@@ -18,13 +18,30 @@
    tiennent ensemble par rien.
 
        Monde { titre, premisse, propos, thematique, contexte,
-               references, lieux[] }
+               intention, avertissements, securite[], securiteNote,
+               pratique, costume, references, lieux[] }
 
    ── LA PRÉMISSE A UNE FORME, ET ON LA RAPPELLE ──
    eXpérience la donne littéralement : *[le héros] + va à + [action
    initiale] + et + [conséquence]*. Le champ porte cette forme en
    invite, parce qu'une prémisse floue produit un GN flou — et que la
    formule force à la rendre concrète.
+
+   ── LA SÉCURITÉ ÉMOTIONNELLE N'EST PAS UNE OPTION ──
+   Un livret de GN contemporain porte, en plus de la fiction : la **note
+   d'intention** (ce que l'équipe veut faire vivre), les **avertissements
+   de contenu** (les thèmes durs réellement présents), et les
+   **mécaniques de sécurité** en usage — lignes et voiles, « coupez »,
+   le regard baissé, un·e référent·e identifié·e.
+
+   Ce n'est pas de la paperasse : ce sont les outils qui permettent de
+   jouer des choses dures sans casser quelqu'un, et ils ne servent que
+   si tout le monde les a lus AVANT. Les omettre d'un outil de 2026
+   serait un vrai manque — cf. le guide « Pour un GN plus sécurisant »
+   d'Electro-GN et le corpus nordique sur la calibration.
+
+   Ces trois blocs sont donc portés par le monde, et **repris dans
+   chaque livret et chaque consigne**, sans que l'auteur ait à y penser.
 
    ── LE CONTEXTE N'EST PAS UNE INFORMATION ──
    Ce qui est écrit ici est ce que **tout le monde** sait, sans qu'il
@@ -44,8 +61,54 @@ const CHAMPS = {
   propos: "",
   thematique: "",
   contexte: "",
+  intention: "",
+  avertissements: "",
+  securiteNote: "",
+  pratique: "",
+  costume: "",
   references: "",
 };
+
+/** Les mécaniques de sécurité d'usage courant. La liste est fermée et
+    pré-écrite : demander à chaque équipe de les reformuler produirait
+    quarante variantes approximatives d'outils qui ne valent que s'ils
+    sont dits de la même façon partout. `securiteNote` reste là pour ce
+    qui est propre au GN. */
+export const MECANIQUES = Object.freeze({
+  lignesVoiles: {
+    nom: "Lignes et voiles",
+    texte:
+      "Vos lignes (ce qui n'apparaîtra pas) et vos voiles (ce qui sera évoqué sans être montré) sont recueillis avant le jeu et respectés sans discussion.",
+  },
+  coupez: {
+    nom: "« Coupez »",
+    texte:
+      "Dire « coupez », ou croiser les mains devant soi, arrête la scène immédiatement. Personne ne demande pourquoi.",
+  },
+  freinez: {
+    nom: "« Freinez »",
+    texte: "Dire « freinez » demande de ralentir ou d'adoucir sans interrompre la scène.",
+  },
+  regardBaisse: {
+    nom: "Le regard baissé",
+    texte:
+      "Une main devant les yeux signifie que vous n'êtes pas dans le jeu : on ne vous voit pas, on ne vous adresse pas la parole.",
+  },
+  horsJeu: {
+    nom: "« Hors-jeu »",
+    texte:
+      "Préfixer une phrase par « hors-jeu » permet de négocier une limite en pleine scène, sans en sortir.",
+  },
+  referent: {
+    nom: "Un·e référent·e sécurité",
+    texte:
+      "Une personne de l'équipe est identifiée, joignable à tout moment, et n'a que ce rôle.",
+  },
+  debrief: {
+    nom: "Un débriefing",
+    texte: "Un temps de retour est prévu après le jeu, avant de se séparer.",
+  },
+});
 
 export const MondeStore = {
   _key: "monde",
@@ -58,12 +121,13 @@ export const MondeStore = {
       ...CHAMPS,
       ...(raw && typeof raw === "object" ? raw : {}),
       lieux: Array.isArray(raw?.lieux) ? raw.lieux : [],
+      securite: Array.isArray(raw?.securite) ? raw.securite : Object.keys(MECANIQUES),
     };
     return this._data;
   },
 
   save() {
-    Storage.set(this._key, this._data || { ...CHAMPS, lieux: [] });
+    Storage.set(this._key, this._data || { ...CHAMPS, lieux: [], securite: [] });
   },
 
   _d() {
@@ -95,6 +159,7 @@ export const MondeStore = {
   maj(patch = {}) {
     const d = this._d();
     delete patch.lieux; // les lieux ont leur porte
+    delete patch.securite; // les mécaniques aussi
     for (const k of Object.keys(patch)) if (!(k in CHAMPS)) delete patch[k];
     Object.assign(d, patch);
     this.save();
@@ -107,6 +172,29 @@ export const MondeStore = {
   amorce() {
     const d = this._d();
     return !!(d.titre || d.premisse || d.propos || d.contexte);
+  },
+
+  /* ================= Sécurité =================
+     Toutes actives par défaut : le défaut sûr est celui qui protège.
+     Une équipe qui en retire une le fait sciemment. */
+
+  securite() {
+    return this._d().securite;
+  },
+
+  basculerMecanique(cle) {
+    if (!(cle in MECANIQUES)) return;
+    const d = this._d();
+    d.securite = d.securite.includes(cle)
+      ? d.securite.filter((x) => x !== cle)
+      : [...d.securite, cle];
+    this.save();
+    this._emit({ type: "monde:securite" });
+  },
+
+  /** Les mécaniques actives, prêtes à être imprimées. */
+  mecaniquesActives() {
+    return this._d().securite.filter((c) => c in MECANIQUES).map((c) => MECANIQUES[c]);
   },
 
   /* ================= Lieux =================
@@ -149,7 +237,7 @@ export const MondeStore = {
   },
 
   vider() {
-    this._data = { ...CHAMPS, lieux: [] };
+    this._data = { ...CHAMPS, lieux: [], securite: Object.keys(MECANIQUES) };
     this.save();
     this._emit({ type: "monde:vider" });
   },

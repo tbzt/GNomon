@@ -446,6 +446,14 @@ Le **contexte commun** n'est pas une information au sens d'`InformationStore`. C
 l'*asymétrie* — qui sait ce que les autres ignorent. Le savoir commun est le sol, pas une
 asymétrie : le mélanger aux informations noierait les vraies divergences sous le décor.
 
+### Deux documents opposés dans leur principe
+
+· **Le livret** part chez un joueur : calculé par **soustraction**.
+· **La consigne PNJ** reste dans l'équipe : calculée par **addition**. On y met tout, y compris
+  **ce que les PJ croient de faux, avec la vérité en face**. Un PNJ qui ignore la fausse croyance
+  d'un PJ va la contredire sans le vouloir et défaire l'intrigue en une phrase — c'est ce qui
+  manque à toute fiche de PNJ écrite à la main.
+
 ### Le livret est calculé par soustraction
 
 C'est le seul document de GNomon qui sorte de l'équipe. La question n'est donc pas « que
@@ -456,10 +464,45 @@ sait-on ? » mais **« que peut-il lire ? »**. Quatre exclusions, et chacune d�
 | La **fonction narrative** | Écrire « tu es le faux allié » dit au joueur comment son histoire finit. |
 | La **transformation possible** | C'est le pronostic de l'auteur — la lire, c'est jouer le résultat. |
 | L'**importance** d'un lien et le **miroir** | Instruments de construction. Aucun personnage ne pense « ce contact est secondaire » de quelqu'un qu'il connaît. |
+| **Le carnet de l'auteur** (`notes`) | Privé depuis la migration v2. C'est `background` qui est publié — sans cette séparation, un « à révéler en S3 » griffonné dans le carnet partait au joueur. |
 | **La vérité derrière une croyance fausse** | LE point critique. Quand un personnage *croit autre chose*, le livret n'écrit QUE ce qu'il croit. Sortir les deux — ce que fait tout tableur — livre l'intrigue au joueur dans le document censé la lui cacher. |
 
 Les **avertissements** (carnet vide, croyance sans texte, aucun contact) s'adressent à l'auteur
 et ne sortent jamais dans le document.
+
+### La sécurité émotionnelle n'est pas une option
+
+Un livret de GN contemporain porte, en plus de la fiction : la **note d'intention**, les
+**avertissements de contenu** et les **mécaniques de sécurité** en usage — lignes et voiles,
+« coupez », « freinez », le regard baissé, « hors-jeu », un·e référent·e, un débriefing.
+
+Ce ne sont pas des formalités : ce sont les outils qui permettent de jouer des choses dures sans
+casser quelqu'un, et ils ne servent **que si tout le monde les a lus avant**. Ils sont donc
+portés par le monde, actifs par défaut — le défaut sûr est celui qui protège — et repris
+automatiquement dans **chaque livret et chaque consigne**, sans que l'auteur ait à y penser.
+
+Leur formulation est **fermée et pré-écrite** : demander à chaque équipe de les reformuler
+produirait quarante variantes approximatives d'outils qui ne valent que s'ils sont dits de la
+même façon partout. Un champ libre reste pour ce qui est propre au GN (« la référente est
+Claire, gilet orange »).
+
+Sources : le guide *Pour un GN plus sécurisant* d'Electro-GN et le corpus nordique sur la
+calibration.
+
+### Le background n'est pas le carnet
+
+`background` est le texte **remis** : long, en pages (`---` seul sur sa ligne = saut de page à
+l'impression), avec ses images et ses indications de style. `notes` est le carnet de l'auteur,
+qui ne sort **jamais**. La migration v2 déplace l'ancien `notes` vers `background` — c'est lui
+qui était publié, il reste publié, aucun changement de comportement — et rend `notes` privé.
+
+Les **images** sont soit une URL (gratuite, mais le livret aura besoin du réseau), soit un
+`data:` embarqué (livret autonome, mais qui pèse sur le quota). Les fichiers sont **réduits à
+900 px** avant embarquement : une photo de téléphone fait 4 Mo et le quota du `localStorage` en
+fait 5 au total — sans cette étape, la première image ferait échouer toutes les écritures
+suivantes.
+
+L'impression est en **A5 portrait**, la convention des livrets de GN français.
 
 ### L'archive : deux modes aux sémantiques opposées
 

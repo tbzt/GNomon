@@ -16,7 +16,15 @@
       vide, croyance sans texte, aucun contact. Ces avertissements sont
       pour l'auteur et ne sortent jamais dans le document.
    ============================================================ */
-import { livret, tousLesLivrets, livretHtml, livretMarkdown } from "../core/livret.js";
+import {
+  livret,
+  consigne,
+  tousLesLivrets,
+  toutesLesConsignes,
+  livretHtml,
+  consigneHtml,
+  livretMarkdown,
+} from "../core/livret.js";
 import { telecharger } from "../core/archive.js";
 import { Utils } from "../core/utils.js";
 
@@ -24,6 +32,7 @@ export const Livrets = {
   _hote: null,
   _stores: null,
   _selId: null,
+  _onglet: "livrets", // « livrets » (PJ) ou « consignes » (PNJ)
 
   monter(hote, stores) {
     this._hote = hote;
@@ -31,34 +40,63 @@ export const Livrets = {
     this.rendre();
   },
 
+  _pnj() {
+    return this._onglet === "consignes";
+  },
+
   rendre() {
-    const pjs = this._stores.reseau.pj();
-    if (!pjs.length) {
+    const gens = this._pnj() ? this._stores.reseau.pnj() : this._stores.reseau.pj();
+    const onglets =
+      '<div class="lv-onglets">' +
+      `<button type="button" class="lv-onglet${this._pnj() ? "" : " actif"}" data-onglet="livrets">Livrets joueurs</button>` +
+      `<button type="button" class="lv-onglet${this._pnj() ? " actif" : ""}" data-onglet="consignes">Consignes PNJ</button>` +
+      "</div>";
+
+    if (!gens.length) {
       this._hote.innerHTML =
-        '<p class="vide">Aucun PJ. Les livrets se génèrent depuis les personnages joueurs.</p>';
+        '<div class="lv">' +
+        onglets +
+        `<p class="vide">${this._pnj() ? "Aucun PNJ. Une consigne se génère depuis un personnage non joueur." : "Aucun PJ. Les livrets se génèrent depuis les personnages joueurs."}</p></div>`;
+      this._brancherOnglets();
       return;
     }
-    if (!this._selId || !this._stores.reseau.personnage(this._selId)) this._selId = pjs[0].id;
+    if (!this._selId || !gens.some((g) => g.id === this._selId)) this._selId = gens[0].id;
 
-    const tous = tousLesLivrets(this._stores);
-    const alertes = tous.reduce((n, l) => n + l.avertissements.length, 0);
+    const tous = this._pnj() ? toutesLesConsignes(this._stores) : tousLesLivrets(this._stores);
+    const alertes = tous.reduce((n, l) => n + (l.avertissements || []).length, 0);
 
     this._hote.innerHTML =
       '<div class="lv">' +
+      onglets +
       '<div class="lv-barre">' +
-      `<p class="carnet-titre">Les livrets<span class="carnet-aide">${pjs.length} ${Utils.plur(pjs.length, "PJ")}` +
-      (alertes ? ` · ${alertes} ${Utils.plur(alertes, "point")} à revoir` : " · rien à signaler") +
+      `<p class="carnet-titre">${this._pnj() ? "Consignes d'équipe" : "Les livrets"}` +
+      `<span class="carnet-aide">${gens.length} ${this._pnj() ? Utils.plur(gens.length, "PNJ") : Utils.plur(gens.length, "PJ")}` +
+      (this._pnj()
+        ? " · ce document ne se remet à personne"
+        : alertes
+          ? ` · ${alertes} ${Utils.plur(alertes, "point")} à revoir`
+          : " · rien à signaler") +
       "</span></p>" +
       '<span class="lv-actions">' +
-      '<button type="button" id="lv-html">Exporter tout (HTML)</button>' +
-      '<button type="button" id="lv-md">Exporter tout (markdown)</button>' +
+      `<button type="button" id="lv-html">Exporter tout (HTML)</button>` +
+      (this._pnj() ? "" : '<button type="button" id="lv-md">Exporter tout (markdown)</button>') +
       "</span></div>" +
       '<div class="lv-corps">' +
       `<nav class="lv-liste">${this._liste(tous)}</nav>` +
       `<div class="lv-apercu" id="lv-apercu">${this._apercu()}</div>` +
       "</div></div>";
 
+    this._brancherOnglets();
     this._brancher();
+  },
+
+  _brancherOnglets() {
+    for (const b of this._hote.querySelectorAll("[data-onglet]"))
+      b.addEventListener("click", () => {
+        this._onglet = b.dataset.onglet;
+        this._selId = null;
+        this.rendre();
+      });
   },
 
   _liste(tous) {
@@ -69,20 +107,30 @@ export const Livrets = {
           `<button type="button" class="lv-item${id === this._selId ? " actif" : ""}" data-lv="${id}">` +
           `<span class="lv-nom">${Utils.escHtml(l.identite.nom)}</span>` +
           `<span class="lv-role">${Utils.escHtml(l.identite.role)}</span>` +
-          (l.avertissements.length
+          ((l.avertissements || []).length
             ? `<span class="lv-alerte">${l.avertissements.length}</span>`
-            : "") +
+            : l.comediens > 1
+              ? `<span class="lv-charge">${l.comediens}×</span>`
+              : "") +
           "</button>"
         );
       })
       .join("");
   },
 
+  _doc(id) {
+    return this._pnj() ? consigne(id, this._stores) : livret(id, this._stores);
+  },
+
+  _html(l) {
+    return l.type === "consigne" ? consigneHtml(l) : livretHtml(l);
+  },
+
   _apercu() {
-    const l = livret(this._selId, this._stores);
+    const l = this._doc(this._selId);
     if (!l) return '<p class="vide">Personnage introuvable.</p>';
 
-    const av = l.avertissements.length
+    const av = (l.avertissements || []).length
       ? '<div class="lv-avert"><p class="cast-bloc-titre">À revoir avant de remettre' +
         "<span>ces remarques sont pour vous — elles ne sortent pas dans le livret</span></p><ul>" +
         l.avertissements.map((a) => `<li>${Utils.escHtml(a)}</li>`).join("") +
@@ -94,19 +142,19 @@ export const Livrets = {
       '<div class="lv-cadre"><iframe id="lv-iframe" title="Aperçu du livret" ' +
       'sandbox="allow-same-origin"></iframe></div>' +
       '<div class="lv-un">' +
-      `<button type="button" id="lv-un-html">Exporter ce livret (HTML)</button>` +
-      `<button type="button" id="lv-un-md">Copier en markdown</button>` +
+      `<button type="button" id="lv-un-html">Exporter ce document (HTML)</button>` +
+      (this._pnj() ? "" : '<button type="button" id="lv-un-md">Copier en markdown</button>') +
       "</div>"
     );
   },
 
   _peindreApercu() {
     const cadre = this._hote.querySelector("#lv-iframe");
-    const l = livret(this._selId, this._stores);
+    const l = this._doc(this._selId);
     if (!cadre || !l) return;
     // On écrit le document réel dans l'iframe : ce que le joueur verra,
     // pas une approximation restylée par la page qui l'entoure.
-    cadre.srcdoc = livretHtml(l);
+    cadre.srcdoc = this._html(l);
   },
 
   _brancher() {
@@ -124,7 +172,8 @@ export const Livrets = {
     this._peindreApercu();
 
     un("#lv-html").addEventListener("click", () => this._exporterTout("html"));
-    un("#lv-md").addEventListener("click", () => this._exporterTout("md"));
+    const md = un("#lv-md");
+    if (md) md.addEventListener("click", () => this._exporterTout("md"));
   },
 
   _brancherApercu() {
@@ -132,13 +181,17 @@ export const Livrets = {
     const h = un("#lv-un-html");
     if (h)
       h.addEventListener("click", () => {
-        const l = livret(this._selId, this._stores);
-        telecharger(`${this._nom(l)}.html`, livretHtml(l), "text/html");
+        const l = this._doc(this._selId);
+        telecharger(
+          `${this._pnj() ? "consigne-" : ""}${this._nom(l)}.html`,
+          this._html(l),
+          "text/html",
+        );
       });
     const m = un("#lv-un-md");
     if (m)
       m.addEventListener("click", async () => {
-        const l = livret(this._selId, this._stores);
+        const l = this._doc(this._selId);
         const txt = livretMarkdown(l);
         try {
           await navigator.clipboard.writeText(txt);
@@ -165,11 +218,12 @@ export const Livrets = {
   /** Tous les livrets dans UN fichier : c'est ce qu'on imprime, et
       chaque livret commence sur une nouvelle page. */
   _exporterTout(forme) {
-    const tous = tousLesLivrets(this._stores);
+    const tous = this._pnj() ? toutesLesConsignes(this._stores) : tousLesLivrets(this._stores);
     const titre = this._stores.monde.monde().titre || "GNomon";
+    const prefixe = this._pnj() ? "consignes" : "livrets";
     if (forme === "md") {
       telecharger(
-        `livrets-${this._slug(titre)}.md`,
+        `${prefixe}-${this._slug(titre)}.md`,
         tous.map(livretMarkdown).join("\n\n---\n\n"),
         "text/markdown",
       );
@@ -177,17 +231,17 @@ export const Livrets = {
     }
     const corps = tous
       .map((l) => {
-        const doc = livretHtml(l);
+        const doc = this._html(l);
         return doc.slice(doc.indexOf("<body>") + 6, doc.indexOf("</body>"));
       })
       .join('</div><div class="livret">');
-    const modele = livretHtml(tous[0]);
+    const modele = this._html(tous[0]);
     const html =
       modele.slice(0, modele.indexOf("</style>")) +
       "\n  .livret { break-after: page; padding-bottom: 4em; }\n" +
       '  @media print { .livret:last-child { break-after: auto; } }\n</style></head><body>' +
       `<div class="livret">${corps}</div></body></html>`;
-    telecharger(`livrets-${this._slug(titre)}.html`, html, "text/html");
+    telecharger(`${prefixe}-${this._slug(titre)}.html`, html, "text/html");
   },
 
   _slug(s) {

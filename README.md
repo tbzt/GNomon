@@ -110,6 +110,21 @@ contact-miroir — et surtout **la vérité derrière une croyance fausse**. Qua
 croit autre chose, son livret n'écrit que ce qu'il croit. Sortir les deux livrerait l'intrigue
 au joueur dans le document censé la lui cacher.
 
+Le **background** remis est distinct du **carnet de l'auteur**, qui ne sort jamais : sans cette
+séparation, un « à révéler plus tard » griffonné en écrivant partait au joueur. Le background
+prend la place qu'il faut (une ligne `---` commence une nouvelle page), accepte des images, et
+s'imprime en A5.
+
+Chaque document porte aussi la **note d'intention**, les **avertissements de contenu** et les
+**mécaniques de sécurité** — lignes et voiles, « coupez », le regard baissé, un·e référent·e.
+Actives par défaut, reprises automatiquement : ces outils ne servent que si tout le monde les a
+lus avant.
+
+Les **PNJ** ont leur propre document, opposé au livret : la **consigne d'équipe**, calculée par
+*addition*. Elle dit ce qu'il porte, où il entre, combien de comédiens il faudra — et surtout
+**ce que les autres croient de faux, avec la vérité en face**. Un PNJ qui ignore la fausse
+croyance d'un PJ la contredit sans le vouloir et défait l'intrigue en une phrase.
+
 L'**archive** est un JSON unique qui porte tout le GN : c'est lui qu'on sauvegarde, qu'on
 s'envoie, qu'on met dans un dépôt d'équipe. Import en *remplacer* ou en *fusionner* — le second
 ajoute ce qui manque sans jamais toucher à l'existant, parce qu'on peut toujours réimporter,

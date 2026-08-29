@@ -47,6 +47,16 @@ export const MONDE = {
     "Montagne, hiver 1912. Drame rural, peu de violence, beaucoup de silences. Registre sobre, jeu d'intérieur.",
   contexte:
     "Il y a trois semaines, une avalanche a emporté le tunnel haut de la mine. Sept hommes n'en sont pas revenus.\n\nLa compagnie a produit un rapport en quarante-huit heures : cause naturelle, aucune faute. Le village l'a lu, l'a cru, et a enterré ses morts. Depuis, la neige n'a pas fondu et personne n'est remonté là-haut.\n\nCe soir, le conseil se réunit à la mairie pour signer le rachat des terrains hauts. C'est la dernière soirée où tout le monde sera au même endroit avant le dégel.",
+  intention:
+    "Nous voulons un jeu de silences plus que d'affrontements. Personne n'a de méchant en face de soi : chacun a de bonnes raisons, et c'est ce qui rend le mensonge tenable. Le drame vient de ce qui n'est pas dit à temps — pas d'un coup de théâtre.\n\nAttendez-vous à des conversations longues, à des regards, à des moments où il ne se passe rien. C'est voulu.",
+  avertissements:
+    "Deuil d'un enfant · culpabilité · mensonge institutionnel · alcoolisme évoqué. Aucune violence physique jouée, aucun contenu sexuel. La mort d'un enfant est centrale dans une trame : elle est racontée, jamais montrée.",
+  securiteNote:
+    "La référente sécurité est Claire, gilet orange, joignable à tout moment au PC orga (salle du fond).",
+  pratique:
+    "Samedi 14 h → dimanche 11 h. Salle des fêtes de Valmorel. Repas fournis. Apportez un duvet, une lampe, et des chaussures qui tiennent au froid.",
+  costume:
+    "Laine, lin, coton épais. Couleurs éteintes — bruns, gris, bleus délavés. Pas de fermeture éclair visible, pas de montre, pas de lunettes modernes si vous pouvez faire autrement.",
   references: "La Grande Illusion · Les Révoltés de l'an 2000 · les photographies de mineurs de Bourgogne",
   lieux: [
     { nom: "Le dispensaire", note: "Chaud, exigu. On y parle bas parce qu'il y a des blessés à côté." },
@@ -79,6 +89,15 @@ export const VALMOREL = {
       transformation: "De la culpabilité à la responsabilité",
       archetype: "La guérisseuse",
       surprise: true,
+      style:
+        "Se tient droite, parle peu et bas. Tablier de dispensaire, mains abîmées par le froid. Ne s'assied jamais dans une pièce où quelqu'un souffre.",
+      objectifs: [
+        "Obtenir le registre des charges avant minuit",
+        "Faire dire à Marek ce qu'il sait, sans témoin",
+        "Ne pas laisser Augustine porter cela à ma place",
+      ],
+      background:
+        "Vous êtes revenue à Valmorel il y a quatre ans, après dix ans à l'hôpital de Grenoble. On ne vous a jamais tout à fait considérée comme d'ici, et cela vous convient : un médecin qui a de la famille dans la vallée finit par soigner des voix plutôt que des corps.\n\nLe soir de l'avalanche, on vous a réveillée à trois heures. Vous avez travaillé jusqu'au surlendemain sans dormir. Quand la compagnie a apporté le rapport à signer, vous l'avez signé. Vous étiez debout depuis quarante heures et il fallait libérer les corps pour les familles.\n\n---\n\nCe n'est que trois semaines plus tard, en rangeant, que vous avez relu la première page. Il y était écrit que les charges avaient été inspectées le matin même. Vous savez que c'est faux : le matin même, vous étiez au tunnel pour une entorse, et personne n'inspectait rien.\n\nVotre signature est au bas de cette page.",
     },
     {
       cle: "marek",
@@ -95,6 +114,15 @@ export const VALMOREL = {
       transformation: "Avouer, ou verrouiller définitivement",
       archetype: "Le bâtisseur",
       surprise: true,
+      style:
+        "Poli, précis, un peu trop. Vêtements de ville qui ne vont pas à la montagne. Regarde les gens en face sauf Elena.",
+      objectifs: [
+        "Faire signer le rachat avant le dégel",
+        "Récupérer le registre, ou m'assurer qu'il ne sortira pas",
+        "Obtenir d'Elena qu'elle comprenne — pas qu'elle pardonne",
+      ],
+      background:
+        "Vous êtes ingénieur, et vous êtes bon. C'est ce qui rend la chose difficile à porter : vous saviez, avant l'avalanche, que les charges hautes n'avaient pas été refaites depuis deux hivers. Vous l'aviez écrit. On vous a répondu que le budget passerait au printemps.\n\nSept hommes sont morts. Vous avez rédigé le rapport en quarante-huit heures parce que la compagnie l'a demandé, et vous avez daté l'inspection du matin même. Vous vous êtes dit que cela ne changeait rien pour les morts, et que cela changeait tout pour les vivants qui dépendent de la mine.\n\n---\n\nVous avez demandé votre mutation il y a un mois. Personne ne le sait.",
     },
     {
       cle: "augustine",

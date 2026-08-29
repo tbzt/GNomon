@@ -23,6 +23,13 @@
    eXpérience (annexe « caractéristiques à déterminer »). Ils ne sont
    jamais obligatoires : un personnage à un seul nom est valide.
 
+   ── `notes` ET `background` NE SONT PAS LA MÊME CHOSE ──
+   `background` est le texte **remis au joueur** — long, en pages, avec
+   ses images et ses indications de style. `notes` est le carnet de
+   l'auteur, qui ne sort **jamais**. La distinction n'est pas du confort :
+   sans elle, un « à révéler plus tard » griffonné dans le carnet part
+   dans le livret. Migration `storage.js` v2.
+
    ── LE LIEN EST ORIENTÉ, et c'est un choix, pas une facilité ──
    Kröger pose la question du contact-miroir en deux temps : « qui est le
    personnage le plus important pour le tien ? » puis **« ton personnage
@@ -166,6 +173,10 @@ export const ReseauStore = {
       archetype: "",
       surprise: false,
       notes: "",
+      background: "",
+      style: "",
+      objectifs: [],
+      images: [],
       ...champs,
     };
     this._d().personnages.push(p);
@@ -207,6 +218,42 @@ export const ReseauStore = {
     for (const l of liens) if (l && l.id && !vus.has(l.id)) d.liens.push(l);
     this.save();
     this._emit({ type: "personnage:creer", id: personnage.id });
+  },
+
+  /* ================= Images d'un personnage =================
+     Une image est soit une **URL** (gratuite, mais le livret aura
+     besoin du réseau pour s'afficher), soit un **data:URI** (le livret
+     reste autonome, mais chaque image pèse sur le quota du
+     `localStorage`). Les deux sont légitimes, et l'écran dit le
+     compromis plutôt que de choisir à la place de l'auteur. */
+
+  ajouterImage(personnageId, src, legende = "") {
+    const p = this.personnage(personnageId);
+    if (!p || !src) return null;
+    if (!Array.isArray(p.images)) p.images = [];
+    const img = { id: this._uid("i"), src, legende };
+    p.images.push(img);
+    this.save();
+    this._emit({ type: "personnage:maj", id: personnageId });
+    return img;
+  },
+
+  majImage(personnageId, imageId, patch = {}) {
+    const p = this.personnage(personnageId);
+    const img = p && (p.images || []).find((x) => x && x.id === imageId);
+    if (!img) return null;
+    Object.assign(img, patch, { id: img.id });
+    this.save();
+    this._emit({ type: "personnage:maj", id: personnageId });
+    return img;
+  },
+
+  supprimerImage(personnageId, imageId) {
+    const p = this.personnage(personnageId);
+    if (!p) return;
+    p.images = (p.images || []).filter((x) => x && x.id !== imageId);
+    this.save();
+    this._emit({ type: "personnage:maj", id: personnageId });
   },
 
   /* ================= Liens ================= */
