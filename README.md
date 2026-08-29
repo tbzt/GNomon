@@ -129,6 +129,15 @@ Chaque personnage a un **portrait**, et la planche de **trombinoscope** s'imprim
 la même règle que le livret : rien que du public. Un portrait manquant devient une silhouette
 aux initiales plutôt que d'être masqué, parce qu'un trou caché ne se comble jamais.
 
+**Les besoins** ne se saisissent pas : ils se **dérivent** du texte déjà écrit — le matériel et
+la mise en scène des situations, le nombre de comédiens par PNJ, les règles à trancher, les
+contraintes de casting, les documents inachevés. On y pose seulement un responsable et un état,
+et l'export produit une liste à cocher prête à coller dans Trello. L'écran n'y remplace pas
+votre tableau d'équipe : il l'alimente avec ce qui ne se calcule nulle part ailleurs.
+
+Le **hub** garde des adresses, jamais leur contenu : le Drive, le tableau d'organisation, le
+dossier de photos. Relier sans stocker.
+
 L'**archive** est un JSON unique qui porte tout le GN : c'est lui qu'on sauvegarde, qu'on
 s'envoie, qu'on met dans un dépôt d'équipe. Import en *remplacer* ou en *fusionner* — le second
 ajoute ce qui manque sans jamais toucher à l'existant, parce qu'on peut toujours réimporter,

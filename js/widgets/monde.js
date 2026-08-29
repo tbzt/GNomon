@@ -16,6 +16,7 @@
    champ sous le curseur.
    ============================================================ */
 import { MECANIQUES } from "../core/mondestore.js";
+import { hote } from "../core/liensstore.js";
 import { Utils } from "../core/utils.js";
 
 const CHAMPS = [
@@ -87,11 +88,13 @@ const CHAMPS = [
 export const Monde = {
   _hote: null,
   _store: null,
+  _liens: null,
   _tSave: null,
 
-  monter(hote, store) {
+  monter(hote, store, liens) {
     this._hote = hote;
     this._store = store;
+    this._liens = liens;
     this.rendre();
   },
 
@@ -122,6 +125,7 @@ export const Monde = {
           `<textarea rows="${c.lignes}" data-m="${c.cle}" placeholder="${Utils.escHtml(c.invite)}">${Utils.escHtml(m[c.cle] || "")}</textarea></label>`,
       ).join("") +
       this._securite() +
+      this._hub() +
       `<div class="monde-lieux"><p class="carnet-titre">Les lieux<span class="carnet-aide">le site tel qu'il est, indépendamment des scènes qui s'y jouent</span></p>` +
       `<div id="liste-lieux">${this._lieux()}</div>` +
       '<button type="button" id="ajout-lieu">+ Lieu</button></div>' +
@@ -130,10 +134,16 @@ export const Monde = {
   },
 
   rafraichirDerives() {
+    // Le hub et les lieux se re-projettent ; les champs de saisie, non.
     const l = this._hote.querySelector("#liste-lieux");
     if (l) {
       l.innerHTML = this._lieux();
       this._brancherLieux();
+    }
+    const h = this._hote.querySelector(".monde-hub");
+    if (h && document.activeElement && !h.contains(document.activeElement)) {
+      h.outerHTML = this._hub();
+      this._brancher();
     }
   },
 
@@ -158,6 +168,36 @@ export const Monde = {
       '<label class="champ"><span class="champ-label">Ce qui est propre à ce GN</span>' +
       `<textarea rows="2" data-m="securiteNote" placeholder="Le référent sécurité est Claire, gilet orange, joignable au 06…">${Utils.escHtml(this._store.monde().securiteNote || "")}</textarea></label>` +
       "</div>"
+    );
+  },
+
+  /** ── RELIER SANS STOCKER ──
+      GNomon ne veut pas devenir le Drive de l'équipe, ni son tableau
+      d'organisation : ces outils existent et les refaire moins bien
+      serait une perte sèche. Mais il peut être le **point de départ**
+      d'où l'on retrouve où sont les choses. On ne garde donc que des
+      adresses, jamais ce qui est au bout. */
+  _hub() {
+    const l = this._liens ? this._liens.generaux() : [];
+    const lignes = l.length
+      ? l
+          .map(
+            (x) =>
+              `<li><a href="${Utils.escHtml(x.url)}" target="_blank" rel="noopener noreferrer">` +
+              `<b>${Utils.escHtml(x.titre)}</b><span>${Utils.escHtml(hote(x.url))}</span></a>` +
+              `<input data-lien-note="${x.id}" value="${Utils.escHtml(x.note)}" placeholder="À quoi ça sert" aria-label="Note" />` +
+              `<button type="button" data-lien-x="${x.id}" title="Retirer">✕</button></li>`,
+          )
+          .join("")
+      : '<li class="liens-vide">Aucun lien. Le Drive de l\'équipe, le tableau d\'organisation, ' +
+        "le dossier de photos — tout ce qu'on cherche toujours.</li>";
+    return (
+      '<div class="monde-hub"><p class="carnet-titre">Où sont les choses' +
+      "<span class=\"carnet-aide\">des adresses, jamais leur contenu</span></p>" +
+      '<p class="monde-aide">GNomon ne remplace ni votre Drive ni votre tableau d\'organisation. ' +
+      "Il peut être l'endroit d'où on les retrouve.</p>" +
+      `<ul class="hub">${lignes}</ul>` +
+      '<button type="button" id="ajout-lien">+ Lien</button></div>'
     );
   },
 
@@ -191,6 +231,28 @@ export const Monde = {
       });
       ta.addEventListener("blur", () => this.flush());
     }
+    const bl = this._hote.querySelector("#ajout-lien");
+    if (bl)
+      bl.addEventListener("click", () => {
+        const url = prompt("Adresse (https://…) :", "");
+        if (url === null || !url.trim()) return;
+        const titre = prompt("Comment l'appeler ?", hote(url) || "Lien") || "";
+        const r = this._liens.ajouter({ titre, url });
+        if (!r.ok) {
+          const el = document.getElementById("statut");
+          if (el) {
+            el.textContent = r.raison;
+            el.hidden = false;
+          }
+        }
+      });
+    for (const el of this._hote.querySelectorAll("[data-lien-note]"))
+      el.addEventListener("change", (e) =>
+        this._liens.maj(el.dataset.lienNote, { note: e.target.value }),
+      );
+    for (const b of this._hote.querySelectorAll("[data-lien-x]"))
+      b.addEventListener("click", () => this._liens.supprimer(b.dataset.lienX));
+
     for (const c of this._hote.querySelectorAll("[data-meca]"))
       c.addEventListener("change", () => this._store.basculerMecanique(c.dataset.meca));
     this._hote

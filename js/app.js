@@ -40,8 +40,11 @@ import { RunStore } from "./core/runstore.js";
 import { MondeStore } from "./core/mondestore.js";
 import { Archive, telecharger } from "./core/archive.js";
 import { poids, conseil, formaterOctets, BORNE } from "./core/poids.js";
+import { SuiviStore } from "./core/suivistore.js";
+import { LiensStore } from "./core/liensstore.js";
 import { conscience } from "./core/conscience.js";
 import { frise as calculerFrise } from "./core/temps.js";
+import { tousLesBesoins as besoinsPlats } from "./core/besoins.js";
 import { chargerValmorel } from "./data/valmorel.js";
 import { Reseau } from "./widgets/reseau.js";
 import { Fiche } from "./widgets/fiche.js";
@@ -53,6 +56,7 @@ import { Casting } from "./widgets/casting.js";
 import { Conduite } from "./widgets/conduite.js";
 import { Monde } from "./widgets/monde.js";
 import { Livrets } from "./widgets/livrets.js";
+import { Besoins } from "./widgets/besoins.js";
 import { Utils } from "./core/utils.js";
 
 /** ── LES QUATRE MOMENTS ──
@@ -81,6 +85,7 @@ const MODES = [
     ecrans: [
       { cle: "conscience", nom: "La conscience" },
       { cle: "frise", nom: "Le temps" },
+      { cle: "besoins", nom: "Les besoins" },
     ],
   },
   {
@@ -112,6 +117,8 @@ export const App = {
     CastingStore.load();
     RunStore.load();
     MondeStore.load();
+    SuiviStore.load();
+    LiensStore.load();
 
     this._hotes = {
       reseau: document.getElementById("ecran-reseau"),
@@ -124,6 +131,7 @@ export const App = {
       conduite: document.getElementById("ecran-conduite"),
       monde: document.getElementById("ecran-monde"),
       livrets: document.getElementById("ecran-livrets"),
+      besoins: document.getElementById("ecran-besoins"),
     };
 
     Reseau.monter(this._hotes.reseau, ReseauStore, {
@@ -138,6 +146,8 @@ export const App = {
     CastingStore.subscribe(() => this._surChangement());
     RunStore.subscribe(() => this._surChangement());
     MondeStore.subscribe(() => this._surChangement());
+    SuiviStore.subscribe(() => this._surChangement());
+    LiensStore.subscribe(() => this._surChangement());
 
     this._brancherBarre();
     window.addEventListener("hashchange", () => this._lireHash());
@@ -158,6 +168,7 @@ export const App = {
     if (/^#\/conduite/.test(h)) return this.ouvrirConduite({ silencieux: true });
     if (/^#\/monde/.test(h)) return this.ouvrirMonde({ silencieux: true });
     if (/^#\/livrets/.test(h)) return this.ouvrirLivrets({ silencieux: true });
+    if (/^#\/besoins/.test(h)) return this.ouvrirBesoins({ silencieux: true });
     this.ouvrirReseau({ silencieux: true });
   },
 
@@ -249,6 +260,7 @@ export const App = {
       conduite: () => this.ouvrirConduite(),
       monde: () => this.ouvrirMonde(),
       livrets: () => this.ouvrirLivrets(),
+      besoins: () => this.ouvrirBesoins(),
     };
     if (routes[ecran]) routes[ecran]();
   },
@@ -379,7 +391,7 @@ export const App = {
     }
     this._quitter();
     this._basculer("monde", "Le monde");
-    Monde.monter(this._hotes.monde, MondeStore);
+    Monde.monter(this._hotes.monde, MondeStore, LiensStore);
     if (!silencieux) location.hash = "#/monde";
   },
 
@@ -392,6 +404,17 @@ export const App = {
     this._basculer("livrets", "Les livrets");
     Livrets.monter(this._hotes.livrets, this._stores());
     if (!silencieux) location.hash = "#/livrets";
+  },
+
+  ouvrirBesoins({ silencieux = false } = {}) {
+    if (this._ecran === "besoins") {
+      if (!silencieux && location.hash !== "#/besoins") location.hash = "#/besoins";
+      return;
+    }
+    this._quitter();
+    this._basculer("besoins", "Les besoins");
+    Besoins.monter(this._hotes.besoins, this._stores(), SuiviStore, LiensStore);
+    if (!silencieux) location.hash = "#/besoins";
   },
 
   /** Le paquet de stores passé aux modules qui en lisent plusieurs. */
@@ -428,6 +451,8 @@ export const App = {
       Monde.rafraichirDerives();
     } else if (this._ecran === "livrets") {
       Livrets.rendre();
+    } else if (this._ecran === "besoins") {
+      Besoins.rendre();
     } else {
       Reseau.rendre();
     }
@@ -498,6 +523,8 @@ export const App = {
       CastingStore.vider();
       RunStore.vider();
       MondeStore.vider();
+      SuiviStore.vider();
+      LiensStore.vider();
       const n = chargerValmorel(ReseauStore, TrameStore, InformationStore, CastingStore, MondeStore);
       this.ouvrirReseau();
       this._statut(
@@ -519,6 +546,8 @@ export const App = {
       CastingStore.vider();
       RunStore.vider();
       MondeStore.vider();
+      SuiviStore.vider();
+      LiensStore.vider();
       this.ouvrirReseau();
       this._statut("Tout est vidé.");
     });
@@ -559,6 +588,12 @@ export const App = {
     this._rendrePoids();
     const el = document.getElementById("compteurs");
     if (!el) return;
+    if (this._ecran === "besoins") {
+      const cles = besoinsPlats(this._stores()).map((b) => b.cle);
+      const b = SuiviStore.bilan(cles);
+      el.textContent = `${b.faits}/${b.total} ${Utils.plur(b.total, "fait")} · ${b.assignes} ${Utils.plur(b.assignes, "assigné")}`;
+      return;
+    }
     if (this._ecran === "conduite") {
       const f = Object.keys(RunStore.fils()).length;
       const j = RunStore.journal().length;
@@ -618,5 +653,7 @@ window.Derogations = Derogations;
 window.CastingStore = CastingStore;
 window.RunStore = RunStore;
 window.MondeStore = MondeStore;
+window.SuiviStore = SuiviStore;
+window.LiensStore = LiensStore;
 
 App.init();

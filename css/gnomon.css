@@ -3626,3 +3626,233 @@ main[data-ecran="monde"] {
   border-color: var(--negatif);
   font-weight: 600;
 }
+
+/* ============================================================
+   LES BESOINS ET LE HUB DE LIENS.
+   ============================================================ */
+
+.bs-barre {
+  display: flex;
+  align-items: baseline;
+  gap: 16px;
+  flex-wrap: wrap;
+  margin-bottom: 10px;
+}
+.bs-barre .carnet-titre {
+  margin: 0;
+  flex: 1;
+}
+.bs-actions {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+.bs-actions .bascule {
+  font-family: var(--sans);
+  font-size: 13px;
+  text-transform: none;
+  letter-spacing: 0;
+  color: var(--ink-soft);
+}
+
+.bs-pont {
+  font-size: 13.5px;
+  line-height: 1.5;
+  color: var(--ink-soft);
+  background: var(--surface);
+  border: 1px solid var(--rule);
+  border-left: 3px solid var(--accent);
+  border-radius: 2px;
+  padding: 10px 13px;
+  margin: 0 0 22px;
+  max-width: 88ch;
+}
+
+.bs-groupe {
+  margin-bottom: 26px;
+}
+.bs-titre {
+  font-family: var(--mono);
+  font-size: 10.5px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--ink-faint);
+  margin: 0 0 9px;
+  display: flex;
+  gap: 12px;
+  align-items: baseline;
+  flex-wrap: wrap;
+}
+.bs-titre span {
+  font-family: var(--sans);
+  font-size: 13px;
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+.bs-liste {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 1px;
+  background: var(--rule);
+  border: 1px solid var(--rule);
+  border-radius: 2px;
+}
+
+.bs-item {
+  display: grid;
+  grid-template-columns: auto 1fr 150px auto;
+  gap: 11px;
+  align-items: start;
+  background: var(--surface);
+  padding: 9px 12px;
+}
+.bs-item.fait {
+  opacity: 0.55;
+}
+.bs-item.fait .bs-quoi {
+  text-decoration: line-through;
+}
+
+.bs-coche {
+  padding-top: 2px;
+}
+.bs-corps {
+  min-width: 0;
+}
+.bs-quoi {
+  display: block;
+  font-family: var(--sans);
+  font-size: 14.5px;
+  line-height: 1.4;
+}
+.bs-meta {
+  display: block;
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: 0.05em;
+  color: var(--ink-faint);
+  margin-top: 2px;
+}
+
+.bs-resp {
+  font-family: var(--sans);
+  font-size: 13px;
+  color: var(--ink);
+  background: var(--ground);
+  border: 1px solid var(--rule);
+  border-radius: 2px;
+  padding: 4px 7px;
+  min-width: 0;
+}
+.bs-resp:focus {
+  border-color: var(--accent);
+  outline: none;
+}
+
+.bs-lien-plus {
+  font-size: 12px;
+  padding: 3px 8px;
+  line-height: 1;
+}
+
+.bs-liens {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  align-items: center;
+  margin-top: 5px;
+}
+.bs-lien-x {
+  font-size: 9px;
+  padding: 1px 5px;
+}
+
+@media (max-width: 760px) {
+  .bs-item {
+    grid-template-columns: auto 1fr auto;
+  }
+  .bs-resp {
+    grid-column: 2 / -1;
+  }
+}
+
+/* ---------- le hub, sur l'écran du monde ---------- */
+
+.monde-hub {
+  margin-top: 30px;
+  border-top: 1px solid var(--rule);
+  padding-top: 20px;
+}
+.hub {
+  list-style: none;
+  margin: 0 0 10px;
+  padding: 0;
+  display: grid;
+  gap: 6px;
+}
+.hub li {
+  display: grid;
+  grid-template-columns: minmax(160px, auto) 1fr auto;
+  gap: 8px;
+  align-items: center;
+}
+.hub input {
+  font-family: var(--sans);
+  font-size: 13.5px;
+  color: var(--ink);
+  background: var(--ground);
+  border: 1px solid var(--rule);
+  border-radius: 2px;
+  padding: 6px 8px;
+}
+.hub button {
+  font-size: 9.5px;
+  padding: 3px 7px;
+}
+
+/* Les liens externes montrent leur destination : on doit savoir où on
+   va avant de cliquer, surtout dans un outil qu'on partage. */
+.hub a,
+.bs-liens a {
+  font-family: var(--sans);
+  text-decoration: none;
+  color: var(--accent-ink);
+  display: inline-flex;
+  align-items: baseline;
+  gap: 7px;
+  min-width: 0;
+}
+.hub a {
+  font-size: 14.5px;
+}
+.bs-liens a {
+  font-size: 12.5px;
+  border: 1px solid var(--rule);
+  border-radius: 2px;
+  padding: 2px 7px;
+}
+.hub a:hover,
+.bs-liens a:hover {
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+.hub a span,
+.bs-liens a span {
+  font-family: var(--mono);
+  font-size: 10px;
+  color: var(--ink-faint);
+  white-space: nowrap;
+}
+
+@media (max-width: 640px) {
+  .hub li {
+    grid-template-columns: 1fr auto;
+  }
+  .hub li input {
+    grid-column: 1 / -1;
+  }
+}

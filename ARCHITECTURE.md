@@ -51,7 +51,8 @@ reviendrait à aplatir la différence qui fait tout le projet.
                                         castingstore, affectation,
                                         bilancasting, runstore,
                                         conduite, mondestore, livret,
-                                        archive, poids
+                                        archive, poids, besoins,
+                                        suivistore, liensstore
 ```
 
 ### Couche 2b — Rendu (`js/widgets/`)
@@ -64,6 +65,7 @@ reviendrait à aplatir la différence qui fait tout le projet.
 | `journal/mentions.js` | `Mentions` | Autocomplétion `@`, rendu des puces, et **proposition d'arête**. Réécrit : l'original dépend de six modules propres à son domaine. |
 | `monde.js` | `Monde` | L'écran des fondamentaux. Écran de **document** : serif, colonne de lecture. |
 | `livrets.js` | `Livrets` | Relecture avant remise, avec l'aperçu réel dans une `iframe`. |
+| `besoins.js` | `Besoins` | L'écran des besoins dérivés, avec le suivi et les liens attachés. |
 | `conduite.js` | `Conduite` | Le tableau de la nuit. **Son propre monde visuel** (cf. §5g), et un battement qui ne touche qu'au temps. |
 | `casting.js` | `Casting` | L'écran des vœux : grille, import à colonne choisie, affectation, bilan. |
 | `frise.js` | `Frise` | L'écran du temps : planning, collisions, charge. Un clic sur un bloc ouvre l'atelier **sur cette situation** (`Atelier.viser`). |
@@ -87,6 +89,9 @@ reviendrait à aplatir la différence qui fait tout le projet.
 | `conscience.js` | `conscience()` | **Les douze règles, calculées.** Module pur : lit trois stores, n'en mute aucun, ne touche pas au DOM — S6 pourra le rejouer après casting. Ne connaît pas les dérogations : le calcul reste rejouable tel quel. |
 | `mondestore.js` | `MondeStore` | **Les fondamentaux** — prémisse, propos, thématique, contexte commun, lieux. Les étapes 1 à 3 d'eXpérience, qui manquaient (cf. §5j). |
 | `livret.js` | `livret()`, `livretHtml()` | Le background remis à un joueur. **Calculé par soustraction** (cf. §5j). |
+| `besoins.js` | `besoins()` | Ce que l'écriture réclame, **dérivé** du texte déjà écrit. Jamais stocké (cf. §5l). |
+| `suivistore.js` | `SuiviStore` | La couche humaine posée sur les besoins : **un responsable, un état**. Pas de date (cf. §5l). |
+| `liensstore.js` | `LiensStore` | Des **adresses**, jamais leur contenu. Validation d'URL par construction, pas par expression régulière. |
 | `poids.js` | `poids()`, `conseil()` | Ce que pèse le GN et **ce qui pèse dedans**. On mesure ce qu'on écrit plutôt que d'interroger le navigateur (cf. §5k). |
 | `archive.js` | `Archive`, `telecharger()` | Sauvegarder, exporter, partager. Enveloppe versionnée, deux modes d'import. |
 | `runstore.js` | `RunStore` | L'état vivant du GN : fils en cours, main courante, horloge de fiction avec pauses. |
@@ -553,6 +558,57 @@ comme telle** : viser bas fait prévenir tôt, ce qui est le but.
 Le message **nomme la cause et l'action**, pas seulement l'état : « les images en occupent
 100 % (6 portraits) — une adresse web à la place d'un fichier ne pèse rien ». Un indicateur qui
 se contente d'un pourcentage laisse l'auteur deviner quoi faire.
+
+---
+
+## 5l. Les besoins — dériver plutôt que gérer
+
+### Pourquoi ce n'est pas un kanban
+
+La question s'est posée d'ajouter un tableau d'organisation — le lieu, l'assurance, la
+nourriture. La recherche l'a tranchée, et dans l'autre sens :
+
+- **Electro-GN**, dont le corpus est vaste, n'a **aucun guide de logistique**. Tout est sur
+  l'écriture et la sécurité.
+- **Pettersson** (« Comment organiser un GN de manière efficiente ») **refuse explicitement**
+  de donner un rétroplanning et met la **propriété claire des rôles** au-dessus du calendrier :
+  « chacun a un poste clairement défini car cela permet de gérer le stress ».
+
+Un tableau générique serait donc moins bon que Trello et sans lien avec ce que l'outil sait.
+**On fait l'inverse : on dérive ce que seul GNomon peut savoir**, parce que ça se calcule
+depuis le texte — le matériel et la mise en scène des situations, la charge PNJ, les règles
+nécessaires, les contraintes de casting, les documents inachevés.
+
+### Le besoin n'est jamais stocké
+
+Seul **ce qu'on en a fait** l'est — un responsable, un état — indexé par une clé stable dérivée
+de la source. Changer le matériel d'une situation change le besoin, et l'affectation suit.
+Stocker le besoin en ferait une copie qui divergerait au premier remaniement : c'est exactement
+ce qu'un tableur d'équipe finit toujours par devenir, une liste qui ne correspond plus à rien.
+
+Suivant Pettersson, on stocke **un nom, pas une date**.
+
+### L'écran alimente votre outil, il ne le remplace pas
+
+L'export produit un markdown à cases à cocher, avec le contexte de chaque besoin, prêt à coller
+dans le tableau que l'équipe utilise déjà. Le pont est assumé : refaire Trello serait des
+semaines pour faire moins bien, alors que ce qui est dérivé ici ne se calcule nulle part
+ailleurs.
+
+## 5m. Le hub — relier sans stocker
+
+GNomon ne veut devenir ni le Drive de l'équipe, ni son tableau d'organisation, ni son dossier
+de photos. Mais il peut être le **point de départ** d'où l'on retrouve où sont les choses.
+`LiensStore` ne garde donc que des **adresses**. Un lien est général (le hub, sur l'écran du
+monde) ou **attaché** à un objet — `besoin:<clé>` aujourd'hui, `personnage:<id>` demain sans
+migration.
+
+**La validation d'URL n'est pas du confort.** Ces adresses sont rendues en `<a href>` : un
+`javascript:` collé là s'exécuterait au clic, dans une page qui contient tout le GN. On
+n'accepte que `http:` et `https:`, vérifiés **en construisant une `URL`** — pas avec une
+expression régulière, qui se contourne. Le rendu porte `rel="noopener noreferrer"` : sans
+`noopener`, la page ouverte peut réécrire celle qui l'a ouverte. Et le nom d'hôte est affiché à
+côté du titre, pour qu'on sache où l'on va avant de cliquer.
 
 ---
 

@@ -43,6 +43,8 @@ export const CLES = [
   "casting",
   "derogations",
   "run",
+  "suivi",
+  "liens",
 ];
 
 /** Les clés dont le contenu est une liste d'objets à `id` — les seules
@@ -54,6 +56,10 @@ const LISTES = {
   casting: ["candidatures"],
   run: ["journal"],
 };
+
+/** `liens` est une liste NUE (pas un objet à champs), donc sa fusion
+    se fait à part : on ajoute ce qui manque, par id. */
+const LISTES_NUES = ["liens"];
 
 export const Archive = {
   /** Construit le paquet. Ne lit que `Storage` : ce qui n'a jamais été
@@ -121,6 +127,16 @@ export const Archive = {
     for (const cle of CLES) {
       const entrant = paquet.data[cle];
       if (entrant === undefined) continue;
+
+      if (mode !== "remplacer" && LISTES_NUES.includes(cle) && Array.isArray(entrant)) {
+        const local = Storage.get(cle, null);
+        const a = Array.isArray(local) ? local : [];
+        const vus = new Set(a.map((x) => x && x.id));
+        const neufs = entrant.filter((x) => x && x.id && !vus.has(x.id));
+        Storage.set(cle, [...a, ...neufs]);
+        bilan[cle] = `${neufs.length} ajouté${neufs.length > 1 ? "s" : ""}`;
+        continue;
+      }
 
       if (mode === "remplacer" || !LISTES[cle]) {
         Storage.set(cle, entrant);
