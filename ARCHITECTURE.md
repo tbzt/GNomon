@@ -47,7 +47,9 @@ reviendrait à aplatir la différence qui fait tout le projet.
 1. Socle             js/core/           storage, debug, utils, reseaustore,
                                         couverture, tramestore,
                                         informationstore, conscience,
-                                        derogations, temps
+                                        derogations, temps,
+                                        castingstore, affectation,
+                                        bilancasting
 ```
 
 ### Couche 2b — Rendu (`js/widgets/`)
@@ -58,6 +60,7 @@ reviendrait à aplatir la différence qui fait tout le projet.
 | `fiche.js` | `Fiche` | L'écran d'écriture : huit champs saisis, jauge calculée, carnet. Rendu **en deux étages** (cf. §6). |
 | `journal/markdown.js` | `Markdown` | Gras / italique / code sur du texte **déjà échappé**. Copié tel quel de ShadowHerds. Pas de titres (collision `#`), pas de liens (collision `@[]()` + XSS `href`). |
 | `journal/mentions.js` | `Mentions` | Autocomplétion `@`, rendu des puces, et **proposition d'arête**. Réécrit : l'original dépend de six modules propres à son domaine. |
+| `casting.js` | `Casting` | L'écran des vœux : grille, import à colonne choisie, affectation, bilan. |
 | `frise.js` | `Frise` | L'écran du temps : planning, collisions, charge. Un clic sur un bloc ouvre l'atelier **sur cette situation** (`Atelier.viser`). |
 | `conscience.js` | `Conscience` | L'écran des douze règles. Tient les trois interdits **dans le rendu** autant que dans les stores (cf. §5d). |
 | `matrice.js` | `Matrice` | L'écran « Qui sait quoi » : informations × personnages, une cellule se règle au clic. |
@@ -77,6 +80,9 @@ reviendrait à aplatir la différence qui fait tout le projet.
 | `reseaustore.js` | `ReseauStore` | **La vérité racine.** Personnages, liens orientés, groupes. Détient les trois invariants du modèle (cf. §4). |
 | `utils.js` | `Utils` | `escHtml`, `searchNorm` (recherche sans accents), `plur`. Volontairement maigre : la version de ShadowHerds porte la résolution d'édition, dont il n'y a pas ici. |
 | `conscience.js` | `conscience()` | **Les douze règles, calculées.** Module pur : lit trois stores, n'en mute aucun, ne touche pas au DOM — S6 pourra le rejouer après casting. Ne connaît pas les dérogations : le calcul reste rejouable tel quel. |
+| `castingstore.js` | `CastingStore` | Les candidatures, les vœux, l'affectation. **Ne connaît qu'un libellé** — la ligne rouge RGPD (cf. §5f). |
+| `affectation.js` | `hongrois()`, `COUTS` | L'algorithme hongrois (Kuhn-Munkres), O(n³), **exact**. Module pur : des nombres entrent, des nombres sortent. |
+| `bilancasting.js` | `caster()`, `bilan()` | Les cinq contrôles d'après-casting — et la correction à la vision (cf. §5f). |
 | `temps.js` | `frise()`, `heure()` | La frise, les collisions, la charge. Module pur. Sépare **erreur de PJ** et **besoin de PNJ** (cf. §5e). |
 | `derogations.js` | `Derogations` | Les alertes écartées **et leur justification écrite**. `ecarter()` refuse une justification vide — c'est l'invariant du module, pas une validation de formulaire. |
 | `informationstore.js` | `InformationStore` | Les **informations** : le fait, son influence, et **qui sait quoi**. `sait` / `croit` par personnage ; **« ignore » n'est jamais stocké — c'est l'absence** (cf. §5c). |
@@ -274,6 +280,58 @@ part, jamais signalées comme un défaut.
 
 ---
 
+## 5f. Le casting — la ligne rouge, et une correction à la vision
+
+### La ligne rouge
+
+Une candidature de GN collecte de la donnée sensible au sens du RGPD : santé, allergies,
+régime, contact d'urgence, lignes et voiles, parfois des mineurs. GNomon est une application
+locale, sans serveur, sans authentification et **sans chiffrement** — ce n'est pas un endroit
+pour ça, et le prétendre serait pire que de ne rien proposer.
+
+Alors `CastingStore` ne connaît qu'un **libellé**. L'import affiche les en-têtes du feuillet,
+demande **quelle colonne** sert de libellé, et n'écrit que celle-là — les autres ne sont jamais
+lues. La pseudonymisation (« Joueur 1 », « Joueur 2 »…) est **cochée par défaut**. La
+correspondance entre libellé et personne reste dans le tableur de l'organisation, qui est déjà
+l'endroit où elle vit.
+
+Vérifié en important un CSV contenant courriels, allergies et numéros de téléphone : aucune de
+ces chaînes ne se retrouve dans le `localStorage`.
+
+### Une seule contrainte est modélisée : la disponibilité
+
+Parce qu'elle est **vérifiable** — la frise (§5e) donne l'heure de chaque scène, la candidature
+donne l'heure d'arrivée. Les contraintes en texte libre (« sait chanter », « n'a pas peur du
+noir ») n'entrent pas dans le coût : les apparier automatiquement à un questionnaire en texte
+libre donnerait un résultat faux avec l'air d'être juste.
+
+### Le veto est cher, jamais infini
+
+« Surtout pas ce rôle » coûte 100 quand un rang en coûte 1 : l'algorithme préférera dégrader
+dix personnes d'un rang plutôt que d'imposer un seul veto. Mais si le seul appariement possible
+l'impose, il rend quand même une réponse, et **le bilan la signale en rouge** — au lieu de
+planter en disant « aucune solution ».
+
+### La correction à la vision
+
+Le plan disait « on relance les douze validateurs après casting ». **C'est faux, et je l'ai
+corrigé en l'écrivant :** les douze règles portent sur le *matériau écrit*, qui ne change pas
+quand on distribue les rôles. Les relancer rendrait exactement les mêmes seize alertes en
+donnant l'illusion d'une vérification.
+
+L'intuition de départ reste juste — c'est celle de Kröger, mesurée sur 260 joueurs : dix
+personnages mal notés à un run ont tous été adorés à un autre, donc **la qualité d'un
+personnage est relationnelle**. Simplement, elle se vérifie avec des contrôles *de joueurs*,
+pas avec les règles *du texte*. D'où les cinq de `bilancasting.js` : vœux exaucés · veto
+imposé · hors disponibilité · déséquilibre · **miroir désaccordé**.
+
+Le dernier est le plus proche de Kröger : le contact-miroir veut que l'intrigue « pèse autant
+des deux côtés », et un joueur enthousiaste face à un joueur tiède la fait pencher quoi qu'en
+dise le texte. Sur le jeu d'essai, il trouve que le joueur qui tient Marek ne l'a accepté qu'à
+contrecœur — alors que Marek est le miroir de deux enthousiastes.
+
+---
+
 ## 6. Le rendu en deux étages — et pourquoi ce n'est pas de l'optimisation
 
 `Fiche.rendre()` construit tout ; `Fiche.rafraichirDerives()` ne remet à jour que la jauge et
@@ -331,4 +389,7 @@ python3 -m http.server 8000
 L'épine est décrite hors dépôt dans `PLANS/VISION_ATELIER_DE_TRAMES.md`. En résumé :
 **S0** l'arête typée *(livré)* · **S1** la fiche, la jauge de couverture et le `@mention` qui
 crée l'arête *(livré)* · **S2** l'atelier de trames *(livré)* · **S3** les informations *(livré)* · **S4** la conscience
-(douze validateurs) *(livré)* · **S5** le temps *(livré)* · **S6** le casting.
+(douze validateurs) *(livré)* · **S5** le temps *(livré)* · **S6** le casting *(livré)*.
+
+**L'épine est complète.** La suite est la salle de conduite — le GN en direct — qui réutilise
+le cockpit de ShadowHerds presque tel quel.

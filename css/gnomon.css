@@ -1976,3 +1976,254 @@ table.matrice .cell:hover {
 .lien-nu:hover {
   border: 0;
 }
+
+/* ============================================================
+   S6 — le casting : les vœux, l'affectation, le bilan.
+   ============================================================ */
+
+.cast-barre {
+  display: flex;
+  align-items: baseline;
+  gap: 16px;
+  flex-wrap: wrap;
+  margin-bottom: 10px;
+}
+.cast-barre .carnet-titre {
+  margin: 0;
+  flex: 1;
+}
+.cast-actions {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.cast-garde {
+  font-size: 13.5px;
+  line-height: 1.5;
+  color: var(--ink-soft);
+  background: var(--surface);
+  border: 1px solid var(--rule);
+  border-left: 3px solid var(--complique);
+  border-radius: 2px;
+  padding: 10px 13px;
+  margin: 0 0 16px;
+  max-width: 88ch;
+}
+.cast-garde b {
+  color: var(--complique);
+}
+.cast-garde code {
+  font-family: var(--mono);
+  font-size: 0.9em;
+  background: var(--panel);
+  padding: 1px 4px;
+  border-radius: 2px;
+}
+
+/* ---------- import ---------- */
+
+.cast-import {
+  background: var(--surface);
+  border: 1px solid var(--accent);
+  border-radius: 3px;
+  padding: 14px 16px;
+  margin: 0 0 16px;
+}
+.cast-apercu {
+  margin-top: 12px;
+}
+.cast-cols {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  margin-bottom: 10px;
+}
+.cast-col {
+  text-transform: none;
+  letter-spacing: 0.02em;
+  font-family: var(--serif);
+  font-size: 14px;
+  padding: 5px 11px;
+}
+.cast-col:hover {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--ground);
+}
+.cast-note {
+  font-size: 13px;
+  line-height: 1.45;
+  color: var(--ink-faint);
+  margin: 8px 0 10px;
+}
+
+/* ---------- grille ---------- */
+
+.casting-grille .cast-cell {
+  background: var(--surface);
+  min-width: 250px;
+  max-width: 290px;
+  position: relative;
+}
+
+.cast-label {
+  width: calc(100% - 24px);
+  font-family: var(--serif);
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--ink);
+  background: none;
+  border: 0;
+  border-bottom: 1px solid transparent;
+  padding: 0 0 3px;
+}
+.cast-label:focus {
+  border-bottom-color: var(--accent);
+  outline: none;
+}
+
+.cast-dispo {
+  display: block;
+  font-family: var(--mono);
+  font-size: 9.5px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--ink-faint);
+  margin: 5px 0 6px;
+}
+.cast-dispo input {
+  width: 58px;
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--ink);
+  background: var(--ground);
+  border: 1px solid var(--rule);
+  border-radius: 2px;
+  padding: 2px 4px;
+}
+
+.cast-role {
+  width: 100%;
+  font-family: var(--serif);
+  font-size: 13.5px;
+  color: var(--ink);
+  background: var(--ground);
+  border: 1px solid var(--rule);
+  border-radius: 2px;
+  padding: 4px 6px;
+}
+
+.cast-x {
+  position: absolute;
+  top: 7px;
+  right: 7px;
+  font-size: 9px;
+  padding: 2px 5px;
+}
+
+.casting-grille .cell.v-3 {
+  color: var(--positif);
+  font-size: 15px;
+}
+.casting-grille .cell.v-2 {
+  color: var(--accent);
+}
+.casting-grille .cell.v-1 {
+  color: var(--ink-soft);
+}
+.casting-grille .cell.v-veto {
+  color: var(--negatif);
+  font-weight: 700;
+}
+.casting-grille .cell.v-0 {
+  color: var(--ink-faint);
+  opacity: 0.45;
+}
+.casting-grille .cell.tenu {
+  background: var(--accent-soft);
+  box-shadow: inset 0 0 0 2px var(--accent);
+}
+
+/* ---------- bilan ---------- */
+
+.cast-bilan {
+  margin-top: 22px;
+  border-top: 1px solid var(--rule);
+  padding-top: 16px;
+}
+
+.cast-rangs {
+  font-size: 16px;
+  margin: 0 0 14px;
+}
+.cast-rangs .tiede {
+  color: var(--ink-faint);
+}
+.cast-rangs .grave {
+  color: var(--negatif);
+  font-weight: 600;
+}
+
+.cast-bloc {
+  border: 1px solid var(--rule);
+  border-left-width: 3px;
+  border-radius: 3px;
+  padding: 11px 14px;
+  margin-bottom: 10px;
+  background: var(--surface);
+}
+.cast-bloc.grave {
+  border-left-color: var(--negatif);
+}
+.cast-bloc.tiede {
+  border-left-color: var(--complique);
+}
+.cast-bloc.neutre {
+  border-left-color: var(--rule);
+}
+
+.cast-bloc-titre {
+  font-family: var(--mono);
+  font-size: 10.5px;
+  letter-spacing: 0.11em;
+  text-transform: uppercase;
+  margin: 0 0 8px;
+  display: flex;
+  gap: 12px;
+  align-items: baseline;
+  flex-wrap: wrap;
+}
+.cast-bloc.grave .cast-bloc-titre {
+  color: var(--negatif);
+}
+.cast-bloc.tiede .cast-bloc-titre {
+  color: var(--complique);
+}
+.cast-bloc.neutre .cast-bloc-titre {
+  color: var(--ink-faint);
+}
+.cast-bloc-titre span {
+  font-family: var(--serif);
+  font-size: 13.5px;
+  letter-spacing: 0;
+  text-transform: none;
+  color: var(--ink-faint);
+}
+
+.cast-bloc ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 4px;
+}
+.cast-bloc li {
+  font-size: 14.5px;
+  line-height: 1.45;
+}
+
+button[disabled] {
+  opacity: 0.45;
+  cursor: not-allowed;
+}

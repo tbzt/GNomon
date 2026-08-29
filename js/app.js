@@ -3,10 +3,10 @@
 /* ============================================================
    APP — bootstrap, écrans, routage.
 
-   Six écrans depuis S5 : « Le réseau » (le casting), « La fiche »
-   (l'écriture d'un personnage), « Les trames » (l'atelier), « Qui sait
-   quoi » (la matrice), « La conscience » (les douze règles) et
-   « Le temps » (la frise).
+   Sept écrans : « Le réseau » (les personnages), « La fiche »
+   (l'écriture), « Les trames » (l'atelier), « Qui sait quoi » (la
+   matrice), « La conscience » (les douze règles), « Le temps » (la
+   frise) et « Le casting » (les vœux et l'affectation).
 
    ── LA CONSCIENCE VIT DANS LA BARRE ──
    La vision la voulait en panneau latéral permanent. Un panneau sur
@@ -31,6 +31,7 @@ import { ReseauStore } from "./core/reseaustore.js";
 import { TrameStore } from "./core/tramestore.js";
 import { InformationStore } from "./core/informationstore.js";
 import { Derogations } from "./core/derogations.js";
+import { CastingStore } from "./core/castingstore.js";
 import { conscience } from "./core/conscience.js";
 import { frise as calculerFrise } from "./core/temps.js";
 import { chargerValmorel } from "./data/valmorel.js";
@@ -40,6 +41,7 @@ import { Atelier } from "./widgets/atelier.js";
 import { Matrice } from "./widgets/matrice.js";
 import { Conscience } from "./widgets/conscience.js";
 import { Frise } from "./widgets/frise.js";
+import { Casting } from "./widgets/casting.js";
 import { Utils } from "./core/utils.js";
 
 const friseEtat = () => calculerFrise(ReseauStore, TrameStore);
@@ -53,6 +55,7 @@ export const App = {
     TrameStore.load();
     InformationStore.load();
     Derogations.load();
+    CastingStore.load();
 
     this._hotes = {
       reseau: document.getElementById("ecran-reseau"),
@@ -61,6 +64,7 @@ export const App = {
       matrice: document.getElementById("ecran-matrice"),
       conscience: document.getElementById("ecran-conscience"),
       frise: document.getElementById("ecran-frise"),
+      casting: document.getElementById("ecran-casting"),
     };
 
     Reseau.monter(this._hotes.reseau, ReseauStore, {
@@ -71,6 +75,7 @@ export const App = {
     TrameStore.subscribe(() => this._surChangement());
     InformationStore.subscribe(() => this._surChangement());
     Derogations.subscribe(() => this._surChangement());
+    CastingStore.subscribe(() => this._surChangement());
 
     this._brancherBarre();
     window.addEventListener("hashchange", () => this._lireHash());
@@ -87,6 +92,7 @@ export const App = {
     if (/^#\/informations/.test(h)) return this.ouvrirMatrice({ silencieux: true });
     if (/^#\/conscience/.test(h)) return this.ouvrirConscience({ silencieux: true });
     if (/^#\/temps/.test(h)) return this.ouvrirFrise({ silencieux: true });
+    if (/^#\/casting/.test(h)) return this.ouvrirCasting({ silencieux: true });
     this.ouvrirReseau({ silencieux: true });
   },
 
@@ -182,6 +188,12 @@ export const App = {
   },
 
   ouvrirFrise({ silencieux = false } = {}) {
+    if (this._ecran === "casting") {
+      const k = CastingStore.candidatures().length;
+      const a = Object.keys(CastingStore.affectation()).length;
+      el.textContent = `${k} ${Utils.plur(k, "candidature")} · ${a} ${Utils.plur(a, "rôle")} ${Utils.plur(a, "attribué")}`;
+      return;
+    }
     if (this._ecran === "frise") {
       if (!silencieux && location.hash !== "#/temps") location.hash = "#/temps";
       return;
@@ -192,6 +204,17 @@ export const App = {
       onOuvrir: (situationId) => this.ouvrirAtelier({ situationId }),
     });
     if (!silencieux) location.hash = "#/temps";
+  },
+
+  ouvrirCasting({ silencieux = false } = {}) {
+    if (this._ecran === "casting") {
+      if (!silencieux && location.hash !== "#/casting") location.hash = "#/casting";
+      return;
+    }
+    this._quitter();
+    this._basculer("casting", "Le casting");
+    Casting.monter(this._hotes.casting, CastingStore, ReseauStore, TrameStore);
+    if (!silencieux) location.hash = "#/casting";
   },
 
   /* ---------------- réactions ---------------- */
@@ -209,6 +232,8 @@ export const App = {
       Conscience.rendre();
     } else if (this._ecran === "frise") {
       Frise.rendre();
+    } else if (this._ecran === "casting") {
+      Casting.rendre();
     } else {
       Reseau.rendre();
     }
@@ -225,6 +250,7 @@ export const App = {
       .getElementById("act-conscience")
       .addEventListener("click", () => this.ouvrirConscience());
     document.getElementById("act-temps").addEventListener("click", () => this.ouvrirFrise());
+    document.getElementById("act-casting").addEventListener("click", () => this.ouvrirCasting());
 
     document.getElementById("act-nouveau").addEventListener("click", () => {
       if (this._ecran !== "reseau" && this._ecran !== "fiche") return;
@@ -243,13 +269,14 @@ export const App = {
       TrameStore.vider();
       InformationStore.vider();
       Derogations.vider();
-      const n = chargerValmorel(ReseauStore, TrameStore, InformationStore);
+      CastingStore.vider();
+      const n = chargerValmorel(ReseauStore, TrameStore, InformationStore, CastingStore);
       this.ouvrirReseau();
       this._statut(
         `Valmorel chargé — ${n.personnages} personnages, ${n.liens} liens, ` +
           `${n.situations} situations, ${n.conclusions} conclusions ` +
           `(dont ${n.orphelines} question${n.orphelines > 1 ? "s" : ""} ouverte${n.orphelines > 1 ? "s" : ""}), ` +
-          `${n.informations} informations.`,
+          `${n.informations} informations, ${n.candidatures} candidatures.`,
       );
     });
 
@@ -261,6 +288,7 @@ export const App = {
       TrameStore.vider();
       InformationStore.vider();
       Derogations.vider();
+      CastingStore.vider();
       this.ouvrirReseau();
       this._statut("Tout est vidé.");
     });
@@ -287,6 +315,12 @@ export const App = {
   _compteurs() {
     this._badgeConscience();
     const el = document.getElementById("compteurs");
+    if (this._ecran === "casting") {
+      const k = CastingStore.candidatures().length;
+      const a = Object.keys(CastingStore.affectation()).length;
+      el.textContent = `${k} ${Utils.plur(k, "candidature")} · ${a} ${Utils.plur(a, "rôle")} ${Utils.plur(a, "attribué")}`;
+      return;
+    }
     if (this._ecran === "frise") {
       const f = friseEtat();
       el.textContent =
@@ -329,5 +363,6 @@ window.ReseauStore = ReseauStore;
 window.TrameStore = TrameStore;
 window.InformationStore = InformationStore;
 window.Derogations = Derogations;
+window.CastingStore = CastingStore;
 
 App.init();

@@ -43,7 +43,7 @@ une erreur.
 
 ## État
 
-**Lots S0 à S5 livrés.**
+**L'épine S0 → S6 est complète.**
 
 **S0 — la vérité racine.** Personnages, liens orientés, groupes, avec les trois invariants du
 modèle tenus dans le store.
@@ -84,7 +84,17 @@ une collision de **PJ** est une erreur (un joueur, un corps : il faut réécrire
 simultanéité de **PNJ** est un **besoin de recrutement** (trois scènes en même temps, trois
 comédiens). Le second chiffre ne se corrige pas dans l'atelier : il part à l'organisation.
 
-À venir : le casting.
+**S6 — le casting.** Une grille de vœux, et le problème d'assignation résolu **exactement**
+par l'algorithme hongrois — pas approché. Avec une ligne rouge tenue : le store **ne connaît
+qu'un libellé**, l'import demande quelle colonne lire et ignore toutes les autres, et la
+pseudonymisation est cochée par défaut. Une application locale sans serveur ni chiffrement
+n'est pas un endroit pour de la donnée de santé.
+
+Puis cinq contrôles d'après-casting, dont le plus utile est le **miroir désaccordé** : deux
+personnages liés en miroir dont les joueurs n'ont pas la même envie. Le miroir veut que
+l'intrigue pèse autant des deux côtés — là, elle penchera.
+
+À venir : la salle de conduite, le GN en direct.
 
 ---
 

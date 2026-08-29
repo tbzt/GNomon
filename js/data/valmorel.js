@@ -393,9 +393,26 @@ export const INFORMATIONS = [
   },
 ];
 
+/* ── Les candidatures ──
+   Huit personnes pour six rôles : le déséquilibre est le cas normal.
+   Les vœux sont construits pour que le casting optimal laisse une trace
+   à voir — dont un MIROIR DÉSACCORDÉ (quelqu'un adore Elena, la
+   personne qui obtient Marek n'en veut qu'à moitié), ce qui est
+   exactement le contrôle que Kröger réclame. */
+export const CANDIDATURES = [
+  { label: "Joueur 1", voeux: { elena: 3, augustine: 2 }, veto: ["thomas"] },
+  { label: "Joueur 2", voeux: { marek: 1, joseph: 2 } },
+  { label: "Joueur 3", voeux: { augustine: 3, lucie: 2 } },
+  { label: "Joueur 4", voeux: { joseph: 3, marek: 2 } },
+  { label: "Joueur 5", voeux: { lucie: 3 }, arrivee: 22 },
+  { label: "Joueur 6", voeux: { thomas: 3, marek: 1 } },
+  { label: "Joueur 7", voeux: { elena: 2, augustine: 1 } },
+  { label: "Joueur 8", voeux: {} },
+];
+
 /** Charge le jeu d'essai. `trames` est optionnel — le réseau seul reste
     utilisable. Ne fusionne pas : appeler `vider()` avant si besoin. */
-export function chargerValmorel(reseau, trames = null, infos = null) {
+export function chargerValmorel(reseau, trames = null, infos = null, casting = null) {
   const idGroupe = {};
   for (const g of VALMOREL.groupes) idGroupe[g.cle] = reseau.creerGroupe(g.nom).id;
 
@@ -430,6 +447,7 @@ export function chargerValmorel(reseau, trames = null, infos = null) {
     conclusions: 0,
     orphelines: 0,
     informations: 0,
+    candidatures: 0,
   };
   if (!trames) return bilan;
 
@@ -474,6 +492,16 @@ export function chargerValmorel(reseau, trames = null, infos = null) {
       if (idPerso[k]) infos.poser(objet.id, idPerso[k], "croit", texte);
     for (const k of inf.requise) if (idSit[k]) trames.lierInformation(idSit[k], objet.id, "requiert");
     for (const k of inf.produite) if (idSit[k]) trames.lierInformation(idSit[k], objet.id, "produit");
+  }
+
+  if (casting) {
+    for (const k of CANDIDATURES) {
+      const c = casting.creer({ label: k.label, arrivee: k.arrivee ?? null });
+      for (const [cle, rang] of Object.entries(k.voeux || {}))
+        if (idPerso[cle]) casting.voeu(c.id, idPerso[cle], rang);
+      for (const cle of k.veto || []) if (idPerso[cle]) casting.voeu(c.id, idPerso[cle], "veto");
+      bilan.candidatures++;
+    }
   }
 
   return bilan;
