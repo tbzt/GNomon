@@ -2227,3 +2227,562 @@ button[disabled] {
   opacity: 0.45;
   cursor: not-allowed;
 }
+
+/* ============================================================
+   LA CONDUITE — un monde à part, et c'est un choix.
+   ------------------------------------------------------------
+   L'atelier est un bureau : fond clair, serif, calme, à J-30. La
+   conduite est une salle de veille : 3 h du matin, une équipe fatiguée
+   qui lit un état en traversant la pièce. Les tokens ci-dessous sont
+   donc DÉFINIS ICI, pas hérités : cet écran ne suit pas le thème du
+   reste, il est nocturne par nature.
+
+   · fond noir CHAUD — le bleu appartient à l'atelier, et un écran clair
+     détruit la vision nocturne dans un jeu où la lumière est fictionnelle ;
+   · ambre — la couleur des instruments de nuit, lisible en basse lumière ;
+   · aucun angle arrondi, une barre de signal à gauche — c'est un tableau,
+     pas un document ; la barre est le seul héritage de l'atelier ;
+   · contrastes MESURÉS, pas estimés : toutes les paires texte/fond
+     tiennent AA (≥ 4.5), y compris sur le petit texte. C'est l'écran où
+     ça compte le plus — on le lit à 3 h du matin, fatigué, dans le noir ;
+   · la serif ne survit que dans la main courante : « écrit par une
+     personne », exactement comme ailleurs dans l'outil.
+   ============================================================ */
+
+#ecran-conduite {
+  --n-fond: #141110;
+  --n-carte: #1c1917;
+  --n-haut: #241f1a;
+  --n-trait: #332b25;
+  --n-encre: #efe6d9;
+  --n-encre-douce: #b0a091;
+  --n-encre-faible: #9a8878;
+  --n-ambre: #f2a93b;
+  --n-alarme: #e8503c;
+  --n-calme: #7a8b93;
+  --n-clos: #6b9a6e;
+  --n-sans: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+
+  background: var(--n-fond);
+  color: var(--n-encre);
+  font-family: var(--n-sans);
+  margin: -28px -24px -80px;
+  padding: 0 0 60px;
+  min-height: 80vh;
+}
+
+/* ---------- le bandeau : l'horloge se lit de loin ---------- */
+
+.cd-bandeau {
+  display: flex;
+  align-items: baseline;
+  gap: 18px;
+  flex-wrap: wrap;
+  padding: 18px 26px;
+  background: var(--n-haut);
+  border-bottom: 1px solid var(--n-trait);
+  position: sticky;
+  top: 52px;
+  z-index: 5;
+}
+.cd-bandeau.en-pause {
+  border-bottom-color: var(--n-alarme);
+}
+
+.cd-horloge {
+  font-family: var(--mono);
+  font-size: clamp(34px, 5vw, 46px);
+  font-weight: 600;
+  line-height: 1;
+  letter-spacing: -0.02em;
+  color: var(--n-ambre);
+  font-variant-numeric: tabular-nums;
+}
+.cd-bandeau.en-pause .cd-horloge {
+  color: var(--n-alarme);
+}
+
+.cd-etiquette {
+  font-size: 10.5px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--n-encre-faible);
+}
+
+.cd-compteurs {
+  margin-left: auto;
+  display: flex;
+  gap: 20px;
+  align-items: baseline;
+  font-size: 11px;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  color: var(--n-encre-faible);
+}
+.cd-c {
+  font-family: var(--mono);
+  font-size: 21px;
+  font-weight: 600;
+  margin-right: 5px;
+  font-variant-numeric: tabular-nums;
+}
+.cd-c.vif {
+  color: var(--n-ambre);
+}
+.cd-c.alarme {
+  color: var(--n-alarme);
+}
+.cd-c.calme {
+  color: var(--n-encre-faible);
+}
+
+.cd-commandes {
+  display: flex;
+  gap: 7px;
+}
+
+#ecran-conduite button {
+  font-family: var(--n-sans);
+  font-size: 11px;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  padding: 7px 12px;
+  border: 1px solid var(--n-trait);
+  border-radius: 0;
+  background: transparent;
+  color: var(--n-encre-douce);
+  cursor: pointer;
+}
+#ecran-conduite button:hover {
+  border-color: var(--n-ambre);
+  color: var(--n-ambre);
+}
+#ecran-conduite :focus-visible {
+  outline: 2px solid var(--n-ambre);
+  outline-offset: 2px;
+}
+
+/* ---------- corps ---------- */
+
+.cd-corps {
+  display: grid;
+  grid-template-columns: minmax(0, 1.7fr) minmax(300px, 1fr);
+  gap: 0;
+  align-items: start;
+}
+@media (max-width: 1000px) {
+  .cd-corps {
+    grid-template-columns: 1fr;
+  }
+}
+
+.cd-fils {
+  padding: 22px 26px;
+  display: grid;
+  gap: 14px;
+}
+
+.cd-flanc {
+  padding: 22px 26px;
+  border-left: 1px solid var(--n-trait);
+  display: grid;
+  gap: 22px;
+  align-content: start;
+}
+@media (max-width: 1000px) {
+  .cd-flanc {
+    border-left: 0;
+    border-top: 1px solid var(--n-trait);
+  }
+}
+
+.cd-section {
+  font-size: 10.5px;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  color: var(--n-encre-faible);
+  margin: 0 0 10px;
+  display: flex;
+  gap: 10px;
+  align-items: baseline;
+  flex-wrap: wrap;
+}
+.cd-section span {
+  letter-spacing: 0.02em;
+  text-transform: none;
+  font-size: 12px;
+}
+
+/* ---------- une carte de fil ---------- */
+
+.cd-fil {
+  background: var(--n-carte);
+  border: 1px solid var(--n-trait);
+  border-left: 4px solid var(--n-calme);
+  padding: 14px 18px 12px;
+}
+.cd-fil.e-actif {
+  border-left-color: var(--n-ambre);
+}
+.cd-fil.e-bloque {
+  border-left-color: var(--n-alarme);
+}
+.cd-fil.e-impasse {
+  border-left-color: var(--n-alarme);
+  border-left-style: dashed;
+}
+.cd-fil.e-clos {
+  border-left-color: var(--n-clos);
+  opacity: 0.6;
+}
+
+/* La seule animation de l'écran, et elle est méritée : c'est ce qu'il
+   faut voir depuis l'autre bout de la pièce. */
+@media (prefers-reduced-motion: no-preference) {
+  .cd-fil.e-bloque {
+    animation: cd-veille 2.6s ease-in-out infinite;
+  }
+}
+@keyframes cd-veille {
+  0%,
+  100% {
+    border-left-color: var(--n-alarme);
+  }
+  50% {
+    border-left-color: #7d2c22;
+  }
+}
+
+.cd-fil > header {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-bottom: 7px;
+}
+.cd-statut {
+  font-size: 10px;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  color: var(--n-ambre);
+}
+.cd-fil.e-bloque .cd-statut,
+.cd-fil.e-impasse .cd-statut {
+  color: var(--n-alarme);
+}
+.cd-fil.e-clos .cd-statut {
+  color: var(--n-clos);
+}
+.cd-trame {
+  font-size: 12px;
+  color: var(--n-encre-faible);
+  letter-spacing: 0.04em;
+}
+.cd-depuis {
+  margin-left: auto;
+  font-family: var(--mono);
+  font-size: 13px;
+  color: var(--n-encre-douce);
+  font-variant-numeric: tabular-nums;
+}
+
+.cd-scene {
+  font-size: clamp(20px, 2.4vw, 25px);
+  font-weight: 600;
+  line-height: 1.15;
+  letter-spacing: -0.015em;
+  margin: 0 0 6px;
+}
+.cd-pitch {
+  font-size: 14.5px;
+  line-height: 1.45;
+  color: var(--n-encre-douce);
+  margin: 0 0 8px;
+  max-width: 62ch;
+}
+.cd-meta {
+  font-size: 12px;
+  color: var(--n-encre-faible);
+  margin: 0 0 8px;
+  letter-spacing: 0.03em;
+}
+.cd-meta b {
+  color: var(--n-encre-douce);
+  font-weight: 600;
+}
+
+.cd-cast {
+  display: flex;
+  gap: 5px;
+  flex-wrap: wrap;
+  margin: 0 0 12px;
+}
+.cd-tete {
+  font-size: 11px;
+  letter-spacing: 0.04em;
+  padding: 2px 8px;
+  border: 1px solid var(--n-trait);
+  color: var(--n-encre-douce);
+}
+.cd-tete.pnj {
+  border-style: dashed;
+  color: var(--n-encre-faible);
+}
+
+/* ---------- les conclusions deviennent les commandes ---------- */
+
+.cd-suites {
+  display: grid;
+  gap: 6px;
+  margin-bottom: 11px;
+}
+
+#ecran-conduite .cd-suite {
+  text-align: left;
+  text-transform: none;
+  letter-spacing: 0.01em;
+  font-size: 15px;
+  padding: 11px 14px;
+  border-left: 3px solid var(--n-ambre);
+  background: #221c16;
+  color: var(--n-encre);
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 12px;
+}
+#ecran-conduite .cd-suite:hover {
+  background: #2c241b;
+  border-color: var(--n-trait);
+  border-left-color: var(--n-ambre);
+  color: var(--n-encre);
+}
+#ecran-conduite .cd-suite.echap {
+  border-left-style: dashed;
+  border-left-color: var(--n-calme);
+}
+#ecran-conduite .cd-suite.sans-suite {
+  border-left-color: var(--n-alarme);
+}
+.cd-averti {
+  font-size: 10px;
+  letter-spacing: 0.11em;
+  text-transform: uppercase;
+  color: var(--n-alarme);
+  white-space: nowrap;
+}
+
+.cd-improviser {
+  font-size: 13.5px;
+  line-height: 1.45;
+  color: var(--n-alarme);
+  margin: 0 0 11px;
+  padding: 9px 12px;
+  border: 1px dashed var(--n-alarme);
+}
+
+.cd-actions {
+  display: flex;
+  gap: 6px;
+  border-top: 1px solid var(--n-trait);
+  padding-top: 10px;
+}
+
+/* ---------- lancement ---------- */
+
+.cd-alancer {
+  margin-top: 10px;
+  border-top: 1px solid var(--n-trait);
+  padding-top: 16px;
+}
+.cd-lancement {
+  display: flex;
+  gap: 9px;
+  align-items: center;
+  flex-wrap: wrap;
+  padding: 7px 0;
+  font-size: 15px;
+}
+.cd-lancement > span:first-child {
+  min-width: 160px;
+}
+#ecran-conduite select {
+  flex: 1;
+  min-width: 0;
+  font-family: var(--n-sans);
+  font-size: 13.5px;
+  color: var(--n-encre);
+  background: var(--n-carte);
+  border: 1px solid var(--n-trait);
+  border-radius: 0;
+  padding: 6px 8px;
+}
+
+/* ---------- flanc ---------- */
+
+.cd-flanc-bloc.alarme .cd-section {
+  color: var(--n-alarme);
+}
+
+.cd-liste {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 1px;
+  background: var(--n-trait);
+  border: 1px solid var(--n-trait);
+}
+.cd-liste li {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: baseline;
+  background: var(--n-carte);
+  padding: 8px 11px;
+  font-size: 14.5px;
+}
+.cd-liste b {
+  font-family: var(--mono);
+  font-size: 12.5px;
+  color: var(--n-alarme);
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+.cd-flanc-bloc:not(.alarme) .cd-liste b {
+  color: var(--n-ambre);
+}
+.cd-ok {
+  font-size: 13.5px;
+  color: var(--n-clos);
+  margin: 0;
+}
+
+/* ---------- main courante : la seule serif de l'écran ---------- */
+
+.cd-saisie {
+  display: flex;
+  gap: 6px;
+  margin-bottom: 10px;
+}
+#ecran-conduite #cd-note {
+  flex: 1;
+  min-width: 0;
+  font-family: var(--serif);
+  font-size: 15px;
+  color: var(--n-encre);
+  background: var(--n-carte);
+  border: 1px solid var(--n-trait);
+  border-radius: 0;
+  padding: 9px 11px;
+}
+#ecran-conduite #cd-note:focus {
+  border-color: var(--n-ambre);
+  outline: none;
+}
+#ecran-conduite #cd-note::placeholder {
+  color: var(--n-encre-faible);
+}
+
+.cd-journal {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  max-height: 46vh;
+  overflow-y: auto;
+  display: grid;
+  gap: 7px;
+}
+.cd-journal li {
+  display: grid;
+  grid-template-columns: 48px 1fr;
+  gap: 10px;
+  align-items: baseline;
+  padding-left: 8px;
+  border-left: 2px solid var(--n-trait);
+}
+.cd-journal li.t-bascule {
+  border-left-color: var(--n-ambre);
+}
+.cd-journal li.t-incident {
+  border-left-color: var(--n-alarme);
+}
+.cd-journal li.t-lancement {
+  border-left-color: var(--n-clos);
+}
+.cd-h {
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--n-encre-faible);
+  font-variant-numeric: tabular-nums;
+}
+.cd-txt {
+  font-family: var(--serif);
+  font-size: 14.5px;
+  line-height: 1.4;
+  color: var(--n-encre-douce);
+}
+
+/* ---------- avant le jeu ---------- */
+
+.cd-avant {
+  display: grid;
+  place-items: center;
+  min-height: 60vh;
+  padding: 40px 26px;
+}
+.cd-demarrage {
+  max-width: 52ch;
+  text-align: center;
+}
+.cd-titre {
+  font-size: clamp(26px, 4vw, 34px);
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  margin: 0 0 12px;
+}
+.cd-sous {
+  font-size: 15.5px;
+  line-height: 1.55;
+  color: var(--n-encre-douce);
+  margin: 0 0 22px;
+}
+.cd-champ {
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  font-size: 12px;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  color: var(--n-encre-faible);
+  margin-bottom: 20px;
+}
+#ecran-conduite .cd-champ input {
+  width: 82px;
+  font-family: var(--mono);
+  font-size: 17px;
+  color: var(--n-ambre);
+  background: var(--n-carte);
+  border: 1px solid var(--n-trait);
+  border-radius: 0;
+  padding: 7px 9px;
+  text-align: center;
+}
+#ecran-conduite .cd-gros {
+  display: block;
+  margin: 0 auto;
+  font-size: 13px;
+  padding: 13px 28px;
+  border-color: var(--n-ambre);
+  color: var(--n-ambre);
+}
+#ecran-conduite .cd-gros:hover {
+  background: var(--n-ambre);
+  color: var(--n-fond);
+}
+
+.cd-vide {
+  color: var(--n-encre-faible);
+  font-size: 15px;
+  margin: 0;
+}

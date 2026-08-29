@@ -49,7 +49,8 @@ reviendrait à aplatir la différence qui fait tout le projet.
                                         informationstore, conscience,
                                         derogations, temps,
                                         castingstore, affectation,
-                                        bilancasting
+                                        bilancasting, runstore,
+                                        conduite
 ```
 
 ### Couche 2b — Rendu (`js/widgets/`)
@@ -60,6 +61,7 @@ reviendrait à aplatir la différence qui fait tout le projet.
 | `fiche.js` | `Fiche` | L'écran d'écriture : huit champs saisis, jauge calculée, carnet. Rendu **en deux étages** (cf. §6). |
 | `journal/markdown.js` | `Markdown` | Gras / italique / code sur du texte **déjà échappé**. Copié tel quel de ShadowHerds. Pas de titres (collision `#`), pas de liens (collision `@[]()` + XSS `href`). |
 | `journal/mentions.js` | `Mentions` | Autocomplétion `@`, rendu des puces, et **proposition d'arête**. Réécrit : l'original dépend de six modules propres à son domaine. |
+| `conduite.js` | `Conduite` | Le tableau de la nuit. **Son propre monde visuel** (cf. §5g), et un battement qui ne touche qu'au temps. |
 | `casting.js` | `Casting` | L'écran des vœux : grille, import à colonne choisie, affectation, bilan. |
 | `frise.js` | `Frise` | L'écran du temps : planning, collisions, charge. Un clic sur un bloc ouvre l'atelier **sur cette situation** (`Atelier.viser`). |
 | `conscience.js` | `Conscience` | L'écran des douze règles. Tient les trois interdits **dans le rendu** autant que dans les stores (cf. §5d). |
@@ -80,6 +82,8 @@ reviendrait à aplatir la différence qui fait tout le projet.
 | `reseaustore.js` | `ReseauStore` | **La vérité racine.** Personnages, liens orientés, groupes. Détient les trois invariants du modèle (cf. §4). |
 | `utils.js` | `Utils` | `escHtml`, `searchNorm` (recherche sans accents), `plur`. Volontairement maigre : la version de ShadowHerds porte la résolution d'édition, dont il n'y a pas ici. |
 | `conscience.js` | `conscience()` | **Les douze règles, calculées.** Module pur : lit trois stores, n'en mute aucun, ne touche pas au DOM — S6 pourra le rejouer après casting. Ne connaît pas les dérogations : le calcul reste rejouable tel quel. |
+| `runstore.js` | `RunStore` | L'état vivant du GN : fils en cours, main courante, horloge de fiction avec pauses. |
+| `conduite.js` | `tableau()` | Ce que le tableau doit montrer : fils triés par urgence, **délaissés**, ce qui vient. Module pur. |
 | `castingstore.js` | `CastingStore` | Les candidatures, les vœux, l'affectation. **Ne connaît qu'un libellé** — la ligne rouge RGPD (cf. §5f). |
 | `affectation.js` | `hongrois()`, `COUTS` | L'algorithme hongrois (Kuhn-Munkres), O(n³), **exact**. Module pur : des nombres entrent, des nombres sortent. |
 | `bilancasting.js` | `caster()`, `bilan()` | Les cinq contrôles d'après-casting — et la correction à la vision (cf. §5f). |
@@ -332,6 +336,50 @@ contrecœur — alors que Marek est le miroir de deux enthousiastes.
 
 ---
 
+## 5g. La conduite — pourquoi elle ne ressemble pas au reste
+
+L'atelier est un **bureau** : on y écrit à J-30, assis, au calme, fond clair, serif pour la
+prose. La conduite est une **salle de veille** : 3 h du matin, sous la pluie, à une main, une
+équipe fatiguée qui doit lire un état *en traversant la pièce*. Les deux moments n'ont rien en
+commun ; leur donner la même peau serait une économie, pas une cohérence.
+
+`#ecran-conduite` définit donc ses propres tokens et **n'hérite pas du thème** — c'est le cas
+« monde délibérément unique » : cet écran est nocturne par nature, pas par préférence.
+
+| Choix | Raison, tirée de l'usage |
+|---|---|
+| **Fond noir chaud** (`#141110`) | Un écran clair détruit la vision nocturne et éclaire une nuit où la lumière est fictionnelle. Chaud parce que le bleu appartient à l'atelier : on doit savoir dans quelle moitié de l'outil on est, d'un coup d'œil. |
+| **Ambre** (`#f2a93b`) | La couleur des instruments de nuit, la plus lisible en basse lumière — et l'opposé exact du bleu de Prusse. |
+| **Horloge énorme** (46 px, mono, `tabular-nums`) | C'est la seule chose qu'on lit depuis l'autre bout de la pièce. Les chiffres tabulaires empêchent l'heure de « danser » à chaque battement. |
+| **Aucun angle arrondi, barre de signal à gauche** | C'est un tableau, pas un document. La barre est le seul héritage visuel de l'atelier, où elle porte déjà la tonalité d'un lien. |
+| **La serif ne survit que dans la main courante** | Elle veut dire « ceci a été écrit par une personne », exactement comme partout ailleurs. Le reste est en sans pour l'état, en mono pour les chiffres. |
+| **Une seule animation** | La barre d'un fil bloqué respire. Ce n'est pas de la décoration : c'est ce qu'il faut voir de loin. `prefers-reduced-motion` respecté. |
+
+**Contrastes mesurés, pas estimés.** Les dix couples texte/fond ont été calculés ; deux
+échouaient AA sur du petit texte (`encre-faible` à 3,28 · `clos` à 4,38) et ont été corrigés.
+Minimum actuel : **4,70**. C'est l'écran où ça compte le plus.
+
+### Ce que le tableau montre, et pourquoi
+
+**Les conclusions écrites en atelier sont les boutons du jeu.** C'est le sens de tout le modèle
+depuis S2 : on ne ressaisit rien, on avance dans ce qui a été écrit. Une conclusion sans suite
+écrite **bloque** le fil au lieu de sauter dans le vide — en atelier c'était une question
+ouverte, en jeu c'est un cul-de-sac qu'il faut voir tout de suite.
+
+**Le tableau se réordonne tout seul** : bloqués, puis impasses, puis les plus immobiles. On
+regarde le haut, on ne cherche jamais.
+
+**Les délaissés** sont la mesure la plus utile de l'écran, et le pendant direct de la
+conscience : à J-30 la question est « ce texte est-il bon ? », à 3 h du matin c'est « qui est en
+train de ne rien vivre ? ». Même intuition de Kröger — la qualité est relationnelle — mesurée
+en minutes au lieu de liens. Un fil **bloqué** ne met personne en scène : ses joueurs sont là
+mais il ne leur arrive rien, donc ils remontent dans les délaissés. C'est un choix, pas un oubli.
+
+**La main courante est la seule mémoire** : c'est d'elle qu'on dérive qui a joué quand. Tenir
+un second registre créerait deux vérités qui divergeraient à la première correction.
+
+---
+
 ## 6. Le rendu en deux étages — et pourquoi ce n'est pas de l'optimisation
 
 `Fiche.rendre()` construit tout ; `Fiche.rafraichirDerives()` ne remet à jour que la jauge et
@@ -353,6 +401,12 @@ survit pas au vidage de son store.** L'atelier garde son `_trameId` entre deux m
 est voulu — mais recharger le jeu d'essai détruit les trames et en crée de nouvelles, et l'id
 mémorisé pointait alors sur une trame morte : le graphe s'affichait **vide, sans rien dire**.
 `_recadrer()` revalide la sélection au montage et à chaque rafraîchissement.
+
+La conduite a la même maladie sous une quatrième forme : son battement rafraîchit toutes les
+15 s, et reconstruire l'écran écraserait la saisie de la main courante en pleine frappe.
+`battre()` ne touche qu'aux nœuds qui dépendent du temps. La minuterie est arrêtée à la sortie
+de l'écran (`demonter()`) — vérifié : trois allers-retours, trois minuteries posées, trois
+libérées.
 
 L'atelier a la même maladie sous une autre forme : `GraphEngine.mount()` se remonte
 entièrement et **remet la vue à zéro**, donc un auteur qui a cadré son fil le perdrait à
@@ -391,5 +445,6 @@ L'épine est décrite hors dépôt dans `PLANS/VISION_ATELIER_DE_TRAMES.md`. En 
 crée l'arête *(livré)* · **S2** l'atelier de trames *(livré)* · **S3** les informations *(livré)* · **S4** la conscience
 (douze validateurs) *(livré)* · **S5** le temps *(livré)* · **S6** le casting *(livré)*.
 
-**L'épine est complète.** La suite est la salle de conduite — le GN en direct — qui réutilise
-le cockpit de ShadowHerds presque tel quel.
+**L'épine est complète, et la salle de conduite est livrée.** Elle ne réutilise finalement
+*pas* le cockpit de ShadowHerds : le contexte d'usage n'est pas le même, et la peau a été
+refaite pour la nuit (§ 5g).

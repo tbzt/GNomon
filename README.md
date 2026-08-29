@@ -94,7 +94,14 @@ Puis cinq contrôles d'après-casting, dont le plus utile est le **miroir désac
 personnages liés en miroir dont les joueurs n'ont pas la même envie. Le miroir veut que
 l'intrigue pèse autant des deux côtés — là, elle penchera.
 
-À venir : la salle de conduite, le GN en direct.
+**La conduite** — le tableau de la nuit. Les conclusions écrites à J-30 deviennent les boutons
+qu'on presse à 3 h du matin ; le tableau se réordonne par ce qui a le plus besoin d'attention ;
+et il dit **qui est en train de ne rien vivre** — la question que remplace « ce texte est-il
+bon ? » une fois que le jeu a commencé.
+
+Cet écran a son propre monde visuel — noir chaud, ambre, horloge énorme, aucun angle arrondi —
+et ce n'est pas une coquetterie : un bureau à J-30 et une salle de veille à 3 h du matin ne se
+lisent pas de la même façon.
 
 ---
 
