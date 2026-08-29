@@ -47,7 +47,7 @@ reviendrait à aplatir la différence qui fait tout le projet.
 1. Socle             js/core/           storage, debug, utils, reseaustore,
                                         couverture, tramestore,
                                         informationstore, conscience,
-                                        derogations
+                                        derogations, temps
 ```
 
 ### Couche 2b — Rendu (`js/widgets/`)
@@ -58,6 +58,7 @@ reviendrait à aplatir la différence qui fait tout le projet.
 | `fiche.js` | `Fiche` | L'écran d'écriture : huit champs saisis, jauge calculée, carnet. Rendu **en deux étages** (cf. §6). |
 | `journal/markdown.js` | `Markdown` | Gras / italique / code sur du texte **déjà échappé**. Copié tel quel de ShadowHerds. Pas de titres (collision `#`), pas de liens (collision `@[]()` + XSS `href`). |
 | `journal/mentions.js` | `Mentions` | Autocomplétion `@`, rendu des puces, et **proposition d'arête**. Réécrit : l'original dépend de six modules propres à son domaine. |
+| `frise.js` | `Frise` | L'écran du temps : planning, collisions, charge. Un clic sur un bloc ouvre l'atelier **sur cette situation** (`Atelier.viser`). |
 | `conscience.js` | `Conscience` | L'écran des douze règles. Tient les trois interdits **dans le rendu** autant que dans les stores (cf. §5d). |
 | `matrice.js` | `Matrice` | L'écran « Qui sait quoi » : informations × personnages, une cellule se règle au clic. |
 | `atelier.js` | `Atelier` | L'écran des trames : graphe, éditeur de situation, file « et après ? ». Remonte le graphe **sur signature**, pas sur événement (cf. §6). |
@@ -76,6 +77,7 @@ reviendrait à aplatir la différence qui fait tout le projet.
 | `reseaustore.js` | `ReseauStore` | **La vérité racine.** Personnages, liens orientés, groupes. Détient les trois invariants du modèle (cf. §4). |
 | `utils.js` | `Utils` | `escHtml`, `searchNorm` (recherche sans accents), `plur`. Volontairement maigre : la version de ShadowHerds porte la résolution d'édition, dont il n'y a pas ici. |
 | `conscience.js` | `conscience()` | **Les douze règles, calculées.** Module pur : lit trois stores, n'en mute aucun, ne touche pas au DOM — S6 pourra le rejouer après casting. Ne connaît pas les dérogations : le calcul reste rejouable tel quel. |
+| `temps.js` | `frise()`, `heure()` | La frise, les collisions, la charge. Module pur. Sépare **erreur de PJ** et **besoin de PNJ** (cf. §5e). |
 | `derogations.js` | `Derogations` | Les alertes écartées **et leur justification écrite**. `ecarter()` refuse une justification vide — c'est l'invariant du module, pas une validation de formulaire. |
 | `informationstore.js` | `InformationStore` | Les **informations** : le fait, son influence, et **qui sait quoi**. `sait` / `croit` par personnage ; **« ignore » n'est jamais stocké — c'est l'absence** (cf. §5c). |
 | `tramestore.js` | `TrameStore` | Les **trames**, les **situations** et leurs **conclusions**. Une conclusion sans cible est valide — c'est le moteur de la boucle « et après ? » (cf. §5b). |
@@ -247,6 +249,31 @@ de règle du tout.
 
 ---
 
+## 5e. Le temps — une collision de PJ est une erreur, une de PNJ est un besoin
+
+`tempsDédié` et `espaceDédié` sont deux des treize champs d'eXpérience. Posés sur une frise,
+ils montrent ce qu'aucune relecture de quarante fiches ne montre : qui est attendu à deux
+endroits en même temps.
+
+**Le calcul est le même, la conclusion ne l'est pas.**
+
+Un **PJ** dans deux situations simultanées, c'est un joueur, un corps, et une scène qui n'aura
+pas lieu. Il faut réécrire — décaler, couper, retirer quelqu'un du casting. Rouge.
+
+Un **PNJ** dans trois situations simultanées n'est pas une faute : c'est **trois comédiens à
+recruter**. Le PNJ est une fonction, pas une personne ; l'équipe peut en jouer autant qu'elle
+en trouve. Violet. **Ce chiffre ne se corrige pas dans l'atelier — il part à l'organisation**,
+et c'est le pont entre les deux moitiés du projet.
+
+Les confondre dirait à l'auteur de « réparer » un planning de PNJ qui n'a rien de cassé, et lui
+laisserait croire qu'une collision de PJ se règle en recrutant.
+
+**Une situation sans horaire n'est pas une erreur.** Elle n'est pas plaçable, voilà tout —
+beaucoup de scènes de GN n'ont pas d'heure, elles ont un déclencheur. Elles sont rangées à
+part, jamais signalées comme un défaut.
+
+---
+
 ## 6. Le rendu en deux étages — et pourquoi ce n'est pas de l'optimisation
 
 `Fiche.rendre()` construit tout ; `Fiche.rafraichirDerives()` ne remet à jour que la jauge et
@@ -262,6 +289,12 @@ Deux gardes découlent de là, et toutes deux ont été posées après avoir vu 
    et le texte à l'écran disparaît.
 2. **`Fiche.flush()` avant toute navigation et au blur du carnet.** Quitter l'écran dans les
    400 ms perdrait les dernières frappes.
+
+Troisième garde, du même genre, posée après avoir vu le bug : **la sélection d'un module ne
+survit pas au vidage de son store.** L'atelier garde son `_trameId` entre deux montages, ce qui
+est voulu — mais recharger le jeu d'essai détruit les trames et en crée de nouvelles, et l'id
+mémorisé pointait alors sur une trame morte : le graphe s'affichait **vide, sans rien dire**.
+`_recadrer()` revalide la sélection au montage et à chaque rafraîchissement.
 
 L'atelier a la même maladie sous une autre forme : `GraphEngine.mount()` se remonte
 entièrement et **remet la vue à zéro**, donc un auteur qui a cadré son fil le perdrait à
@@ -298,4 +331,4 @@ python3 -m http.server 8000
 L'épine est décrite hors dépôt dans `PLANS/VISION_ATELIER_DE_TRAMES.md`. En résumé :
 **S0** l'arête typée *(livré)* · **S1** la fiche, la jauge de couverture et le `@mention` qui
 crée l'arête *(livré)* · **S2** l'atelier de trames *(livré)* · **S3** les informations *(livré)* · **S4** la conscience
-(douze validateurs) *(livré)* · **S5** le temps · **S6** le casting.
+(douze validateurs) *(livré)* · **S5** le temps *(livré)* · **S6** le casting.

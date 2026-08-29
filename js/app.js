@@ -3,9 +3,10 @@
 /* ============================================================
    APP — bootstrap, écrans, routage.
 
-   Cinq écrans depuis S4 : « Le réseau » (le casting), « La fiche »
+   Six écrans depuis S5 : « Le réseau » (le casting), « La fiche »
    (l'écriture d'un personnage), « Les trames » (l'atelier), « Qui sait
-   quoi » (la matrice) et « La conscience » (les douze règles).
+   quoi » (la matrice), « La conscience » (les douze règles) et
+   « Le temps » (la frise).
 
    ── LA CONSCIENCE VIT DANS LA BARRE ──
    La vision la voulait en panneau latéral permanent. Un panneau sur
@@ -31,13 +32,17 @@ import { TrameStore } from "./core/tramestore.js";
 import { InformationStore } from "./core/informationstore.js";
 import { Derogations } from "./core/derogations.js";
 import { conscience } from "./core/conscience.js";
+import { frise as calculerFrise } from "./core/temps.js";
 import { chargerValmorel } from "./data/valmorel.js";
 import { Reseau } from "./widgets/reseau.js";
 import { Fiche } from "./widgets/fiche.js";
 import { Atelier } from "./widgets/atelier.js";
 import { Matrice } from "./widgets/matrice.js";
 import { Conscience } from "./widgets/conscience.js";
+import { Frise } from "./widgets/frise.js";
 import { Utils } from "./core/utils.js";
+
+const friseEtat = () => calculerFrise(ReseauStore, TrameStore);
 
 export const App = {
   _ecran: "reseau",
@@ -55,6 +60,7 @@ export const App = {
       atelier: document.getElementById("ecran-atelier"),
       matrice: document.getElementById("ecran-matrice"),
       conscience: document.getElementById("ecran-conscience"),
+      frise: document.getElementById("ecran-frise"),
     };
 
     Reseau.monter(this._hotes.reseau, ReseauStore, {
@@ -80,6 +86,7 @@ export const App = {
     if (/^#\/trames/.test(h)) return this.ouvrirAtelier({ silencieux: true });
     if (/^#\/informations/.test(h)) return this.ouvrirMatrice({ silencieux: true });
     if (/^#\/conscience/.test(h)) return this.ouvrirConscience({ silencieux: true });
+    if (/^#\/temps/.test(h)) return this.ouvrirFrise({ silencieux: true });
     this.ouvrirReseau({ silencieux: true });
   },
 
@@ -131,16 +138,18 @@ export const App = {
     if (!silencieux) location.hash = `#/fiche/${id}`;
   },
 
-  ouvrirAtelier({ silencieux = false } = {}) {
+  ouvrirAtelier({ silencieux = false, situationId = null } = {}) {
     // Même garde que pour la fiche : le hashchange rappellerait ici, et
     // remonter le graphe remettrait la vue de l'auteur à zéro.
     if (this._ecran === "atelier") {
+      if (situationId) Atelier.viser(situationId);
       if (!silencieux && location.hash !== "#/trames") location.hash = "#/trames";
       return;
     }
     this._quitter();
     this._basculer("atelier", "Les trames");
     Atelier.monter(this._hotes.atelier, TrameStore, ReseauStore, InformationStore);
+    if (situationId) Atelier.viser(situationId);
     if (!silencieux) location.hash = "#/trames";
   },
 
@@ -172,6 +181,19 @@ export const App = {
     if (!silencieux) location.hash = "#/conscience";
   },
 
+  ouvrirFrise({ silencieux = false } = {}) {
+    if (this._ecran === "frise") {
+      if (!silencieux && location.hash !== "#/temps") location.hash = "#/temps";
+      return;
+    }
+    this._quitter();
+    this._basculer("frise", "Le temps");
+    Frise.monter(this._hotes.frise, ReseauStore, TrameStore, {
+      onOuvrir: (situationId) => this.ouvrirAtelier({ situationId }),
+    });
+    if (!silencieux) location.hash = "#/temps";
+  },
+
   /* ---------------- réactions ---------------- */
 
   _surChangement() {
@@ -185,6 +207,8 @@ export const App = {
       Matrice.rendre();
     } else if (this._ecran === "conscience") {
       Conscience.rendre();
+    } else if (this._ecran === "frise") {
+      Frise.rendre();
     } else {
       Reseau.rendre();
     }
@@ -200,6 +224,7 @@ export const App = {
     document
       .getElementById("act-conscience")
       .addEventListener("click", () => this.ouvrirConscience());
+    document.getElementById("act-temps").addEventListener("click", () => this.ouvrirFrise());
 
     document.getElementById("act-nouveau").addEventListener("click", () => {
       if (this._ecran !== "reseau" && this._ecran !== "fiche") return;
@@ -262,6 +287,13 @@ export const App = {
   _compteurs() {
     this._badgeConscience();
     const el = document.getElementById("compteurs");
+    if (this._ecran === "frise") {
+      const f = friseEtat();
+      el.textContent =
+        `${f.erreurs.length} ${Utils.plur(f.erreurs.length, "collision")} · ` +
+        `${f.besoins.reduce((n, b) => n + b.comediens, 0)} rôles de PNJ`;
+      return;
+    }
     if (this._ecran === "conscience") {
       const d = Derogations.compte();
       el.textContent = d ? `${d} ${Utils.plur(d, "dérogation")}` : "aucune dérogation";

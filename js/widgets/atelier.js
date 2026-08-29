@@ -56,8 +56,20 @@ export const Atelier = {
     this._trames = trames;
     this._reseau = reseau;
     this._infos = infos;
-    if (!this._trameId) this._trameId = (trames.trames()[0] || {}).id || null;
+    this._recadrer();
     this.rendre();
+  },
+
+  /** L'atelier est un module : sa sélection survit au démontage. Elle ne
+      survit PAS au vidage des trames (jeu d'essai rechargé, remise à
+      zéro) — l'id mémorisé pointe alors sur une trame détruite, et le
+      graphe s'affiche vide sans rien dire. On revalide au montage, et
+      on retombe sur la première trame. */
+  _recadrer() {
+    if (this._trameId && !this._trames.trame(this._trameId)) this._trameId = null;
+    if (this._situationId && !this._trames.situation(this._situationId))
+      this._situationId = null;
+    if (!this._trameId) this._trameId = (this._trames.trames()[0] || {}).id || null;
   },
 
   demonter() {
@@ -67,6 +79,20 @@ export const Atelier = {
 
   trameId() {
     return this._trameId;
+  },
+
+  /** Ouvre l'atelier SUR une situation précise, en basculant sur sa
+      trame au passage. Sert à la frise : cliquer un bloc du planning
+      amène là où on peut le corriger, plutôt que d'obliger à retrouver
+      la situation à la main. */
+  viser(situationId) {
+    const s = this._trames.situation(situationId);
+    if (!s) return false;
+    this._trameId = s.trameId;
+    this._situationId = s.id;
+    this._signature = "";
+    this.rafraichir();
+    return true;
   },
 
   /* ================= rendu complet ================= */
@@ -90,6 +116,7 @@ export const Atelier = {
   /** Re-projette : graphe si sa signature a changé, éditeur et file
       toujours (ils sont bon marché et n'ont pas d'état de vue). */
   rafraichir() {
+    this._recadrer();
     const sig = this._calculerSignature();
     if (sig !== this._signature) {
       this._signature = sig;

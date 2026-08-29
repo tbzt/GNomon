@@ -1786,3 +1786,193 @@ table.matrice .cell:hover {
     gap: 4px;
   }
 }
+
+/* ============================================================
+   S5 — la frise : le planning, les collisions, la charge.
+   ============================================================ */
+
+.fr-grille {
+  min-width: 720px;
+  padding: 12px 14px 14px;
+}
+
+.fr-entete,
+.fr-ligne {
+  display: grid;
+  grid-template-columns: 160px 1fr;
+  gap: 12px;
+  align-items: center;
+}
+
+.fr-entete {
+  margin-bottom: 8px;
+}
+.fr-heures {
+  display: grid;
+  font-family: var(--mono);
+  font-size: 9.5px;
+  letter-spacing: 0.04em;
+  color: var(--ink-faint);
+}
+
+.fr-ligne {
+  height: 34px;
+}
+
+.fr-nom {
+  font-size: 14.5px;
+  text-align: right;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.fr-nom.pnj {
+  font-style: italic;
+  color: var(--ink-soft);
+}
+
+.fr-piste {
+  position: relative;
+  height: 24px;
+  border-left: 1px solid var(--rule);
+  border-right: 1px solid var(--rule);
+}
+
+.fr-quadrillage {
+  position: absolute;
+  inset: 0;
+  display: grid;
+}
+.fr-quadrillage i {
+  border-right: 1px solid var(--rule-soft);
+}
+
+.fr-bloc {
+  position: absolute;
+  top: 2px;
+  height: 20px;
+  padding: 0 6px;
+  border: 1px solid var(--accent);
+  border-radius: 2px;
+  background: var(--accent-soft);
+  color: var(--accent-ink);
+  font-family: var(--mono);
+  font-size: 9.5px;
+  line-height: 18px;
+  letter-spacing: 0.02em;
+  text-transform: none;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  cursor: pointer;
+}
+.fr-bloc:hover {
+  filter: brightness(1.08);
+}
+
+/* Une collision de PJ est une erreur — rouge. */
+.fr-bloc.erreur {
+  border-color: var(--negatif);
+  color: var(--negatif);
+  background: var(--warn-bg, transparent);
+}
+/* Une simultanéité de PNJ est un besoin — violet, pas rouge. */
+.fr-bloc.charge {
+  border-color: var(--complique);
+  color: var(--complique);
+  background: transparent;
+  border-style: dashed;
+}
+
+/* ---------- bandeaux ---------- */
+
+.fr-ok {
+  font-family: var(--mono);
+  font-size: 11px;
+  letter-spacing: 0.05em;
+  color: var(--positif);
+  margin: 18px 0 0;
+}
+
+.fr-bandeau {
+  margin-top: 18px;
+  border: 1px solid var(--rule);
+  border-left-width: 3px;
+  border-radius: 3px;
+  padding: 12px 15px;
+  background: var(--surface);
+}
+.fr-bandeau.erreurs {
+  border-left-color: var(--negatif);
+}
+.fr-bandeau.besoins {
+  border-left-color: var(--complique);
+}
+.fr-bandeau.neutre {
+  border-left-color: var(--rule);
+}
+
+.fr-bandeau-titre {
+  font-family: var(--mono);
+  font-size: 11px;
+  letter-spacing: 0.11em;
+  text-transform: uppercase;
+  margin: 0 0 9px;
+  display: flex;
+  gap: 12px;
+  align-items: baseline;
+  flex-wrap: wrap;
+}
+.fr-bandeau.erreurs .fr-bandeau-titre {
+  color: var(--negatif);
+}
+.fr-bandeau.besoins .fr-bandeau-titre {
+  color: var(--complique);
+}
+.fr-bandeau.neutre .fr-bandeau-titre {
+  color: var(--ink-faint);
+}
+.fr-bandeau-titre span {
+  font-family: var(--serif);
+  font-size: 14px;
+  letter-spacing: 0;
+  text-transform: none;
+  color: var(--ink-faint);
+}
+
+.fr-bandeau ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 5px;
+}
+.fr-bandeau li {
+  font-size: 14.5px;
+  line-height: 1.45;
+}
+
+.fr-bandeau-pied {
+  margin: 10px 0 0;
+  padding-top: 9px;
+  border-top: 1px dashed var(--rule);
+  font-size: 13.5px;
+  line-height: 1.45;
+  color: var(--ink-soft);
+}
+
+.lien-nu {
+  border: 0;
+  background: none;
+  padding: 0;
+  font-family: var(--serif);
+  font-size: 14.5px;
+  text-transform: none;
+  letter-spacing: 0;
+  color: var(--accent-ink);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+.lien-nu:hover {
+  border: 0;
+}

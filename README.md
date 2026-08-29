@@ -43,7 +43,7 @@ une erreur.
 
 ## État
 
-**Lots S0 à S4 livrés.**
+**Lots S0 à S5 livrés.**
 
 **S0 — la vérité racine.** Personnages, liens orientés, groupes, avec les trois invariants du
 modèle tenus dans le store.
@@ -78,7 +78,13 @@ existant n'en implémente une seule.** Trois interdits, et ils viennent du corpu
 jamais bloquant ; toute alerte s'écarte **avec une justification écrite**, qui reste lisible
 pour le crosschecker ; et jamais de score global — douze compteurs, jamais une moyenne.
 
-À venir : le temps (frise, collisions, charge PNJ), le casting.
+**S5 — le temps.** Une frise, une ligne par personnage. Elle montre ce qu'aucune relecture ne
+montre : qui est attendu à deux endroits à la fois. Avec une distinction qui commande tout —
+une collision de **PJ** est une erreur (un joueur, un corps : il faut réécrire), une
+simultanéité de **PNJ** est un **besoin de recrutement** (trois scènes en même temps, trois
+comédiens). Le second chiffre ne se corrige pas dans l'atelier : il part à l'organisation.
+
+À venir : le casting.
 
 ---
 
