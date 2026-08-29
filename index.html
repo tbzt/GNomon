@@ -1,0 +1,31 @@
+<!doctype html>
+<html lang="fr">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>GNomon — atelier de trames</title>
+    <meta
+      name="description"
+      content="Atelier d'écriture de jeu de rôle grandeur nature : réseau de personnages, trames, informations. 100 % local, aucune donnée transmise."
+    />
+    <link rel="stylesheet" href="css/gnomon.css" />
+  </head>
+  <body>
+    <div class="barre">
+      <p class="titre">GNomon</p>
+      <span class="baseline">Le réseau</span>
+      <span class="spacer"></span>
+      <span id="compteurs"></span>
+      <button id="act-seed" type="button">Jeu d'essai</button>
+      <button id="act-vider" type="button">Vider</button>
+    </div>
+
+    <p id="statut" hidden></p>
+
+    <main>
+      <div id="reseau"></div>
+    </main>
+
+    <script type="module" src="js/app.js"></script>
+  </body>
+</html>
