@@ -52,7 +52,7 @@ reviendrait à aplatir la différence qui fait tout le projet.
                                         bilancasting, runstore,
                                         conduite, mondestore, livret,
                                         archive, poids, besoins,
-                                        suivistore, liensstore
+                                        suivistore, liensstore, defection
 ```
 
 ### Couche 2b — Rendu (`js/widgets/`)
@@ -65,6 +65,7 @@ reviendrait à aplatir la différence qui fait tout le projet.
 | `journal/mentions.js` | `Mentions` | Autocomplétion `@`, rendu des puces, et **proposition d'arête**. Réécrit : l'original dépend de six modules propres à son domaine. |
 | `monde.js` | `Monde` | L'écran des fondamentaux. Écran de **document** : serif, colonne de lecture. |
 | `livrets.js` | `Livrets` | Relecture avant remise, avec l'aperçu réel dans une `iframe`. |
+| `reseaugraphe.js` | `ReseauGraphe` | La **seconde lentille** du réseau : arêtes fusionnées par paire, poches de groupe, et le geste de défection. |
 | `besoins.js` | `Besoins` | L'écran des besoins dérivés, avec le suivi et les liens attachés. |
 | `conduite.js` | `Conduite` | Le tableau de la nuit. **Son propre monde visuel** (cf. §5g), et un battement qui ne touche qu'au temps. |
 | `casting.js` | `Casting` | L'écran des vœux : grille, import à colonne choisie, affectation, bilan. |
@@ -89,6 +90,7 @@ reviendrait à aplatir la différence qui fait tout le projet.
 | `conscience.js` | `conscience()` | **Les douze règles, calculées.** Module pur : lit trois stores, n'en mute aucun, ne touche pas au DOM — S6 pourra le rejouer après casting. Ne connaît pas les dérogations : le calcul reste rejouable tel quel. |
 | `mondestore.js` | `MondeStore` | **Les fondamentaux** — prémisse, propos, thématique, contexte commun, lieux. Les étapes 1 à 3 d'eXpérience, qui manquaient (cf. §5j). |
 | `livret.js` | `livret()`, `livretHtml()` | Le background remis à un joueur. **Calculé par soustraction** (cf. §5j). |
+| `defection.js` | `defection()`, `classementFragilite()` | « Et s'il ne vient pas ? » — les quatre dégâts d'une absence. Module pur (cf. §5n). |
 | `besoins.js` | `besoins()` | Ce que l'écriture réclame, **dérivé** du texte déjà écrit. Jamais stocké (cf. §5l). |
 | `suivistore.js` | `SuiviStore` | La couche humaine posée sur les besoins : **un responsable, un état**. Pas de date (cf. §5l). |
 | `liensstore.js` | `LiensStore` | Des **adresses**, jamais leur contenu. Validation d'URL par construction, pas par expression régulière. |
@@ -620,6 +622,52 @@ n'accepte que `http:` et `https:`, vérifiés **en construisant une `URL`** — 
 expression régulière, qui se contourne. Le rendu porte `rel="noopener noreferrer"` : sans
 `noopener`, la page ouverte peut réécrire celle qui l'a ouverte. Et le nom d'hôte est affiché à
 côté du titre, pour qu'on sache où l'on va avant de cliquer.
+
+---
+
+## 5n. Le graphe du réseau — et le geste qui manquait
+
+### Une arête visuelle par paire, pas par lien
+
+Le modèle est orienté : Elena→Marek et Marek→Elena sont **deux** liens. Dessinés tels quels ils
+se superposeraient exactement, et l'un des deux serait invisible. On les **fusionne au rendu**,
+et c'est le trait qui dit leur rapport :
+
+| Trait | Sens |
+|---|---|
+| **plein** | les deux sens existent et concordent |
+| **tireté** | les deux existent mais diffèrent — l'asymétrie, qui est le matériau du GN, se voit enfin d'un coup d'œil |
+| **pointillé** + flèche | un seul sens : quelqu'un compte pour l'autre sans réciproque |
+
+L'épaisseur porte l'importance (le moteur a été étendu d'un `e.width` — l'original laissait
+l'épaisseur à la CSS, ce qui suffit à un graphe homogène mais pas ici), la couleur la tonalité,
+`◎` le contact-miroir. Le vocabulaire est **le même que la liste** (⇄ · ⇄̸ · →) : on passe d'une
+lentille à l'autre sans réapprendre à lire.
+
+### Pas de simulation de forces
+
+Le moteur en propose une ; on ne s'en sert pas. Un force-layout brouille les groupes et se
+réorganise à chaque ouverture, alors que **la structure sociale d'un GN EST ses groupes**. On
+arrange donc par groupes, de façon déterministe — groupes sur un cercle, membres en couronne —
+et l'auteur déplace ensuite. Sa disposition est persistée (`poserPersonnage`, silencieuse comme
+`poserSituation`).
+
+### Le geste
+
+On active le mode, on touche quelqu'un, tout ce qui dépend de lui vire au rouge. Quatre dégâts,
+et ils ne se valent pas : les **scènes orphelines** (il en est le point de vue — personne ne
+peut la porter), les **scènes fragilisées** (il est au casting), les **miroirs perdus**
+(quelqu'un se retrouve seul le soir même), et les **informations orphelines** — le plus traître,
+parce que rien ne se voit : ce qui devait circuler ne circulera pas et les scènes qui en
+dépendent tomberont en silence.
+
+Le classement de fragilité fait le geste quarante fois d'un coup : à J-15, il dit sur qui
+prévoir une doublure.
+
+> **Un défaut instructif, corrigé.** Le bouton de mode interpolait son texte et son
+> `aria-pressed` depuis l'état, mais gardait sa classe en dur. Deux vérités pour un même état :
+> au moindre re-rendu — et l'app en déclenche à chaque écriture — le texte restait juste et la
+> couleur disparaissait. Le rendu est redevenu la source unique.
 
 ---
 

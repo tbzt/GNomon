@@ -13,6 +13,12 @@
    (0 CPU au repos) ; un glisser la relance brièvement. Le « feel »
    (juice : soulevé, ressorts voisins, momentum) = phase B2, pas ici.
    VIS-15 B1, cf. PLAN_MOTEUR_GRAPHE_UNIFIE.md.
+
+   ── COPIE GNomon ──
+   Repris tel quel (zéro import, aucune vérité détenue). Un seul ajout :
+   `e.width`, l'épaisseur par arête — l'original la laissait à la CSS,
+   ce qui suffit à un graphe homogène, mais l'importance d'un lien est
+   ici une donnée du modèle et doit se lire au trait.
    ============================================================ */
 
 const NS = "http://www.w3.org/2000/svg";
@@ -676,6 +682,11 @@ export const GraphEngine = {
   _applyEdgeStyle(e, accent) {
     const stroke = e.color || accent;
     e._line.setAttribute("stroke", stroke);
+    // Ajout GNomon : épaisseur par arête. L'original la laissait à la
+    // CSS, ce qui suffit à un graphe où toutes les arêtes se valent —
+    // ici l'IMPORTANCE d'un lien est une donnée du modèle, et elle se
+    // lit d'abord au trait.
+    if (e.width) e._line.setAttribute("stroke-width", e.width);
     // P3 — motif de trait neutre (`pattern`), rétrocompat avec l'ancien `dashed`.
     const pat = e.pattern || (e.dashed ? "dashed" : "solid");
     e._line.style.strokeDasharray = PATTERN_DASH[pat] || "";
@@ -945,6 +956,14 @@ export const GraphEngine = {
       ev.preventDefault();
       this._zoomAt(s, ev.deltaY < 0 ? 1.12 : 1 / 1.12, ev.clientX, ev.clientY);
     }, { passive: false });
+  },
+
+  /** Ajout GNomon : les positions vivantes, pour les persister sans
+      fouiller l'état interne depuis l'extérieur. */
+  positions() {
+    const s = this._state;
+    if (!s) return [];
+    return s.N.map((n) => ({ id: n.id, x: n.x, y: n.y }));
   },
 
   destroy() {

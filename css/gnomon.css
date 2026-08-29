@@ -3856,3 +3856,261 @@ main[data-ecran="monde"] {
     grid-column: 1 / -1;
   }
 }
+
+/* ============================================================
+   LE GRAPHE DU RÉSEAU — la lentille qui manquait.
+   ============================================================ */
+
+.lentilles {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  margin: 0 0 16px;
+  border-bottom: 1px solid var(--rule);
+  padding-bottom: 0;
+}
+.lentille {
+  font-family: var(--sans);
+  font-size: 13.5px;
+  text-transform: none;
+  letter-spacing: 0;
+  padding: 9px 14px;
+  border: 0;
+  border-bottom: 2px solid transparent;
+  border-radius: 0;
+  background: none;
+  color: var(--ink-soft);
+}
+.lentille:hover {
+  border-color: var(--rule);
+  color: var(--ink);
+  background: none;
+}
+.lentille.actif {
+  color: var(--accent-ink);
+  border-bottom-color: var(--accent);
+  font-weight: 600;
+}
+.lentilles .spacer {
+  flex: 1;
+}
+.lentilles .creer-perso {
+  margin: 0 0 6px;
+}
+
+.rg-barre {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-bottom: 12px;
+}
+
+.rg-mode {
+  font-family: var(--sans);
+  font-size: 13px;
+  text-transform: none;
+  letter-spacing: 0;
+  padding: 7px 13px;
+}
+.rg-mode.actif {
+  background: var(--negatif);
+  border-color: var(--negatif);
+  color: var(--surface);
+  font-weight: 600;
+}
+.rg-mode.actif:hover {
+  color: var(--surface);
+  border-color: var(--negatif);
+}
+
+.rg-legende {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+  align-items: center;
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--ink-faint);
+  margin-left: auto;
+}
+.rg-legende span {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+.rg-legende i {
+  width: 15px;
+  height: 3px;
+  display: inline-block;
+}
+
+.rg-corps {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(280px, 350px);
+  gap: 18px;
+  align-items: start;
+}
+@media (max-width: 940px) {
+  .rg-corps {
+    grid-template-columns: 1fr;
+  }
+}
+
+.rg-canvas {
+  position: relative;
+  height: min(66vh, 580px);
+  min-height: 340px;
+  overflow: hidden;
+  border: 1px solid var(--rule);
+  border-radius: 3px;
+  background: var(--panel);
+}
+
+.rg-flanc {
+  background: var(--surface);
+  border: 1px solid var(--rule);
+  border-radius: 3px;
+  padding: 15px 16px;
+  max-height: min(66vh, 580px);
+  overflow-y: auto;
+}
+
+.rg-titre {
+  font-family: var(--sans);
+  font-size: 18px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  margin: 0 0 4px;
+}
+.rg-titre.alarme {
+  color: var(--negatif);
+}
+
+.rg-aide {
+  font-size: 13.5px;
+  line-height: 1.5;
+  color: var(--ink-soft);
+  margin: 0 0 10px;
+}
+.rg-aide.ok {
+  color: var(--positif);
+}
+
+.rg-sous {
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: 0.11em;
+  text-transform: uppercase;
+  color: var(--ink-faint);
+  margin: 14px 0 6px;
+}
+.rg-sous.grave {
+  color: var(--negatif);
+}
+
+.rg-liste {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 1px;
+  background: var(--rule);
+  border: 1px solid var(--rule);
+  border-radius: 2px;
+}
+.rg-liste li {
+  background: var(--surface);
+}
+.rg-liste button {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 10px;
+  width: 100%;
+  text-align: left;
+  font-family: var(--sans);
+  font-size: 14.5px;
+  text-transform: none;
+  letter-spacing: 0;
+  border: 0;
+  border-radius: 0;
+  background: none;
+  padding: 8px 11px;
+}
+.rg-liste button:hover {
+  background: var(--panel);
+  color: inherit;
+}
+.rg-liste button b {
+  font-family: var(--mono);
+  font-size: 12px;
+  color: var(--negatif);
+  font-variant-numeric: tabular-nums;
+}
+
+.rg-liens li {
+  display: grid;
+  grid-template-columns: 22px 1fr;
+  gap: 8px;
+  padding: 8px 11px;
+  font-size: 14.5px;
+  align-items: baseline;
+}
+.rg-liens i {
+  display: block;
+  font-style: normal;
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: 0.04em;
+  color: var(--ink-faint);
+  margin-top: 2px;
+}
+.rg-fleche {
+  font-family: var(--mono);
+  color: var(--ink-faint);
+}
+.rg-liens li.t-positif {
+  box-shadow: inset 3px 0 0 var(--positif);
+}
+.rg-liens li.t-negatif {
+  box-shadow: inset 3px 0 0 var(--negatif);
+}
+.rg-liens li.t-neutre {
+  box-shadow: inset 3px 0 0 var(--neutre);
+}
+.rg-liens li.t-complique {
+  box-shadow: inset 3px 0 0 var(--complique);
+}
+.rg-vide {
+  padding: 8px 11px;
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--ink-faint);
+}
+
+.rg-degats {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 5px;
+}
+.rg-degats li {
+  font-size: 14px;
+  line-height: 1.45;
+  border-left: 2px solid var(--negatif);
+  padding-left: 9px;
+}
+
+.rg-ouvrir {
+  margin-top: 12px;
+  width: 100%;
+  font-family: var(--sans);
+  font-size: 13px;
+  text-transform: none;
+  letter-spacing: 0;
+  padding: 8px;
+}

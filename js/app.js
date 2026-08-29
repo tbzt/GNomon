@@ -137,6 +137,7 @@ export const App = {
     Reseau.monter(this._hotes.reseau, ReseauStore, {
       onOuvrir: (id) => this.ouvrirFiche(id),
       onCreer: () => this.ouvrirFiche(ReseauStore.creerPersonnage({ nom: "Sans nom" }).id),
+      stores: this._stores(),
     });
 
     ReseauStore.subscribe(() => this._surChangement());
@@ -181,6 +182,9 @@ export const App = {
     // ferait vivre une minuterie sur un écran que personne ne regarde.
     if (this._ecran === "conduite") Conduite.demonter();
     if (this._ecran === "monde") Monde.flush();
+    // Le moteur de graphe est un singleton : deux écrans ne peuvent pas
+    // le tenir en même temps. On le rend en sortant.
+    if (this._ecran === "reseau") Reseau.demonter();
   },
 
   _basculer(ecran, titre) {

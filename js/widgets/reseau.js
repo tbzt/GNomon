@@ -1,19 +1,24 @@
 "use strict";
 
 /* ============================================================
-   RÉSEAU — la liste du casting, par groupe.
+   RÉSEAU — le casting, en deux lentilles.
+   ------------------------------------------------------------
+   **Une vérité, deux vues** — la doctrine du projet appliquée là où
+   elle sert le plus.
 
-   Écran nu exprès : il montre la vérité telle qu'elle est stockée.
-   Le graphe force-dirigé viendra en S2 ; d'ici là, c'est ici qu'on
-   vérifie que le modèle tient.
+   · **La liste** met les couvertures côte à côte : elle dit d'un coup
+     d'œil qui est écrit et qui ne l'est pas, ce qu'aucune relecture de
+     quarante fiches ne donne.
+   · **Le graphe** montre ce que la liste ne peut pas : la forme du
+     réseau, les groupes, et surtout **ce qui casse si quelqu'un ne
+     vient pas**.
 
-   Depuis S1, chaque carte porte sa **couverture** (n/9). Mise côte à
-   côte sur tout le casting, elle dit d'un coup d'œil qui est écrit et
-   qui ne l'est pas — ce qu'aucune relecture de quarante fiches ne
-   donne. Un personnage sous 5/9 est signalé, jamais bloqué.
+   Aucune n'est « la vraie » : les deux lisent le même store, avec le
+   même vocabulaire (⇄ accord · ⇄̸ désaccord · → sens unique).
    ============================================================ */
 import { scoreCouverture } from "../core/couverture.js";
 import { TONALITES, IMPORTANCES, FONCTIONS } from "../core/reseaustore.js";
+import { ReseauGraphe } from "./reseaugraphe.js";
 import { Utils } from "../core/utils.js";
 
 const SEUIL_ALERTE = 5;
@@ -32,13 +37,22 @@ export const Reseau = {
   _hote: null,
   _onOuvrir: null,
   _onCreer: null,
+  _stores: null,
+  _lentille: "liste",
 
-  monter(hote, store, { onOuvrir = null, onCreer = null } = {}) {
+  monter(hote, store, { onOuvrir = null, onCreer = null, stores = null } = {}) {
     this._hote = hote;
     this._store = store;
+    this._stores = stores;
     this._onOuvrir = onOuvrir;
     this._onCreer = onCreer;
     this._hote.addEventListener("click", (e) => {
+      const lent = e.target.closest("[data-lentille]");
+      if (lent) {
+        this._lentille = lent.dataset.lentille;
+        this.rendre();
+        return;
+      }
       if (e.target.closest("[data-creer]")) {
         if (this._onCreer) this._onCreer();
         return;
@@ -49,19 +63,40 @@ export const Reseau = {
     this.rendre();
   },
 
+  demonter() {
+    ReseauGraphe.demonter();
+  },
+
   rendre() {
     const persos = this._store.personnages();
-    const bouton = '<button type="button" class="creer-perso" data-creer>+ Personnage</button>';
+    const barre =
+      '<div class="lentilles">' +
+      `<button type="button" class="lentille${this._lentille === "liste" ? " actif" : ""}" data-lentille="liste">Liste</button>` +
+      `<button type="button" class="lentille${this._lentille === "graphe" ? " actif" : ""}" data-lentille="graphe">Graphe</button>` +
+      '<span class="spacer"></span>' +
+      '<button type="button" class="creer-perso" data-creer>+ Personnage</button>' +
+      "</div>";
+
     if (!persos.length) {
+      ReseauGraphe.demonter();
       this._hote.innerHTML =
-        '<p class="vide">Aucun personnage. Chargez le jeu d\'essai pour voir le modèle à l\'œuvre.</p>' +
-        bouton;
+        barre +
+        '<p class="vide">Aucun personnage. Chargez le jeu d\'essai pour voir le modèle à l\'œuvre.</p>';
       return;
     }
 
+    if (this._lentille === "graphe") {
+      this._hote.innerHTML = barre + '<div id="rg-hote"></div>';
+      ReseauGraphe.monter(this._hote.querySelector("#rg-hote"), this._store, this._stores, {
+        onOuvrir: this._onOuvrir,
+      });
+      return;
+    }
+
+    ReseauGraphe.demonter();
     const groupes = [...this._store.groupes(), { id: null, nom: "Sans groupe" }];
     this._hote.innerHTML =
-      bouton +
+      barre +
       groupes
       .map((g) => {
         const membres = persos.filter((p) => p.groupeId === g.id);

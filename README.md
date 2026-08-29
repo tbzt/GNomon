@@ -129,6 +129,16 @@ Chaque personnage a un **portrait**, et la planche de **trombinoscope** s'imprim
 la même règle que le livret : rien que du public. Un portrait manquant devient une silhouette
 aux initiales plutôt que d'être masqué, parce qu'un trou caché ne se comble jamais.
 
+**Le réseau se lit en deux lentilles.** La liste met les couvertures côte à côte ; le graphe
+montre la forme du réseau, les groupes, et surtout **ce qui casse si quelqu'un ne vient pas**.
+Une arête par paire, et le trait dit si les deux personnes sont d'accord sur ce qui les lie :
+plein, tireté, pointillé.
+
+**« Et s'il ne vient pas ? »** — on touche quelqu'un, tout ce qui dépend de lui vire au rouge :
+scènes sans point de vue, scènes fragilisées, miroirs perdus, informations que personne d'autre
+ne porte. La question que Morningstar pose et que personne n'outille, testable sur quarante
+personnages en une minute.
+
 **Les besoins** ne se saisissent pas : ils se **dérivent** du texte déjà écrit — le matériel et
 la mise en scène des situations, le nombre de comédiens par PNJ, les règles à trancher, les
 contraintes de casting, les documents inachevés. On y pose seulement un responsable et un état,

@@ -178,6 +178,8 @@ export const ReseauStore = {
       objectifs: [],
       portrait: "",
       images: [],
+      x: null,
+      y: null,
       ...champs,
     };
     this._d().personnages.push(p);
@@ -219,6 +221,17 @@ export const ReseauStore = {
     for (const l of liens) if (l && l.id && !vus.has(l.id)) d.liens.push(l);
     this.save();
     this._emit({ type: "personnage:creer", id: personnage.id });
+  },
+
+  /** Position sur le graphe du réseau. Écrite SANS émettre — le
+      glisser en produirait des dizaines par seconde, et re-projeterait
+      le graphe sous le doigt. Même règle que `poserSituation`. */
+  poserPersonnage(id, x, y) {
+    const p = this.personnage(id);
+    if (!p) return;
+    p.x = x;
+    p.y = y;
+    this.save();
   },
 
   /* ================= Portrait =================
