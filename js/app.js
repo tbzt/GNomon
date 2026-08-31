@@ -58,6 +58,8 @@ import { Conduite } from "./widgets/conduite.js";
 import { Monde } from "./widgets/monde.js";
 import { Livrets } from "./widgets/livrets.js";
 import { Besoins } from "./widgets/besoins.js";
+import { Accueil } from "./widgets/accueil.js";
+import { Cockpit, compterOuverts } from "./widgets/cockpit.js";
 import { Theme, LIBELLES } from "./core/theme.js";
 import { Utils } from "./core/utils.js";
 
@@ -133,6 +135,7 @@ export const App = {
     LiensStore.load();
 
     this._hotes = {
+      cockpit: document.getElementById("ecran-cockpit"),
       reseau: document.getElementById("ecran-reseau"),
       fiche: document.getElementById("ecran-fiche"),
       atelier: document.getElementById("ecran-atelier"),
@@ -188,7 +191,13 @@ export const App = {
     if (/^#\/monde/.test(h)) return this.ouvrirMonde({ silencieux: true });
     if (/^#\/livrets/.test(h)) return this.ouvrirLivrets({ silencieux: true });
     if (/^#\/besoins/.test(h)) return this.ouvrirBesoins({ silencieux: true });
-    this.ouvrirReseau({ silencieux: true });
+    if (/^#\/diagnostic/.test(h)) return this.ouvrirCockpit({ silencieux: true });
+    // Sans hash : un projet vierge garde l'accueil (porté par l'écran
+    // réseau, cf. `Reseau.rendre`) ; un projet qui a déjà du contenu
+    // ouvre sur le diagnostic — la porte d'entrée du cockpit remplace
+    // l'accueil dès qu'il y a quelque chose à diagnostiquer.
+    if (Accueil.estVierge(ReseauStore, MondeStore)) return this.ouvrirReseau({ silencieux: true });
+    this.ouvrirCockpit({ silencieux: true });
   },
 
   /** Sortie propre de l'écran courant : écrire ce qui est en attente et
@@ -245,7 +254,11 @@ export const App = {
     const sous = document.getElementById("sous-barre");
     if (!hoteModes || !sous) return;
 
-    const modeActif = MODE_DE[this._ecran] || "ecrire";
+    // Le cockpit n'est d'aucun des quatre moments — le marquer « actif »
+    // sur l'un d'eux mentirait sur ce qu'on regarde. `modeActif` reste
+    // `null`, et la sous-barre se vide : pas d'onglets à montrer pour
+    // un écran qui n'appartient à aucun moment.
+    const modeActif = this._ecran === "cockpit" ? null : MODE_DE[this._ecran] || "ecrire";
     const alertes = this._alertesOuvertes();
 
     hoteModes.innerHTML = MODES.map((m) => {
@@ -263,20 +276,22 @@ export const App = {
     }).join("");
 
     const mode = MODES.find((m) => m.cle === modeActif);
-    const onglets = mode.ecrans
-      .map(
-        (e) =>
-          `<button type="button" class="onglet${e.cle === this._ecran ? " actif" : ""}" ` +
-          `data-ecran="${e.cle}">${Utils.escHtml(e.nom)}</button>`,
-      )
-      .join("");
+    const onglets = mode
+      ? mode.ecrans
+          .map(
+            (e) =>
+              `<button type="button" class="onglet${e.cle === this._ecran ? " actif" : ""}" ` +
+              `data-ecran="${e.cle}">${Utils.escHtml(e.nom)}</button>`,
+          )
+          .join("")
+      : "";
     const fil =
       this._ecran === "fiche"
         ? `<span class="fil-ariane"><button type="button" data-ecran="reseau">Le réseau</button>` +
           `<span class="fil-sep">›</span>${Utils.escHtml(this._titre || "")}</span>`
         : "";
     sous.innerHTML = onglets + fil;
-    sous.hidden = mode.ecrans.length < 2 && !fil;
+    sous.hidden = !mode || (mode.ecrans.length < 2 && !fil);
 
     // Le balayage reste borné aux deux conteneurs qu'on vient de
     // réécrire : leurs boutons sont neufs, donc sans écouteur. Un
@@ -321,6 +336,38 @@ export const App = {
     if (!silencieux && location.hash) location.hash = "";
   },
 
+  /** Le cockpit — la porte d'entrée d'un projet non vierge, hors des
+      quatre moments (cf. PRODUCT_TRANSFORMATION.md §10). Ce n'est pas
+      un cinquième bouton dans la même rangée que Écrire/Vérifier/
+      Distribuer/Jouer : `_rendreNav` ne marque aucun moment actif
+      pendant qu'on y est. */
+  ouvrirCockpit({ silencieux = false } = {}) {
+    if (this._ecran === "cockpit") {
+      if (!silencieux && location.hash !== "#/diagnostic") location.hash = "#/diagnostic";
+      return;
+    }
+    this._quitter();
+    this._basculer("cockpit", "Le diagnostic");
+    Cockpit.monter(this._hotes.cockpit, this._stores(), Derogations, {
+      onNaviguer: (ecran, cible) => this._naviguerDepuisCockpit(ecran, cible),
+    });
+    if (!silencieux) location.hash = "#/diagnostic";
+  },
+
+  /** Une cible de diagnostic route vers l'écran qui l'a produite — le
+      cockpit ne connaît pas `App`, il délègue entièrement ici. */
+  _naviguerDepuisCockpit(ecran, cible) {
+    const routes = {
+      fiche: () => this.ouvrirFiche(cible.id),
+      atelier: () => this.ouvrirAtelier({ situationId: cible.params && cible.params.situationId }),
+      matrice: () => this.ouvrirMatrice(),
+      reseau: () => this.ouvrirReseau(),
+      conscience: () => this.ouvrirConscience(),
+      frise: () => this.ouvrirFrise(),
+    };
+    if (routes[ecran]) routes[ecran]();
+  },
+
   ouvrirFiche(id, { silencieux = false } = {}) {
     const p = ReseauStore.personnage(id);
     if (!p) return this.ouvrirReseau();
@@ -344,6 +391,9 @@ export const App = {
     Fiche.monter(this._hotes.fiche, ReseauStore, id, {
       onOuvrir: (autreId) => this.ouvrirFiche(autreId),
       infos: InformationStore,
+      // Pour « ce qu'il vit » : les scènes qu'il porte, ce qu'il peut y
+      // apprendre, et ce que son absence coûterait.
+      trames: TrameStore,
     });
     if (!silencieux) location.hash = `#/fiche/${id}`;
   },
@@ -520,6 +570,8 @@ export const App = {
       Livrets.rendre();
     } else if (this._ecran === "besoins") {
       Besoins.rendre();
+    } else if (this._ecran === "cockpit") {
+      Cockpit.rendre();
     } else {
       Reseau.rendre();
     }
@@ -689,6 +741,8 @@ export const App = {
 
     document.getElementById("poids").addEventListener("click", () => this._detailPoids());
 
+    document.getElementById("act-diagnostic").addEventListener("click", () => this.ouvrirCockpit());
+
     /* Le bouton NOMME l'état courant, il ne promet pas le suivant : une
        bascule qui affiche « Sombre » alors qu'on est en clair, ou
        l'inverse, se lit de travers une fois sur deux. Il dit ce qui est,
@@ -842,6 +896,19 @@ export const App = {
     el.hidden = false;
   },
 
+  /** Le lien permanent vers le cockpit, quel que soit l'écran affiché —
+      c'est le point d'ancrage qui permet d'y revenir sans repasser par
+      l'accueil (PRODUCT_TRANSFORMATION.md §10). Le badge compte les
+      diagnostics ouverts avec la même formule que l'écran lui-même :
+      une seule vérité, `compterOuverts`. */
+  _rendreBoutonDiagnostic() {
+    const b = document.getElementById("act-diagnostic");
+    if (!b) return;
+    const n = compterOuverts(this._stores(), Derogations);
+    b.innerHTML = `Diagnostic${n ? ` <span class="mode-badge">${n}</span>` : ""}`;
+    b.classList.toggle("actif", this._ecran === "cockpit");
+  },
+
   _detailPoids() {
     const p = poids();
     const gros = p.parCle
@@ -855,8 +922,14 @@ export const App = {
     this._rendreNav();
     this._rendreProjet();
     this._rendrePoids();
+    this._rendreBoutonDiagnostic();
     const el = document.getElementById("compteurs");
     if (!el) return;
+    if (this._ecran === "cockpit") {
+      const n = compterOuverts(this._stores(), Derogations);
+      el.textContent = n ? `${n} ${Utils.plur(n, "point")} d'attention` : "rien à signaler";
+      return;
+    }
     if (this._ecran === "besoins") {
       const cles = besoinsPlats(this._stores()).map((b) => b.cle);
       const b = SuiviStore.bilan(cles);

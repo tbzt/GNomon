@@ -27,6 +27,9 @@
 import { GraphEngine } from "./graph/graphengine.js";
 import { TYPES_CONCLUSION } from "../core/tramestore.js";
 import { INFLUENCES, ETATS } from "../core/informationstore.js";
+import { crashTestSituation } from "../core/crashtest.js";
+import { contexteSuite } from "../core/liaison.js";
+import { coupeHtml } from "./degats.js";
 import { Utils } from "../core/utils.js";
 
 const ACCENT = "#1d4e7a";
@@ -50,6 +53,14 @@ export const Atelier = {
   _trameId: null,
   _situationId: null,
   _signature: "",
+  // Comme le crash test de la fiche : une question qu'on pose, pas un
+  // état permanent. On retient POUR QUELLE situation le panneau est
+  // ouvert, plutôt qu'un booléen qu'il faudrait penser à remettre à
+  // zéro aux huit endroits où la sélection change — un oubli et
+  // l'auteur verrait les dégâts d'une scène en regardant une autre.
+  _coupePour: null,
+  // Pour QUELLE conclusion le panneau « écrire la suite » est ouvert.
+  _suitePour: null,
 
   monter(hote, trames, reseau, infos) {
     this._hote = hote;
@@ -324,6 +335,16 @@ export const Atelier = {
       ).join("") +
       `<label class="bascule"><input type="checkbox" data-s-bool="terminale"${s.terminale ? " checked" : ""} /> Situation terminale</label>` +
       "</details>" +
+      // « Et si je la coupe ? » vient AVANT « Supprimer » — et c'est
+      // l'ordre qui fait le sens : on regarde ce que la coupe emporte
+      // avant de la faire, jamais après. Le calcul est en lecture seule
+      // (cf. `core/crashtest.js`).
+      '<button type="button" class="ed-coupe" data-coupe ' +
+      `aria-expanded="${this._coupePour === s.id}">` +
+      `${this._coupePour === s.id ? "Masquer" : "Et si je la coupe ?"}</button>` +
+      (this._coupePour === s.id
+        ? `<div class="ed-degats">${coupeHtml(crashTestSituation(s.id, { reseau: this._reseau, trames: this._trames, infos: this._infos }))}</div>`
+        : "") +
       '<button type="button" class="ed-supprimer">Supprimer la situation</button>' +
       "</div>";
 
@@ -465,6 +486,13 @@ export const Atelier = {
     const hote = this._hote.querySelector("#editeur");
     const maj = (patch) => this._trames.majSituation(s.id, patch);
 
+    const coupe = hote.querySelector("[data-coupe]");
+    if (coupe)
+      coupe.addEventListener("click", () => {
+        this._coupePour = this._coupePour === s.id ? null : s.id;
+        this._rendreEditeur();
+      });
+
     hote.querySelector(".ed-titre").addEventListener("change", (e) =>
       maj({ titre: e.target.value.trim() }),
     );
@@ -533,16 +561,29 @@ export const Atelier = {
 
   /* ================= la boucle « et après ? » ================= */
 
+  /** ── ÉCRIRE LA SUITE, AVEC LE CONTEXTE SOUS LES YEUX ──
+      C'était un `prompt()` : une boîte grise qui demande un titre et
+      ne montre rien. Or écrire la suite demande de se rappeler ce que
+      les présents savent déjà, et quels fils viennent d'être tendus
+      sans être rattachés — deux choses que les stores savent (cf.
+      `core/liaison.js`) et que l'auteur devait retrouver de tête.
+
+      Le panneau PROPOSE et ne décide rien : il n'écrit aucun titre, ne
+      coche aucune information. C'est le geste du `@mention`, transposé
+      au moment de la suite. */
   _repondre(conclusionId) {
-    const c = this._trames.conclusion(conclusionId);
-    if (!c) return;
-    const titre = prompt(
-      `Et après « ${c.texte || "cette conclusion"} » ?\n\nTitre de la situation qui suit — ou laissez vide pour annuler.`,
-      "",
-    );
-    if (titre === null || !titre.trim()) return;
+    this._suitePour = this._suitePour === conclusionId ? null : conclusionId;
+    this._rendreEtApres();
+  },
+
+  _creerSuite(conclusionId, titre, requiertIds) {
+    if (!titre.trim()) return;
     const suite = this._trames.creerSuite(conclusionId, { titre: titre.trim() });
     if (suite) {
+      // Les informations cochées deviennent les préalables de la
+      // nouvelle scène — c'est le rattachement qu'on venait proposer.
+      for (const id of requiertIds) this._trames.lierInformation(suite.id, id, "requiert");
+      this._suitePour = null;
       this._situationId = suite.id;
       this._signature = "";
       this.rafraichir();
@@ -564,16 +605,95 @@ export const Atelier = {
       orph
         .map((c) => {
           const src = this._trames.situation(c.de);
+          const ouvert = this._suitePour === c.id;
           return (
-            `<li><span class="file-src">${Utils.escHtml(src ? src.titre || "Sans titre" : "?")}</span>` +
+            `<li${ouvert ? ' class="ouvert"' : ""}>` +
+            `<span class="file-src">${Utils.escHtml(src ? src.titre || "Sans titre" : "?")}</span>` +
             `<span class="file-txt">${Utils.escHtml(c.texte) || "<conclusion sans texte>"}</span>` +
-            `<button type="button" data-f="${c.id}">Écrire la suite</button></li>`
+            `<button type="button" data-f="${c.id}" aria-expanded="${ouvert}">` +
+            `${ouvert ? "Fermer" : "Écrire la suite"}</button>` +
+            (ouvert ? this._panneauSuite(c) : "") +
+            "</li>"
           );
         })
         .join("") +
       "</ul>";
     for (const b of hote.querySelectorAll("[data-f]"))
       b.addEventListener("click", () => this._repondre(b.dataset.f));
+    this._brancherSuite();
+  },
+
+  /** Le contexte d'écriture, en lecture seule sauf les cases à cocher.
+      Rien n'est pré-rempli ni pré-coché : proposer n'est pas décider. */
+  _panneauSuite(c) {
+    const ctx = contexteSuite(c.id, {
+      reseau: this._reseau,
+      trames: this._trames,
+      infos: this._infos,
+    });
+    if (!ctx) return "";
+
+    return (
+      '<div class="suite-panneau">' +
+      '<label class="champ"><span class="champ-label">Titre de la situation qui suit</span>' +
+      `<input type="text" data-suite-titre placeholder="Ce qui arrive ensuite…" /></label>` +
+      (ctx.aRattacher.length
+        ? '<p class="suite-sous">Ce qui s\'apprend ici et ne sert nulle part encore</p>' +
+          '<p class="suite-aide">Cochez ce que la nouvelle situation exigera de savoir. ' +
+          "C'est ainsi qu'un fil tendu se rattache — rien n'est coché à votre place.</p>" +
+          '<ul class="suite-infos">' +
+          ctx.aRattacher
+            .map(
+              (i) =>
+                `<li><label><input type="checkbox" data-suite-info="${Utils.escHtml(i.id)}" /> ` +
+                `${Utils.escHtml(i.contenu)}</label></li>`,
+            )
+            .join("") +
+          "</ul>"
+        : "") +
+      (ctx.dejaSu.length
+        ? '<p class="suite-sous">Ce que les présents savent déjà</p>' +
+          '<p class="suite-aide">Pour ne pas leur faire redécouvrir ce qu\'ils savent.</p>' +
+          '<ul class="suite-su">' +
+          ctx.dejaSu
+            .map(
+              (i) =>
+                `<li>${Utils.escHtml(i.contenu)} <span>${Utils.escHtml(i.qui.join(", "))}</span></li>`,
+            )
+            .join("") +
+          "</ul>"
+        : '<p class="suite-aide">Personne au casting de cette scène ne sait rien de particulier ' +
+          "— la suite part d'une page blanche.</p>") +
+      `<button type="button" class="suite-creer" data-suite-creer="${Utils.escHtml(c.id)}">Créer la suite</button>` +
+      "</div>"
+    );
+  },
+
+  _brancherSuite() {
+    const b = this._hote.querySelector("[data-suite-creer]");
+    if (!b) return;
+    const champ = this._hote.querySelector("[data-suite-titre]");
+    const creer = () => {
+      const coches = [...this._hote.querySelectorAll("[data-suite-info]:checked")].map(
+        (x) => x.dataset.suiteInfo,
+      );
+      if (!champ.value.trim()) {
+        champ.focus();
+        champ.placeholder = "Un titre est nécessaire pour créer la suite.";
+        return;
+      }
+      this._creerSuite(b.dataset.suiteCreer, champ.value, coches);
+    };
+    b.addEventListener("click", creer);
+    // Entrée valide, comme dans le `prompt()` qu'on remplace : le geste
+    // rapide ne doit pas se perdre en gagnant du contexte.
+    champ.addEventListener("keydown", (e) => {
+      if (e.key === "Enter") {
+        e.preventDefault();
+        creer();
+      }
+    });
+    champ.focus();
   },
 
   /* ================= divers ================= */

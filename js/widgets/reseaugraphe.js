@@ -41,6 +41,7 @@ import { GraphEngine } from "./graph/graphengine.js";
 import { defection, classementFragilite } from "../core/defection.js";
 import { TONALITES, IMPORTANCES } from "../core/reseaustore.js";
 import { LienEditeur } from "./lienediteur.js";
+import { degatsHtml } from "./degats.js";
 import { Utils } from "../core/utils.js";
 
 const COULEUR = {
@@ -402,46 +403,11 @@ export const ReseauGraphe = {
         "la redondance est un choix de design, pas un accident.</p>"
       );
 
+    // Le texte des dégâts vit dans `degats.js`, partagé avec la fiche :
+    // le calcul était déjà commun, le rendu ne l'était pas, et deux
+    // textes pour un même calcul finissent par dire deux choses.
     const d = defection(this._absent, this._stores);
-    const bloc = (titre, items, ton = "") =>
-      items.length
-        ? `<p class="rg-sous ${ton}">${titre}</p><ul class="rg-degats">${items.map((x) => `<li>${x}</li>`).join("")}</ul>`
-        : "";
-
-    return (
-      `<p class="rg-titre alarme">Sans ${Utils.escHtml(d.personnage.nom)}</p>` +
-      (d.gravite
-        ? `<p class="rg-aide"><b>${d.gravite}</b> ${Utils.plur(d.gravite, "dégât")} ${Utils.plur(d.gravite, "irrécupérable")}.</p>`
-        : '<p class="rg-aide ok">Rien ne casse. Le GN tient sans cette personne.</p>') +
-      bloc(
-        "Scènes sans point de vue",
-        d.orphelines.map((s) => Utils.escHtml(s.titre)),
-        "grave",
-      ) +
-      bloc(
-        "Scènes fragilisées",
-        d.fragilisees.map(
-          (s) =>
-            `${Utils.escHtml(s.titre)} — ${s.morte ? "<b>plus aucun joueur</b>" : `${s.restants} ${Utils.plur(s.restants, "joueur")} ${Utils.plur(s.restants, "restant")}`}`,
-        ),
-      ) +
-      bloc(
-        "Miroirs perdus",
-        d.miroirsPerdus.map((m) => `${Utils.escHtml(m.nom)} se retrouve sans contact-miroir`),
-        "grave",
-      ) +
-      bloc(
-        "Informations que personne d'autre ne porte",
-        d.informationsOrphelines.map(
-          (i) =>
-            Utils.escHtml(i.contenu) +
-            (i.requisePar.length
-              ? ` — requise par ${i.requisePar.map(Utils.escHtml).join(", ")}`
-              : ""),
-        ),
-        "grave",
-      )
-    );
+    return degatsHtml(d, { titre: `Sans ${d.personnage.nom}` });
   },
 
   _rafraichirBarre() {

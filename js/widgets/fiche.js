@@ -43,8 +43,12 @@
 import { couverture } from "../core/couverture.js";
 import { INFLUENCES } from "../core/informationstore.js";
 import { TONALITES, IMPORTANCES, FONCTIONS } from "../core/reseaustore.js";
+import { pointDeVue } from "../core/pointdevue.js";
+import { defection } from "../core/defection.js";
+import { heure } from "../core/temps.js";
 import { Mentions } from "./journal/mentions.js";
 import { LienEditeur } from "./lienediteur.js";
+import { degatsHtml } from "./degats.js";
 import { Utils } from "../core/utils.js";
 
 /** Réduit une image avant de l'embarquer en `data:` — une photo de
@@ -129,7 +133,7 @@ export const Fiche = {
   _tCarnet: null,
   _lienOuvert: null,
 
-  monter(hote, store, personnageId, { onOuvrir = null, infos = null } = {}) {
+  monter(hote, store, personnageId, { onOuvrir = null, infos = null, trames = null } = {}) {
     // On quitte peut-être une fiche en cours d'écriture : la sauvegarde
     // est débouncée, donc les dernières frappes ne sont pas encore au
     // store. Les écrire AVANT de changer de personnage.
@@ -137,10 +141,15 @@ export const Fiche = {
     this._hote = hote;
     this._store = store;
     this._infos = infos;
+    this._trames = trames;
     this._id = personnageId;
     this._onOuvrir = onOuvrir;
     // L'éditeur ouvert appartenait au lien d'un AUTRE personnage.
     this._lienOuvert = null;
+    // Les dégâts d'une absence sont une question qu'on POSE, pas un
+    // état permanent de la fiche : on les replie en changeant de
+    // personne, comme l'éditeur de lien juste au-dessus.
+    this._crashOuvert = false;
     this.rendre();
   },
 
@@ -182,7 +191,8 @@ export const Fiche = {
       `<div class="fiche-gauche">${this._background(p)}${this._carnet(p)}${this._extras(p)}` +
       `<div id="fiche-liens">${this._liens(p)}</div></div>` +
       `<aside class="fiche-droite"><div id="fiche-jauge">${this._jauge(p)}</div>` +
-      `<div id="fiche-squelette">${this._squelette(p)}</div>${this._champs(p)}</aside>` +
+      `<div id="fiche-squelette">${this._squelette(p)}</div>` +
+      `<div id="fiche-vecu">${this._vecu(p)}</div>${this._champs(p)}</aside>` +
       "</div></article>";
 
     this._brancher();
@@ -195,8 +205,13 @@ export const Fiche = {
     const j = this._hote.querySelector("#fiche-jauge");
     const l = this._hote.querySelector("#fiche-liens");
     const q = this._hote.querySelector("#fiche-squelette");
+    const v = this._hote.querySelector("#fiche-vecu");
     if (j) j.innerHTML = this._jauge(p);
     if (q) q.innerHTML = this._squelette(p);
+    if (v) {
+      v.innerHTML = this._vecu(p);
+      this._brancherVecu();
+    }
     if (l) this._reprojeterLiens(l, p);
     const t = this._hote.querySelector(".fiche-titre");
     if (t && document.activeElement !== t) t.value = p.nom;
@@ -292,6 +307,111 @@ export const Fiche = {
       '<p class="sq-note">Le squelette de sa fiche. Il ne s\'écrit pas dans le carnet : ' +
       "à vous de le romancer.</p></div>"
     );
+  },
+
+  /** ── CE QU'IL VIT ──
+      Le GN vu depuis cette personne : a-t-elle réellement quelque chose
+      à jouer, et que coûte son absence ? Deux questions que l'outil
+      savait déjà répondre (`pointdevue.js`, `defection.js`) mais qu'il
+      fallait aller chercher ailleurs — le crash test n'existait que sur
+      le graphe, et rien ne disait « ce personnage risque de ne rien
+      vivre ».
+
+      Entièrement DÉRIVÉ, comme le squelette et la jauge : rien ne
+      s'écrit ici. Et le bloc disparaît si l'écran est monté sans les
+      trames, plutôt que de mentir avec un « aucune scène » qui ne
+      voudrait rien dire. */
+  _vecu(p) {
+    if (!this._trames || !this._infos) return "";
+    const v = pointDeVue(p.id, {
+      reseau: this._store,
+      trames: this._trames,
+      infos: this._infos,
+    });
+    if (!v) return "";
+
+    const porte = v.situations.filter((s) => s.porteur).length;
+    const figure = v.situations.length - porte;
+
+    const lignes = [];
+    if (v.situations.length)
+      lignes.push(
+        `<li><b>${v.situations.length}</b> ${Utils.plur(v.situations.length, "scène")} — ` +
+          `${porte} ${Utils.plur(porte, "portée")}, ${figure} en figuration</li>`,
+      );
+    if (v.peutApprendre.length)
+      lignes.push(
+        `<li><b>${v.peutApprendre.length}</b> ${Utils.plur(v.peutApprendre.length, "chose")} ` +
+          `${Utils.plur(v.peutApprendre.length, "à découvrir")}</li>`,
+      );
+    const ouvertes = v.peutProvoquer.filter((c) => c.aUneSuite).length;
+    if (v.peutProvoquer.length)
+      lignes.push(
+        `<li><b>${v.peutProvoquer.length}</b> ${Utils.plur(v.peutProvoquer.length, "conséquence")} ` +
+          `${Utils.plur(v.peutProvoquer.length, "possible")}` +
+          (ouvertes < v.peutProvoquer.length
+            ? ` <span class="vc-attente">(${v.peutProvoquer.length - ouvertes} sans suite écrite)</span>`
+            : "") +
+          "</li>",
+      );
+
+    // Les trous sont le seul calcul neuf de ce bloc, et le plus utile :
+    // c'est là qu'un joueur se retrouve à errer sans savoir quoi faire.
+    const trous = v.trous
+      .map(
+        (t) =>
+          `<li class="vc-trou">Rien de prévu entre <b>${heure(t.debut)}</b> et <b>${heure(t.fin)}</b>` +
+          ` — ${t.duree.toFixed(1).replace(/\.0$/, "")} h</li>`,
+      )
+      .join("");
+
+    // ── LE VERDICT NE SE DIT PAS PAREIL POUR UN PNJ ──
+    // « Présent mais spectateur » est un défaut pour un PJ — c'est un
+    // joueur qui paiera pour ne rien vivre. Pour un PNJ, c'est souvent
+    // le métier : il est une FONCTION, pas une personne avec un arc
+    // (même distinction que la frise, cf. §5e). Le signaler en rouge
+    // apprendrait à ignorer l'alerte là où elle compte vraiment.
+    const alarme = !v.aQuelqueChoseAVivre && p.pj;
+    return (
+      '<div class="vecu">' +
+      '<p class="jauge-titre"><span>Ce qu\'il vit</span>' +
+      `<span class="jauge-score ${alarme ? "vc-rien" : ""}">${v.aQuelqueChoseAVivre ? "✓" : "—"}</span></p>` +
+      (v.aQuelqueChoseAVivre
+        ? `<ul class="vc-liste">${lignes.join("")}${trous}</ul>`
+        : alarme
+          ? '<p class="vc-alerte">Ce personnage n\'a rien à jouer : aucune scène qu\'il porte, ' +
+            "rien à y apprendre, aucune conséquence à provoquer. Il est présent, mais spectateur.</p>"
+          : '<p class="vc-note">Il figure sans rien porter ni rien apprendre. Pour un PNJ, c\'est ' +
+            "souvent le rôle attendu — il sert les scènes des autres.</p>") +
+      (v.sansHoraire.length
+        ? `<p class="vc-note">${v.sansHoraire.length} ${Utils.plur(v.sansHoraire.length, "scène")} ` +
+          `${Utils.plur(v.sansHoraire.length, "sans horaire")} — non ${Utils.plur(v.sansHoraire.length, "placée")} sur la frise, ` +
+          "donc hors du calcul des temps morts.</p>"
+        : "") +
+      `<button type="button" class="vc-crash" data-crash aria-expanded="${this._crashOuvert}">` +
+      `${this._crashOuvert ? "Masquer" : "Et s'il ne vient pas ?"}</button>` +
+      (this._crashOuvert
+        ? '<div class="vc-degats">' +
+          degatsHtml(
+            defection(p.id, { reseau: this._store, trames: this._trames, infos: this._infos }),
+          ) +
+          "</div>"
+        : "") +
+      "</div>"
+    );
+  },
+
+  _brancherVecu() {
+    const b = this._hote.querySelector("[data-crash]");
+    if (!b) return;
+    b.addEventListener("click", () => {
+      this._crashOuvert = !this._crashOuvert;
+      const v = this._hote.querySelector("#fiche-vecu");
+      const p = this._store.personnage(this._id);
+      if (!v || !p) return;
+      v.innerHTML = this._vecu(p);
+      this._brancherVecu();
+    });
   },
 
   _champs(p) {
@@ -506,6 +626,8 @@ export const Fiche = {
   _brancher() {
     const q = (s) => this._hote.querySelector(s);
     const maj = (patch) => this._store.majPersonnage(this._id, patch);
+
+    this._brancherVecu();
 
     q(".fiche-titre").addEventListener("change", (e) => maj({ nom: e.target.value.trim() }));
     q(".fiche-role").addEventListener("change", (e) => maj({ role: e.target.value.trim() }));
