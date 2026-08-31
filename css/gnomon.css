@@ -1545,6 +1545,179 @@ table.matrice .cell:hover {
   padding-top: 9px;
 }
 
+/* ---------- ce qu'il vit ----------
+   Même boîte que le squelette juste au-dessus : les deux sont des
+   dérivés du même personnage, lus l'un après l'autre. */
+
+.vecu {
+  background: var(--surface);
+  border: 1px solid var(--rule);
+  border-radius: 3px;
+  padding: 14px 16px;
+  margin: 0 0 16px;
+}
+
+.vc-liste {
+  list-style: none;
+  margin: 0 0 10px;
+  padding: 0;
+  display: grid;
+  gap: 6px;
+}
+.vc-liste li {
+  font-size: 14px;
+  line-height: 1.4;
+  border-left: 3px solid var(--rule);
+  padding-left: 10px;
+}
+.vc-liste b {
+  font-family: var(--mono);
+  font-variant-numeric: tabular-nums;
+}
+.vc-liste .vc-trou {
+  border-left-color: var(--complique);
+  color: var(--ink-soft);
+}
+.vc-attente {
+  color: var(--ink-faint);
+  font-size: 12.5px;
+}
+
+/* Le seul verdict rouge de la fiche — et il n'en faut pas deux :
+   « ce personnage est spectateur » est la chose la plus grave que cet
+   écran puisse dire. */
+.vc-alerte {
+  font-size: 14px;
+  line-height: 1.45;
+  color: var(--negatif);
+  margin: 0 0 10px;
+  border-left: 3px solid var(--negatif);
+  padding-left: 10px;
+}
+.jauge-score.vc-rien {
+  color: var(--negatif);
+}
+
+.vc-note {
+  font-size: 12.5px;
+  color: var(--ink-faint);
+  line-height: 1.4;
+  margin: 0 0 10px;
+}
+
+.vc-crash {
+  width: 100%;
+  font-family: var(--sans);
+  font-size: 12px;
+  letter-spacing: 0;
+  text-transform: none;
+  padding: 7px 10px;
+}
+
+.vc-degats {
+  margin-top: 12px;
+  border-top: 1px dashed var(--rule);
+  padding-top: 11px;
+}
+
+/* Les deux autres portes du crash test : sur une situation (atelier) et
+   sur une information (matrice). Même geste, même peau que sur la
+   fiche — on pose la même question à trois objets différents. */
+.ed-coupe,
+.info-crash {
+  width: 100%;
+  font-family: var(--sans);
+  font-size: 12px;
+  letter-spacing: 0;
+  text-transform: none;
+  padding: 7px 10px;
+  margin-top: 10px;
+}
+
+.ed-degats,
+.info-degats {
+  margin-top: 11px;
+  border-top: 1px dashed var(--rule);
+  padding-top: 11px;
+}
+
+/* ---------- écrire la suite, avec son contexte ----------
+   Le panneau qui remplace le `prompt()` : il PROPOSE ce que les
+   présents savent déjà et les fils tendus à rattacher, et ne coche
+   jamais rien à la place de l'auteur (cf. `core/liaison.js`). */
+
+.suite-panneau {
+  grid-column: 1 / -1;
+  margin-top: 10px;
+  padding-top: 11px;
+  border-top: 1px dashed var(--rule);
+  display: grid;
+  gap: 8px;
+}
+
+.suite-sous {
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--ink-faint);
+  margin: 6px 0 0;
+}
+
+.suite-aide {
+  font-size: 13px;
+  line-height: 1.4;
+  color: var(--ink-soft);
+  margin: 0;
+}
+
+.suite-infos,
+.suite-su {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 5px;
+}
+.suite-infos li,
+.suite-su li {
+  font-size: 14px;
+  line-height: 1.4;
+  border-left: 2px solid var(--rule);
+  padding-left: 9px;
+}
+.suite-infos label {
+  display: flex;
+  gap: 7px;
+  align-items: baseline;
+  cursor: pointer;
+}
+/* Ce que les présents savent est en LECTURE : pas de case, pas de
+   bordure d'action — on le rappelle, on ne le rattache pas. */
+.suite-su li {
+  border-left-color: var(--positif);
+  color: var(--ink-soft);
+}
+.suite-su li span {
+  font-family: var(--mono);
+  font-size: 9.5px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--ink-faint);
+  display: block;
+}
+
+.suite-creer {
+  justify-self: start;
+  font-family: var(--sans);
+  font-size: 12px;
+  letter-spacing: 0;
+  text-transform: none;
+  padding: 7px 14px;
+  border-color: var(--accent);
+  color: var(--accent-ink);
+}
+
 /* ---------- informations sur la situation ---------- */
 
 .infs {
@@ -1844,6 +2017,188 @@ table.matrice .cell:hover {
     grid-template-columns: 1fr;
     gap: 4px;
   }
+}
+
+/* ============================================================
+   LE COCKPIT — la porte d'entrée. Mêmes tons que la conscience
+   (`.cs-*` ci-dessus), parce que c'est la même famille de contenu — un
+   diagnostic explicable, sourcé, jamais un score — repris ici groupé
+   par objet du GN plutôt que par nom de règle.
+   ============================================================ */
+
+.ck-entete {
+  border-bottom: 1px solid var(--rule);
+  padding-bottom: 14px;
+  margin-bottom: 20px;
+}
+.ck-total {
+  font-size: 20px;
+  margin: 0 0 6px;
+}
+.ck-total b {
+  font-size: 26px;
+  font-weight: 600;
+}
+.ck-total.ck-calme {
+  color: var(--positif);
+  font-family: var(--mono);
+  font-size: 13px;
+  letter-spacing: 0.05em;
+}
+.ck-ecartees,
+.ck-fond-compte {
+  color: var(--ink-faint);
+  font-size: 16px;
+}
+
+/* La porte du second rang. Pleine largeur et discrète : elle annonce
+   ce qu'elle contient sans rivaliser avec les points d'attention. */
+.ck-plus {
+  width: 100%;
+  font-family: var(--sans);
+  font-size: 12.5px;
+  letter-spacing: 0;
+  text-transform: none;
+  padding: 9px 12px;
+  margin-top: 18px;
+  border-style: dashed;
+}
+.ck-note {
+  margin: 0;
+  font-size: 14.5px;
+  line-height: 1.5;
+  color: var(--ink-soft);
+  max-width: 62ch;
+}
+.ck-rien {
+  font-size: 15px;
+  color: var(--ink-soft);
+  max-width: 58ch;
+}
+
+.ck-soustitre {
+  font-family: var(--mono);
+  font-size: 10.5px;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  color: var(--ink-faint);
+  margin: 26px 0 10px;
+  padding-top: 14px;
+  border-top: 1px dashed var(--rule);
+}
+
+.ck-cat {
+  font-family: var(--mono);
+  font-size: 11px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--ink-faint);
+  font-weight: 400;
+  margin: 22px 0 10px;
+}
+.ck-groupe:first-of-type .ck-cat {
+  margin-top: 0;
+}
+
+.ck-liste {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 8px;
+}
+
+.ck-diag {
+  background: var(--surface);
+  border: 1px solid var(--rule);
+  border-left: 3px solid var(--negatif);
+  border-radius: 2px;
+  padding: 11px 14px;
+}
+.ck-diag.ecartee {
+  border-left-color: var(--complique);
+  opacity: 0.92;
+}
+
+/* Une observation à confiance moyenne : trait discontinu et réserve
+   écrite. Un fait et une hypothèse ne se lisent pas pareil, et la
+   différence ne peut pas tenir dans une seule nuance de couleur. */
+.ck-diag.hypothese {
+  border-left-style: dashed;
+  border-left-color: var(--ink-faint);
+}
+.ck-reserve {
+  font-family: var(--mono);
+  font-size: 9.5px;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  color: var(--ink-faint);
+  margin: 0 0 5px;
+}
+
+.ck-titre {
+  margin: 0 0 5px;
+  font-size: 16px;
+  font-weight: 600;
+}
+.ck-detail {
+  margin: 0 0 7px;
+  font-size: 14.5px;
+  color: var(--ink-soft);
+  line-height: 1.45;
+}
+.ck-source {
+  margin: 0 0 9px;
+  font-size: 13px;
+  line-height: 1.4;
+  color: var(--ink-faint);
+  font-style: italic;
+}
+.ck-cibles {
+  margin: 0 0 6px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.ck-cibles button {
+  font-size: 10px;
+  padding: 4px 9px;
+}
+
+.ck-ecarter,
+.ck-retablir {
+  font-size: 9.5px;
+  padding: 3px 8px;
+}
+
+.ck-justif {
+  margin: 6px 0 0;
+  font-size: 14px;
+  line-height: 1.45;
+  color: var(--ink-soft);
+  border-top: 1px dashed var(--rule);
+  padding-top: 7px;
+}
+.ck-justif b {
+  font-family: var(--mono);
+  font-size: 9.5px;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  color: var(--complique);
+  font-weight: 400;
+}
+
+.ck-saisie {
+  display: grid;
+  gap: 7px;
+  margin-top: 6px;
+}
+.ck-saisie span {
+  display: flex;
+  gap: 6px;
+}
+.ck-saisie textarea {
+  font-size: 14.5px;
 }
 
 /* ============================================================
@@ -2922,6 +3277,19 @@ button[disabled] {
   background: var(--negatif);
   color: var(--surface);
   font-variant-numeric: tabular-nums;
+}
+
+/* Le lien permanent vers le cockpit — hors de la rangée des quatre
+   moments, mais toujours à portée depuis n'importe quel écran (cf.
+   PRODUCT_TRANSFORMATION.md §10). */
+.diagnostic-lien {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.diagnostic-lien.actif {
+  border-color: var(--accent);
+  color: var(--accent-ink);
 }
 
 /* ---------- la sous-barre : les écrans du moment actif ---------- */
@@ -4158,6 +4526,63 @@ main[data-actif="monde"] {
   gap: 5px;
 }
 .rg-degats li {
+  font-size: 14px;
+  line-height: 1.45;
+  border-left: 2px solid var(--negatif);
+  padding-left: 9px;
+}
+
+/* ---------- les dégâts, partout où on les montre ----------
+   Le rendu vit dans `widgets/degats.js` : le flanc du graphe, la fiche
+   et l'atelier montrent le MÊME texte pour le même calcul. Ces classes
+   reprennent celles du flanc (`.rg-*` ci-dessus), dont elles sont
+   issues — c'est le même vocabulaire, lu dans trois contextes. */
+
+.dg-titre {
+  font-family: var(--sans);
+  font-size: 17px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  margin: 0 0 4px;
+}
+.dg-titre.alarme {
+  color: var(--negatif);
+}
+
+.dg-aide {
+  font-size: 13.5px;
+  line-height: 1.5;
+  color: var(--ink-soft);
+  margin: 0 0 10px;
+}
+.dg-aide.ok {
+  color: var(--positif);
+}
+.dg-aide b {
+  font-family: var(--mono);
+  font-variant-numeric: tabular-nums;
+}
+
+.dg-sous {
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: 0.11em;
+  text-transform: uppercase;
+  color: var(--ink-faint);
+  margin: 14px 0 6px;
+}
+.dg-sous.grave {
+  color: var(--negatif);
+}
+
+.dg-liste {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 5px;
+}
+.dg-liste li {
   font-size: 14px;
   line-height: 1.45;
   border-left: 2px solid var(--negatif);

@@ -18,6 +18,8 @@
    nulle part est une information qu'on a oublié de brancher.
    ============================================================ */
 import { INFLUENCES, ETATS } from "../core/informationstore.js";
+import { crashTestInformation } from "../core/crashtest.js";
+import { jamaisSueHtml } from "./degats.js";
 import { Utils } from "../core/utils.js";
 
 const SIGNE = { sait: "●", croit: "◆", ignore: "·" };
@@ -28,6 +30,9 @@ export const Matrice = {
   _reseau: null,
   _trames: null,
   _selId: null,
+  // Pour QUELLE information le crash test est déplié — même règle que
+  // l'atelier : un booléen se désynchroniserait de la sélection.
+  _crashPour: null,
 
   monter(hote, infos, reseau, trames) {
     this._hote = hote;
@@ -193,7 +198,20 @@ export const Matrice = {
         ? "Cette information n'est requise ni produite par aucune situation. " +
           "Elle existe dans le monde mais rien ne s'en sert — c'est peut-être un oubli de branchement."
         : "") +
-      "</p></div>";
+      "</p>" +
+      // Le crash test de l'information : la question « et si personne
+      // ne l'apprend ? » se pose ici, sur l'objet même, et se propage
+      // en cascade (cf. `core/crashtest.js`). N'a de sens que si au
+      // moins une situation la requiert — sinon il n'y a rien à
+      // empêcher, et le bouton poserait une question sans objet.
+      (usages.requiert.length
+        ? `<button type="button" class="info-crash" data-crash aria-expanded="${this._crashPour === i.id}">` +
+          `${this._crashPour === i.id ? "Masquer" : "Et si personne ne l'apprend ?"}</button>` +
+          (this._crashPour === i.id
+            ? `<div class="info-degats">${jamaisSueHtml(crashTestInformation(i.id, { trames: this._trames, infos: this._infos }))}</div>`
+            : "")
+        : "") +
+      "</div>";
 
     hote.querySelector("#info-contenu").addEventListener("change", (e) =>
       this._infos.maj(i.id, { contenu: e.target.value }),
@@ -209,6 +227,12 @@ export const Matrice = {
       this._selId = null;
       this._infos.supprimer(i.id);
     });
+    const crash = hote.querySelector("[data-crash]");
+    if (crash)
+      crash.addEventListener("click", () => {
+        this._crashPour = this._crashPour === i.id ? null : i.id;
+        this._rendrePanneau();
+      });
   },
 
   _nouvelle() {
