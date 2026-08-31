@@ -1,0 +1,62 @@
+{
+  "rules": {
+    ".read": false,
+    ".write": false,
+
+    "espaces": {
+      "$espace": {
+        ".read": "auth != null && root.child('espaces').child($espace).child('membres').child(auth.uid).exists()",
+
+        "membres": {
+          ".write": false,
+
+          "$uid": {
+            ".write": "auth != null && root.child('espaces').child($espace).child('membres').child(auth.uid).exists() && !root.child('espaces').child($espace).child('gerants').child($uid).exists()",
+            ".validate": "newData.isBoolean()"
+          }
+        },
+
+        "gerants": {
+          ".write": false
+        },
+
+        "gn": {
+          ".write": "auth != null && root.child('espaces').child($espace).child('membres').child(auth.uid).exists()",
+
+          "$gn": {
+            "meta": {
+              ".validate": "newData.hasChildren(['nom', 'rev', 'par'])",
+              "rev": { ".validate": "newData.isNumber() && (!data.exists() ? newData.val() >= 1 : newData.val() === data.val() + 1)" },
+              "par": { ".validate": "newData.isString() && newData.val() === auth.uid" },
+              "nom": { ".validate": "newData.isString() && newData.val().length <= 200" },
+              "le": { ".validate": "newData.isNumber()" },
+              "$autre": { ".validate": false }
+            },
+
+            "objets": {
+              "$collection": {
+                "$id": {
+                  ".validate": "newData.hasChildren(['rev', 'par'])",
+
+                  "rev": { ".validate": "newData.isNumber() && (!data.exists() ? newData.val() >= 1 : newData.val() === data.val() + 1)" },
+
+                  "par": { ".validate": "newData.isString() && newData.val() === auth.uid" },
+
+                  "le": { ".validate": "newData.isNumber()" },
+
+                  "sup": { ".validate": "newData.isBoolean()" },
+
+                  "d": {},
+
+                  "$autre": { ".validate": false }
+                }
+              }
+            },
+
+            "$autre": { ".validate": false }
+          }
+        }
+      }
+    }
+  }
+}

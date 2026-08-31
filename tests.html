@@ -120,8 +120,10 @@
       import "./tests/documents.test.js";
       import "./tests/calculs.test.js";
       import "./tests/tableau.test.js";
+      import "./tests/objets.test.js";
+      import "./tests/sync.test.js";
 
-      const bilan = lancer();
+      const bilan = await lancer();
       rendre(bilan, document.getElementById("sortie"));
       // Exposé pour une vérification automatisée depuis la console.
       window.__bilan = bilan;
