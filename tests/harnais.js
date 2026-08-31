@@ -69,6 +69,33 @@ export function eqProfond(obtenu, attendu, message = "égalité profonde") {
   if (a !== b) faillir(message, a, b);
 }
 
+/** Égalité des DONNÉES, l'ordre des clés indifférent.
+
+    `eqProfond` compare deux `JSON.stringify`, donc il compare aussi
+    l'ordre d'insertion des clés — qui n'est pas de la donnée. C'est la
+    bonne assertion tant qu'on compare une valeur à une constante écrite
+    juste à côté ; c'en est une mauvaise dès qu'un objet a été démonté
+    puis remonté, parce qu'il revient alors avec ses clés dans l'ordre où
+    on l'a reconstruit. Un test qui échouerait là-dessus signalerait une
+    perte de données là où il n'y en a aucune.
+
+    On sérialise donc à clés triées, récursivement. Les TABLEAUX gardent
+    leur ordre : là, l'ordre est bien de la donnée. */
+export function eqDonnees(obtenu, attendu, message = "égalité des données") {
+  const a = stable(attendu);
+  const b = stable(obtenu);
+  if (a !== b) faillir(message, a, b);
+}
+
+function stable(v) {
+  if (v === null || typeof v !== "object") return JSON.stringify(v) ?? "null";
+  if (Array.isArray(v)) return `[${v.map(stable).join(",")}]`;
+  return `{${Object.keys(v)
+    .sort()
+    .map((k) => `${JSON.stringify(k)}:${stable(v[k])}`)
+    .join(",")}}`;
+}
+
 /** L'assertion la plus utile du projet : une chaîne ne doit PAS être
     là. Elle compare sur le texte dé-balisé et dés-échappé — l'erreur
     déjà commise une fois était de chercher une apostrophe dans du HTML
@@ -97,7 +124,14 @@ export function contient(html, aiguille, message = "présence") {
 
 /* ---- exécution ---- */
 
-export function lancer() {
+/** ── `lancer` ATTEND CHAQUE CAS ──
+    Elle était synchrone et appelait `c.fn()` sans attendre. Un test
+    asynchrone rendait donc une promesse que personne ne regardait :
+    quoi qu'il affirme, il passait — et une assertion qui échoue dans
+    une promesse ignorée ne se voit nulle part. Le trou n'avait encore
+    piégé personne parce qu'aucun test n'était asynchrone ; le premier
+    l'aurait fait, en silence. */
+export async function lancer() {
   const resultats = [];
   let passes = 0;
   let echecs = 0;
@@ -105,7 +139,7 @@ export function lancer() {
     const cas = [];
     for (const c of s.cas) {
       try {
-        c.fn();
+        await c.fn();
         cas.push({ nom: c.nom, ok: true });
         passes++;
       } catch (e) {
