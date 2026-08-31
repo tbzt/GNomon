@@ -31,6 +31,7 @@
    que celui qui est à l'écran.
    ============================================================ */
 import { Storage } from "./core/storage.js";
+import { Projets } from "./core/projets.js";
 import { ReseauStore } from "./core/reseaustore.js";
 import { TrameStore } from "./core/tramestore.js";
 import { InformationStore } from "./core/informationstore.js";
@@ -110,7 +111,17 @@ export const App = {
   _ecran: "reseau",
 
   init() {
+    // AVANT tout le reste : une écriture qui échoue pendant une
+    // migration doit se voir comme les autres. C'est le seul message
+    // dont dépend la survie du travail en cours — il vivait jusqu'ici
+    // dans la console, où personne ne va le chercher.
+    Storage.onEchec((msg) => this._alerte(msg));
+
     Storage.runMigrations();
+    // AVANT tout `load()` : c'est lui qui décide quelles clés les stores
+    // vont lire. Les migrations d'abord, parce que la v3 fabrique le
+    // premier projet à partir des clés nues d'avant.
+    Projets.init();
     ReseauStore.load();
     TrameStore.load();
     InformationStore.load();
@@ -448,6 +459,31 @@ export const App = {
     if (!silencieux) location.hash = "#/besoins";
   },
 
+  /** Tous les stores, dans l'ordre où ils sont chargés au démarrage.
+      Une seule liste : trois endroits les rechargeaient ou les vidaient
+      chacun avec sa propre énumération, et en ajouter un quatrième
+      revenait à espérer que personne n'en oublie un. */
+  _tousLesStores() {
+    return [
+      ReseauStore,
+      TrameStore,
+      InformationStore,
+      Derogations,
+      CastingStore,
+      RunStore,
+      MondeStore,
+      SuiviStore,
+      LiensStore,
+    ];
+  },
+
+  /** Relit tout depuis le stockage. Après une bascule de projet, la
+      fenêtre de lecture a bougé sous les pieds des stores : leur copie
+      en mémoire appartient au GN précédent. */
+  _rechargerTout() {
+    for (const st of this._tousLesStores()) st.load();
+  },
+
   /** Le paquet de stores passé aux modules qui en lisent plusieurs. */
   _stores() {
     return {
@@ -492,7 +528,165 @@ export const App = {
 
   /* ---------------- barre ---------------- */
 
+  /* ---------------- les projets ----------------
+     Un projet est un préfixe de clés (cf. `core/projets.js`). Le
+     sélecteur est posé à côté du titre parce qu'il NOMME ce qu'on
+     regarde : mis dans la rangée d'actions, à droite, il aurait eu l'air
+     d'un bouton de plus, alors qu'il dit dans quel GN on est. */
+
+  /** On nomme d'après un IDENTIFIANT, pas d'après une entrée de liste :
+      l'entrée peut manquer là où le GN existe. Le nom donné à la main
+      l'emporte ; sinon on prend le titre du monde, qui est déjà écrit et
+      qu'il serait absurde de redemander. */
+  _nomProjet(id) {
+    if (!id) return "Sans titre";
+    const p = Projets.projet(id);
+    if (p && p.nom) return p.nom;
+    return Projets.resume(id).titre || "Sans titre";
+  },
+
+  _rendreProjet() {
+    const b = document.getElementById("act-projet");
+    if (!b) return;
+    b.textContent = this._nomProjet(Projets.actif());
+    b.title = "Le GN ouvert. Cliquez pour en changer, en créer un autre, ou le renommer.";
+  },
+
+  _rendrePanneauProjets() {
+    const hote = document.getElementById("projet-panneau");
+    if (!hote) return;
+    const actif = Projets.actif();
+    hote.innerHTML =
+      '<p class="pj-titre">Vos GN</p>' +
+      '<ul class="pj-liste">' +
+      Projets.liste()
+        .map((p) => {
+          const r = Projets.resume(p.id);
+          const detail = [
+            r.personnages ? `${r.personnages} ${Utils.plur(r.personnages, "personnage")}` : "",
+            r.situations ? `${r.situations} ${Utils.plur(r.situations, "situation")}` : "",
+            formaterOctets(Projets.octets(p.id)),
+          ]
+            .filter(Boolean)
+            .join(" · ");
+          return (
+            `<li class="pj-item${p.id === actif ? " actif" : ""}">` +
+            `<button type="button" class="pj-ouvrir" data-pj="${Utils.escHtml(p.id)}">` +
+            `<span class="pj-nom">${Utils.escHtml(this._nomProjet(p.id))}</span>` +
+            `<span class="pj-detail">${Utils.escHtml(detail || "vide")}</span></button>` +
+            `<button type="button" class="pj-act" data-pj-nom="${Utils.escHtml(p.id)}" title="Renommer">Renommer</button>` +
+            `<button type="button" class="pj-act pj-suppr" data-pj-x="${Utils.escHtml(p.id)}" title="Supprimer définitivement">Supprimer</button>` +
+            "</li>"
+          );
+        })
+        .join("") +
+      "</ul>" +
+      '<button type="button" class="pj-neuf" data-pj-neuf>＋ Nouveau GN</button>' +
+      '<p class="pj-note">Chaque GN a son propre stockage sur cet appareil. ' +
+      "Rien ne circule entre eux — pour reprendre du matériel d'un autre, exportez son archive et fusionnez-la.</p>";
+
+    for (const el of hote.querySelectorAll("[data-pj]"))
+      el.addEventListener("click", () => this._basculerProjet(el.dataset.pj));
+
+    for (const el of hote.querySelectorAll("[data-pj-nom]"))
+      el.addEventListener("click", () => {
+        const nom = prompt("Nom de ce GN ?", this._nomProjet(el.dataset.pjNom));
+        if (nom === null) return;
+        Projets.renommer(el.dataset.pjNom, nom);
+        this._rendreProjet();
+        this._rendrePanneauProjets();
+      });
+
+    for (const el of hote.querySelectorAll("[data-pj-x]"))
+      el.addEventListener("click", () => this._supprimerProjet(el.dataset.pjX));
+
+    const neuf = hote.querySelector("[data-pj-neuf]");
+    if (neuf)
+      neuf.addEventListener("click", () => {
+        const nom = prompt("Nom du nouveau GN ?", "");
+        if (nom === null) return;
+        const p = Projets.creer(nom);
+        this._basculerProjet(p.id);
+      });
+  },
+
+  /** Bascule de GN. L'ordre compte : on écrit ce qui est en attente
+      AVANT de déplacer la fenêtre de lecture, sinon la dernière frappe
+      part dans le projet qu'on vient d'ouvrir. */
+  _basculerProjet(id) {
+    if (id === Projets.actif()) return this._fermerPanneauProjets();
+    this._quitter();
+    if (!Projets.ouvrir(id)) return this._fermerPanneauProjets();
+    this._rechargerTout();
+    this._fermerPanneauProjets();
+    this.ouvrirReseau();
+    this._rendreProjet();
+    this._statut(`GN ouvert : ${this._nomProjet(Projets.actif())}.`);
+  },
+
+  /** La suppression n'a pas d'annulation, et il ne peut pas y en avoir :
+      la place libérée est ce qu'on venait chercher. On propose donc
+      l'export AVANT, jamais après. */
+  _supprimerProjet(id) {
+    const r = Projets.resume(id);
+    const nom = this._nomProjet(id);
+    if (
+      !confirm(
+        `Supprimer « ${nom} » ?\n\n` +
+          `${r.personnages} personnages, ${r.situations} situations, ` +
+          `${formaterOctets(Projets.octets(id))}.\n\n` +
+          "C'est définitif : il n'y a pas d'annulation.",
+      )
+    )
+      return;
+    if (confirm("Exporter une archive de ce GN avant de le supprimer ?")) {
+      // On l'ouvre pour le lire, puis on revient : `Archive.construire`
+      // lit le projet ACTIF, et exporter le mauvais serait pire que ne
+      // rien exporter du tout.
+      const retour = Projets.actif();
+      Projets.ouvrir(id);
+      telecharger(Archive.nomFichier(nom), JSON.stringify(Archive.construire(nom), null, 1));
+      if (retour !== id) Projets.ouvrir(retour);
+    }
+    const suivant = Projets.supprimer(id);
+    this._rechargerTout();
+    this._rendreProjet();
+    this._rendrePanneauProjets();
+    if (suivant !== Projets.actif() || id === Projets.actif()) this.ouvrirReseau();
+    this._statut(`« ${nom} » supprimé.`);
+  },
+
+  _fermerPanneauProjets() {
+    const h = document.getElementById("projet-panneau");
+    const b = document.getElementById("act-projet");
+    if (h) h.hidden = true;
+    if (b) b.setAttribute("aria-expanded", "false");
+  },
+
   _brancherBarre() {
+    const bProjet = document.getElementById("act-projet");
+    if (bProjet) {
+      this._rendreProjet();
+      bProjet.addEventListener("click", (e) => {
+        e.stopPropagation();
+        const h = document.getElementById("projet-panneau");
+        const ouvrir = h.hidden;
+        if (ouvrir) this._rendrePanneauProjets();
+        h.hidden = !ouvrir;
+        bProjet.setAttribute("aria-expanded", String(ouvrir));
+      });
+      // Un panneau qui ne se referme qu'à son propre bouton reste ouvert
+      // par-dessus le travail dès qu'on clique ailleurs.
+      document.addEventListener("click", (e) => {
+        const h = document.getElementById("projet-panneau");
+        if (!h || h.hidden || h.contains(e.target)) return;
+        this._fermerPanneauProjets();
+      });
+      document.addEventListener("keydown", (e) => {
+        if (e.key === "Escape") this._fermerPanneauProjets();
+      });
+    }
+
     document.getElementById("poids").addEventListener("click", () => this._detailPoids());
 
     /* Le bouton NOMME l'état courant, il ne promet pas le suivant : une
@@ -554,8 +748,7 @@ export const App = {
       );
       const r = Archive.appliquer(paquet, remplacer ? "remplacer" : "fusionner");
       if (!r.ok) return this._statut(r.raison);
-      for (const st of [ReseauStore, TrameStore, InformationStore, CastingStore, RunStore, MondeStore, Derogations])
-        st.load();
+      this._rechargerTout();
       this.ouvrirReseau();
       this._statut(
         `Archive ${remplacer ? "appliquée en remplacement" : "fusionnée"} — ` +
@@ -610,8 +803,29 @@ export const App = {
   _statut(txt) {
     const el = document.getElementById("statut");
     if (!el) return;
+    // Une alarme d'écriture ne se laisse pas remplacer par un message
+    // d'information : elle dit que rien n'est enregistré, et c'est
+    // toujours la chose la plus importante à l'écran.
+    if (el.classList.contains("danger")) return;
     el.textContent = txt;
     el.hidden = !txt;
+  },
+
+  /** L'ALARME — distincte de `_statut`, qui informe. Elle reste posée
+      jusqu'à ce qu'une écriture aboutisse : tant qu'elle est là, rien
+      de ce qui est tapé n'est enregistré. `null` la retire. */
+  _alerte(txt) {
+    const el = document.getElementById("statut");
+    if (!el) return;
+    if (!txt) {
+      el.classList.remove("danger");
+      el.textContent = "";
+      el.hidden = true;
+      return;
+    }
+    el.textContent = txt;
+    el.classList.add("danger");
+    el.hidden = false;
   },
 
   /** L'indicateur de poids. Discret tant qu'il n'y a rien à dire, il
@@ -639,6 +853,7 @@ export const App = {
 
   _compteurs() {
     this._rendreNav();
+    this._rendreProjet();
     this._rendrePoids();
     const el = document.getElementById("compteurs");
     if (!el) return;
@@ -709,5 +924,18 @@ window.RunStore = RunStore;
 window.MondeStore = MondeStore;
 window.SuiviStore = SuiviStore;
 window.LiensStore = LiensStore;
+// L'épreuve des règles se lance à la main, depuis la console : elle
+// n'a pas d'écran parce qu'on la joue une fois par déploiement de
+// règles, pas une fois par session d'écriture.
+import("./core/epreuve.js")
+  .then((m) => {
+    window.Epreuve = m.Epreuve;
+  })
+  // Un import dynamique qui échoue ne dit rien : la promesse est
+  // rejetée dans le vide, `window.Epreuve` reste absent, et on cherche
+  // la panne du côté de la console. On le dit.
+  .catch((e) => {
+    console.warn("[gnomon] l'épreuve des règles n'a pas pu être chargée :", e.message);
+  });
 
 App.init();

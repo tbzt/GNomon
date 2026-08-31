@@ -40,7 +40,7 @@
 
    Feuille : ne dépend que de `Storage`.
    ============================================================ */
-import { Storage } from "./storage.js";
+import { Storage, CLES_PROJET } from "./storage.js";
 
 export const FORMAT = "gnomon-archive";
 export const VERSION = 1;
@@ -51,19 +51,11 @@ export const AVERTISSEMENT =
   "les consignes PNJ et les carnets privés de l'équipe. Il se partage entre " +
   "organisateurs, jamais avec un participant. Pour un joueur, exportez son livret.";
 
-/** Les clés du `localStorage` qui composent un GN. Ordre stable :
-    c'est aussi celui de lecture du fichier. */
-export const CLES = [
-  "monde",
-  "reseau",
-  "trames",
-  "informations",
-  "casting",
-  "derogations",
-  "run",
-  "suivi",
-  "liens",
-];
+/** Les clés qui composent un GN. La liste vit dans `storage.js` — savoir
+    quelle clé appartient à un projet et laquelle appartient à l'appareil
+    est le métier du socle, et deux listes finiraient par diverger le jour
+    où l'une gagnerait une clé que l'autre ignore. */
+export const CLES = CLES_PROJET;
 
 /** Les clés dont le contenu est une liste d'objets à `id` — les seules
     que « fusionner » sait réconcilier finement. */

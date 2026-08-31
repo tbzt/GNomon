@@ -51,12 +51,11 @@ export function formaterOctets(n) {
  *     portraits: {n, octets}, images: {n, octets} }
  */
 export function poids() {
-  const parCle = Storage.keys()
-    .map((cle) => {
-      const brut = localStorage.getItem(`gnomon_v1_${cle}`) || "";
-      return { cle, octets: brut.length };
-    })
-    .sort((a, b) => b.octets - a.octets);
+  // TOUTES les entrées, projets confondus : le quota du `localStorage`
+  // se compte par origine. Ne mesurer que le GN ouvert annoncerait
+  // « rien à signaler » à une équipe qui garde trois éditions en réserve
+  // et n'a plus la place d'écrire la quatrième.
+  const parCle = Storage.toutesLesEntrees().sort((a, b) => b.octets - a.octets);
 
   const octets = parCle.reduce((n, x) => n + x.octets, 0);
 
