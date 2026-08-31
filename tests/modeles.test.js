@@ -8,7 +8,7 @@ import { suite, test, eq, ok, pasOk, contient } from "./harnais.js";
 import { fauxReseau, fauxTrames, fauxInfos, fauxMonde, fauxSuivi } from "./faux.js";
 import { couverture, scoreCouverture } from "../js/core/couverture.js";
 import { defection, classementFragilite } from "../js/core/defection.js";
-import { frise, heure } from "../js/core/temps.js";
+import { frise, heure, pic } from "../js/core/temps.js";
 import { besoins, besoinsMarkdown } from "../js/core/besoins.js";
 
 const trouve = (c, cle) => c.find((x) => x.cle === cle);
@@ -163,6 +163,41 @@ suite("Temps — l'erreur et le besoin ne se confondent pas", () => {
     const f = frise(s.reseau, s.trames);
     eq(f.sansHoraire.length, 1);
     eq(f.erreurs.length, 1, "toujours une seule erreur");
+  });
+
+  /* La régression que le lot corrige : l'ancien calcul comptait, pour
+     chaque situation, combien d'autres la chevauchent — le degré du
+     nœud dans le graphe de chevauchement, qui MAJORE le maximum. Trois
+     scènes en chaîne se chevauchent deux à deux sans jamais coexister
+     toutes les trois. */
+  test("trois scènes en chaîne ne font pas trois comédiens", () => {
+    const s = {
+      reseau: fauxReseau({ personnages: [{ id: "n", nom: "Le Passeur", pj: false }] }),
+      trames: fauxTrames({
+        situations: [
+          { id: "a", titre: "A", castIds: ["n"], debut: 20, fin: 22 },
+          { id: "b", titre: "B", castIds: ["n"], debut: 21, fin: 23 },
+          { id: "c", titre: "C", castIds: ["n"], debut: 22.5, fin: 24 },
+        ],
+      }),
+    };
+    // A∩B = 21-22 · B∩C = 22h30-23 · A∩C = ∅ → deux, jamais trois.
+    eq(frise(s.reseau, s.trames).besoins[0].comediens, 2);
+  });
+
+  test("le pic se lit à l'instant, pas au chevauchement deux à deux", () => {
+    // Trois scènes qui, elles, coexistent vraiment à 21h30.
+    eq(
+      pic([
+        { debut: 21, fin: 23 },
+        { debut: 21.5, fin: 22 },
+        { debut: 20, fin: 24 },
+      ]).comediens,
+      3,
+    );
+    // Une situation sans horaire ne compte pas : elle n'est pas plaçable.
+    eq(pic([{ debut: null, fin: null }, { debut: 20, fin: 21 }]).comediens, 1);
+    eq(pic([]).comediens, 0, "rien de daté, aucun besoin déduit");
   });
 
   test("l'heure passe minuit sans reculer", () => {

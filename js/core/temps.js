@@ -58,6 +58,54 @@ function datee(s) {
 }
 
 /**
+ * Le PIC de simultanéité d'un ensemble de situations : le plus grand
+ * nombre d'entre elles ouvertes **au même instant**. Pour un PNJ, c'est
+ * le nombre de comédiens à trouver.
+ *
+ * ── POURQUOI PAS « COMBIEN EN CHEVAUCHENT UNE AUTRE » ──
+ * C'était le calcul d'avant, aux trois endroits qui en avaient besoin,
+ * et il **surestime**. Compter, pour chaque situation, combien d'autres
+ * la chevauchent donne le degré du nœud dans le graphe de
+ * chevauchement — un majorant du maximum, pas le maximum :
+ *
+ *     A 20h→22h   B 21h→23h   C 22h30→24h
+ *     A∩B = 21-22 · B∩C = 22h30-23 · A∩C = ∅
+ *
+ * Les trois se chevauchent deux à deux autour de B, mais jamais toutes
+ * les trois ensemble : **deux** comédiens suffisent, et l'ancien calcul
+ * en réclamait trois. Ce chiffre-là ne se corrige pas dans l'atelier,
+ * il part au recrutement — un comédien de trop, c'est une personne
+ * qu'on fait venir un week-end pour rien.
+ *
+ * On balaye donc les instants de **début**, seuls moments où le compte
+ * peut croître, et on compte ce qui est ouvert à chacun. La borne
+ * droite est exclue : une scène qui finit quand l'autre commence ne
+ * réclame pas deux personnes.
+ *
+ * Une situation sans horaire ne compte pas — elle n'est pas plaçable,
+ * et on ne déduit pas un besoin d'une simultanéité qu'on n'a pas les
+ * moyens de constater.
+ *
+ * Renvoie `{ comediens, creneau }` : le nombre, et la situation qui
+ * **ouvre** le pic — celle qui dit à quelle heure il faut être autant.
+ * `comediens` vaut 0 si rien n'est daté ; c'est à l'appelant de dire ce
+ * que vaut un PNJ dont aucune scène n'a d'heure.
+ */
+export function pic(situations) {
+  const dates = (situations || []).filter(datee);
+  let comediens = 0;
+  let creneau = null;
+  for (const s of dates) {
+    const n = dates.filter((o) => o.debut <= s.debut && s.debut < o.fin).length;
+    if (n > comediens) {
+      comediens = n;
+      creneau = s;
+    }
+  }
+  return { comediens, creneau };
+}
+
+/**
  * Projette la frise.
  *
  *   {
@@ -102,19 +150,9 @@ export function frise(reseau, trames) {
           if (chevauche(siennes[i], siennes[j]))
             erreurs.push({ personnage: p, a: siennes[i], b: siennes[j] });
     } else {
-      // Le pic de simultanéité DONNE le nombre de comédiens : c'est le
-      // plus grand nombre de situations ouvertes au même instant. On le
-      // mesure aux instants de début, seuls moments où il peut croître.
-      let pic = 1;
-      let creneau = null;
-      for (const s of siennes) {
-        const n = siennes.filter((o) => chevauche(s, o) || o.id === s.id).length;
-        if (n > pic) {
-          pic = n;
-          creneau = s;
-        }
-      }
-      if (pic > 1) besoins.push({ personnage: p, comediens: pic, pic: creneau });
+      // Le pic de simultanéité DONNE le nombre de comédiens (cf. `pic`).
+      const { comediens, creneau } = pic(siennes);
+      if (comediens > 1) besoins.push({ personnage: p, comediens, pic: creneau });
     }
   }
 

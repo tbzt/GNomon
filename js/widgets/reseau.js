@@ -65,9 +65,49 @@ export const Reseau = {
         if (this._onCreer) this._onCreer();
         return;
       }
+      // Dissoudre : le store désaffecte les membres, il ne les supprime
+      // pas. On retire le classeur, pas les gens — et la phrase le dit,
+      // parce que « supprimer un groupe » se lit autrement.
+      const gx = e.target.closest("[data-groupe-x]");
+      if (gx) {
+        const id = gx.dataset.groupeX;
+        const g = this._store.groupe(id);
+        const n = this._store.membresDe(id).length;
+        if (
+          confirm(
+            `Dissoudre « ${g ? g.nom : "ce groupe"} » ?\n\n` +
+              (n
+                ? `${n} personnage${n > 1 ? "s" : ""} ${n > 1 ? "deviennent" : "devient"} sans groupe. Personne n'est supprimé.`
+                : "Il est déjà vide."),
+          )
+        )
+          this._store.supprimerGroupe(id);
+        return;
+      }
       const carte = e.target.closest("[data-personnage]");
       if (carte && this._onOuvrir) this._onOuvrir(carte.dataset.personnage);
     });
+
+    // Le renommage part au `change` — donc à la sortie du champ, pas à
+    // la frappe : `rendre()` reconstruit tout à chaque écriture, et
+    // enregistrer lettre par lettre arracherait le champ des doigts.
+    this._hote.addEventListener("change", (e) => {
+      const champ = e.target.closest(".groupe-nom");
+      if (!champ) return;
+      const sec = champ.closest("[data-groupe]");
+      const id = sec && sec.dataset.groupe;
+      if (!id) return;
+      const val = champ.value.trim();
+      // Un groupe sans nom serait une section anonyme qu'on ne saurait
+      // plus désigner : on repose l'ancien plutôt que de l'accepter.
+      if (!val) {
+        const g = this._store.groupe(id);
+        champ.value = g ? g.nom : "";
+        return;
+      }
+      this._store.majGroupe(id, { nom: val });
+    });
+
     this.rendre();
   },
 
@@ -124,6 +164,14 @@ export const Reseau = {
 
     if (this._lentille === "graphe") {
       Tableau.demonter();
+      /* Le graphe se monte UNE fois et se rafraîchit ensuite, comme le
+         tableau. Le remonter à chaque événement du store remettrait la
+         vue de l'auteur à zéro — invisible tant que le graphe était en
+         lecture seule, fatal depuis que son flanc édite les liens. */
+      if (ReseauGraphe.monteDans(this._hote)) {
+        ReseauGraphe.rafraichir();
+        return;
+      }
       this._hote.innerHTML = barre + '<div id="rg-hote"></div>';
       ReseauGraphe.monter(this._hote.querySelector("#rg-hote"), this._store, this._stores, {
         onOuvrir: this._onOuvrir,
@@ -139,14 +187,39 @@ export const Reseau = {
       groupes
       .map((g) => {
         const membres = persos.filter((p) => p.groupeId === g.id);
-        if (!membres.length) return "";
+        // Un groupe RÉEL resté sans membre s'affiche quand même, vide.
+        // Le masquer le laisserait vivre dans les sélecteurs sans
+        // qu'aucun écran ne permette de le renommer ni de le dissoudre —
+        // c'est la règle du portrait manquant du trombinoscope : un trou
+        // visible se comble, un trou caché reste. « Sans groupe », lui,
+        // n'est pas un groupe mais le reste : vide, il ne dit rien.
+        if (!membres.length && !g.id) return "";
         return (
-          `<section class="groupe"><h2>${Utils.escHtml(g.nom)}</h2>` +
-          membres.map((p) => this._carte(p)).join("") +
+          `<section class="groupe" data-groupe="${g.id || ""}">` +
+          this._enteteGroupe(g, membres.length) +
+          (membres.length
+            ? membres.map((p) => this._carte(p)).join("")
+            : '<p class="groupe-vide">Aucun membre. Rangez quelqu\'un dedans depuis la lentille Tableau, ' +
+              "ou dissolvez-le.</p>") +
           "</section>"
         );
       })
       .join("");
+  },
+
+  /** Le nom d'un groupe s'écrit là où il s'affiche. « Sans groupe »
+      n'en est pas un — c'est le reste, et il n'a donc ni nom modifiable
+      ni dissolution. */
+  _enteteGroupe(g, n) {
+    if (!g.id) return `<h2>${Utils.escHtml(g.nom)}</h2>`;
+    return (
+      '<h2 class="groupe-tete">' +
+      `<input class="groupe-nom" value="${Utils.escHtml(g.nom)}" aria-label="Nom du groupe" />` +
+      `<span class="groupe-compte">${n} ${Utils.plur(n, "membre")}</span>` +
+      `<button type="button" class="groupe-x" data-groupe-x="${g.id}" ` +
+      'title="Retire le groupe ; ses membres deviennent sans groupe">Dissoudre</button>' +
+      "</h2>"
+    );
   },
 
   _carte(p) {

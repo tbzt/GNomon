@@ -267,7 +267,8 @@ export const Casting = {
         this._brut = "";
         this.rendre();
         const st = document.getElementById("statut");
-        if (st) {
+        // Voir `App._statut` : une alarme d'écriture reste au-dessus.
+        if (st && !st.classList.contains("danger")) {
           st.textContent = `${n} ${Utils.plur(n, "candidature")} ${Utils.plur(n, "importée")} — seule la colonne choisie a été lue.`;
           st.hidden = false;
         }
