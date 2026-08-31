@@ -36,6 +36,7 @@
    Module **pur** : lit des stores, n'en mute aucun.
    ============================================================ */
 import { TONALITES, IMPORTANCES } from "./reseaustore.js";
+import { pic } from "./temps.js";
 
 const TRAITS_PUBLIABLES = [
   { cle: "moral", label: "Ce en quoi je crois" },
@@ -172,16 +173,11 @@ export function consigne(personnageId, { reseau, monde, infos, trames }) {
     }))
     .sort((a, b) => (a.debut ?? 99) - (b.debut ?? 99));
 
-  // Simultanéité : combien de comédiens il faudra. Même calcul que la
-  // frise, refait ici pour que la consigne soit lisible seule.
-  let comediens = 1;
-  for (const s of scenes)
-    if (s.debut != null && s.fin != null) {
-      const n = scenes.filter(
-        (o) => o.debut != null && o.fin != null && o.debut < s.fin && s.debut < o.fin,
-      ).length;
-      if (n > comediens) comediens = n;
-    }
+  // Simultanéité : combien de comédiens il faudra. Le calcul est celui
+  // de la frise, et c'est le MÊME code — il en existait une troisième
+  // copie ici, qui surestimait comme les deux autres (cf. `temps.pic`).
+  // Un PNJ dont aucune scène n'a d'horaire reste une personne à jouer.
+  const comediens = Math.max(1, pic(scenes).comediens);
 
   const { sait, croit } = infos.parPersonnage(p.id);
 

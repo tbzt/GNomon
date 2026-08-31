@@ -40,6 +40,7 @@
 import { GraphEngine } from "./graph/graphengine.js";
 import { defection, classementFragilite } from "../core/defection.js";
 import { TONALITES, IMPORTANCES } from "../core/reseaustore.js";
+import { LienEditeur } from "./lienediteur.js";
 import { Utils } from "../core/utils.js";
 
 const COULEUR = {
@@ -64,6 +65,8 @@ export const ReseauGraphe = {
   _mode: false, // mode défection
   _absent: null,
   _onOuvrir: null,
+  _lienOuvert: null,
+  _sig: "",
 
   monter(hote, store, stores, { onOuvrir = null } = {}) {
     this._hote = hote;
@@ -75,6 +78,47 @@ export const ReseauGraphe = {
 
   demonter() {
     GraphEngine.destroy();
+    this._hote = null;
+    this._sig = "";
+  },
+
+  /** Vrai seulement si CE widget est vivant et que son hôte est encore
+      en place — même garde que le tableau. Chercher `#rg-hote` dans le
+      DOM ne suffirait pas : quitter l'écran le masque sans le vider. */
+  monteDans(parent) {
+    return !!this._hote && !!parent && parent.contains(this._hote);
+  },
+
+  /** Ce qui, en changeant, oblige à REMONTER le moteur : quels nœuds,
+      où ils sont, et quelles arêtes existent. Le STYLE n'y est pas —
+      couleur, épaisseur, motif, mot et sens se repeignent en place
+      (`_peindre`). C'est ce qui permet de régler la tonalité d'un lien
+      depuis le flanc sans que le cadrage de l'auteur ne saute, et c'est
+      la même discipline que la signature de l'atelier. */
+  _signature() {
+    return [
+      this._store
+        .personnages()
+        .map((p) => `${p.id}:${p.nom}:${p.pj ? 1 : 0}:${p.x},${p.y}:${p.portrait ? 1 : 0}`)
+        .join("|"),
+      this._aretes()
+        .map((e) => `${e.from}>${e.to}`)
+        .join("|"),
+      this._store.groupes().map((g) => `${g.id}:${this._store.membresDe(g.id).length}`).join(","),
+    ].join("§");
+  },
+
+  /** Re-projette sans remonter, tant que la structure n'a pas bougé.
+      Sans ça, la moindre écriture — et depuis que le flanc édite les
+      liens, il y en a — remettait la vue à zéro. */
+  rafraichir() {
+    if (!this._hote) return;
+    if (this._sig !== this._signature()) {
+      this.rendre();
+      return;
+    }
+    this._peindre();
+    this._rafraichirFlanc();
   },
 
   /* ================= arrangement ================= */
@@ -203,6 +247,7 @@ export const ReseauGraphe = {
 
     this._monterGraphe();
     this._brancher();
+    this._sig = this._signature();
   },
 
   _monterGraphe() {
@@ -245,8 +290,17 @@ export const ReseauGraphe = {
 
     if (!this._absent) {
       for (const n of noeuds) GraphEngine.setNodeColor(n.id, null);
+      // `label` et `dir` avec le reste : ils portent la nature du lien
+      // et son sens unique, qui changent à l'édition. Les omettre
+      // laisserait à l'écran un mot que le store n'a plus.
       for (const e of aretes)
-        GraphEngine.updateEdgeStyle(e.id, { color: e.color, width: e.width, pattern: e.pattern });
+        GraphEngine.updateEdgeStyle(e.id, {
+          color: e.color,
+          width: e.width,
+          pattern: e.pattern,
+          label: e.label,
+          dir: e.dir,
+        });
       return;
     }
 
@@ -262,6 +316,8 @@ export const ReseauGraphe = {
         color: casse ? ROUGE : e.color,
         width: e.width,
         pattern: casse ? "dashed" : e.pattern,
+        label: e.label,
+        dir: e.dir,
       });
     }
   },
@@ -311,10 +367,22 @@ export const ReseauGraphe = {
               const q = this._store.personnage(l.vers);
               const r = this._store.reciproque(l);
               const sym = r && r.tonalite === l.tonalite && r.importance === l.importance;
+              const ouvert = this._lienOuvert === l.id;
+              /* C'est ICI qu'on voit qu'un lien devrait être primaire —
+                 le graphe montre la forme du réseau, la fiche montre un
+                 personnage. Renvoyer à la fiche pour régler ce qu'on
+                 vient de repérer était le trajet de trop. */
               return (
-                `<li class="t-${l.tonalite}"><span class="rg-fleche">${sym ? "⇄" : r ? "⇄̸" : "→"}</span>` +
+                `<li class="t-${l.tonalite}${ouvert ? " ouvert" : ""}">` +
+                `<span class="rg-fleche">${sym ? "⇄" : r ? "⇄̸" : "→"}</span>` +
                 `<span>${Utils.escHtml(q ? q.nom : "?")}${l.miroir ? " ◎" : ""}` +
-                `<i>${Utils.escHtml(l.nature) || "—"} · ${TONALITES[l.tonalite]} · ${IMPORTANCES[l.importance]}</i></span></li>`
+                `<i>${Utils.escHtml(l.nature) || "—"} · ${TONALITES[l.tonalite]} · ${IMPORTANCES[l.importance]}</i></span>` +
+                `<button type="button" class="rg-modifier" data-lien="${l.id}" ` +
+                `aria-expanded="${ouvert}" title="Régler ce lien">${ouvert ? "Fermer" : "Régler"}</button>` +
+                (ouvert
+                  ? `<div class="rg-edit">${LienEditeur.html(this._store, l, p)}</div>`
+                  : "") +
+                "</li>"
               );
             })
             .join("")
@@ -387,8 +455,31 @@ export const ReseauGraphe = {
   _rafraichirFlanc() {
     const f = this._hote.querySelector("#rg-flanc");
     if (!f) return;
+    // Même règle que la fiche (cf. `Fiche._reprojeterLiens`) : on
+    // reconstruit toujours — sinon le résumé du lien resterait périmé
+    // sous l'éditeur ouvert — et on reporte ce que le store n'a pas
+    // encore, c'est-à-dire la frappe en cours et le curseur.
+    const a = document.activeElement;
+    const vif = a && f.contains(a) && a.dataset.le ? a : null;
+    const garde = vif
+      ? {
+          l: vif.dataset.l,
+          le: vif.dataset.le,
+          texte: vif.type === "text" ? vif.value : null,
+          debut: vif.type === "text" ? vif.selectionStart : null,
+          fin: vif.type === "text" ? vif.selectionEnd : null,
+        }
+      : null;
+
     f.innerHTML = this._flanc();
     this._brancherFlanc();
+
+    if (!garde) return;
+    const el = f.querySelector(`[data-le="${garde.le}"][data-l="${garde.l}"]`);
+    if (!el) return;
+    if (garde.texte !== null) el.value = garde.texte;
+    el.focus();
+    if (garde.texte !== null) el.setSelectionRange(garde.debut, garde.fin);
   },
 
   /* ================= câblage ================= */
@@ -423,6 +514,16 @@ export const ReseauGraphe = {
         this._absent = b.dataset.essayer;
         this.rendre();
       });
+    for (const b of this._hote.querySelectorAll("[data-lien]"))
+      b.addEventListener("click", () => {
+        this._lienOuvert = this._lienOuvert === b.dataset.lien ? null : b.dataset.lien;
+        this._rafraichirFlanc();
+      });
+    LienEditeur.brancher(this._hote.querySelector("#rg-flanc"), this._store, {
+      avantSuppression: () => {
+        this._lienOuvert = null;
+      },
+    });
   },
 };
 

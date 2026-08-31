@@ -307,7 +307,8 @@ export const Livrets = {
 
   _dire(txt) {
     const el = document.getElementById("statut");
-    if (!el) return;
+    // Voir `App._statut` : une alarme d'écriture reste au-dessus.
+    if (!el || el.classList.contains("danger")) return;
     el.textContent = txt;
     el.hidden = false;
   },

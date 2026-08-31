@@ -112,8 +112,16 @@ export function bilan(casting, reseau, trames) {
   /* ---- Miroir désaccordé ---- */
   const desaccords = [];
   const valeur = (etat) => (etat === "veto" ? -1 : Number(etat) || 0);
+  // Un miroir déclaré des DEUX côtés porte le drapeau sur ses deux
+  // liens : sans ce garde, le même désaccord se compterait deux fois.
+  // Le défaut existait depuis le début et ne se voyait pas — aucun
+  // écran ne permettait encore de poser un miroir.
+  const vus = new Set();
   for (const l of reseau.liens()) {
     if (!l.miroir) continue;
+    const paire = [l.de, l.vers].sort().join("|");
+    if (vus.has(paire)) continue;
+    vus.add(paire);
     const ka = casting.titulaireDe(l.de);
     const kb = casting.titulaireDe(l.vers);
     if (!ka || !kb) continue;

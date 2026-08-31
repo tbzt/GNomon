@@ -33,6 +33,8 @@
    Module **pur**.
    ============================================================ */
 
+import { pic } from "./temps.js";
+
 export const CATEGORIES = Object.freeze({
   materiel: { nom: "Matériel et accessoires", aide: "Ce qu'il faut trouver, fabriquer ou emprunter." },
   preparation: { nom: "À préparer sur place", aide: "Ce que l'équipe doit installer pour que la scène puisse arriver." },
@@ -50,13 +52,6 @@ function items(texte) {
     .split(/[\n·;]+|,(?=\s*[A-ZÀ-Ý0-9])/)
     .map((x) => x.trim().replace(/^[-—•]\s*/, ""))
     .filter(Boolean);
-}
-
-function chevauche(a, b) {
-  return (
-    a.debut != null && a.fin != null && b.debut != null && b.fin != null &&
-    b.debut < a.fin && a.debut < b.fin
-  );
 }
 
 /**
@@ -94,23 +89,20 @@ export function besoins({ reseau, trames, monde }) {
   }
 
   /* Les comédiens : le pic de simultanéité d'un PNJ EST le nombre de
-     personnes à trouver. C'est le même calcul que la frise, et c'est
-     le besoin le plus difficile à voir à la main. */
+     personnes à trouver. C'est le besoin le plus difficile à voir à la
+     main — et le calcul vit désormais dans `temps.js`, en un seul
+     endroit : il en existait trois copies, toutes fausses de la même
+     façon (cf. `pic`). */
   for (const p of reseau.pnj()) {
     const siennes = trames.situations().filter((s) => (s.castIds || []).includes(p.id));
     if (!siennes.length) continue;
-    let pic = 1;
-    let creneau = null;
-    for (const s of siennes) {
-      const n = siennes.filter((o) => o.id === s.id || chevauche(s, o)).length;
-      if (n > pic) {
-        pic = n;
-        creneau = s;
-      }
-    }
+    const { comediens, creneau } = pic(siennes);
+    // Un PNJ dont aucune scène n'a d'horaire reste une personne à
+    // trouver : le pic vaut 0, le besoin vaut 1.
+    const n = Math.max(1, comediens);
     out.comediens.push({
       cle: `comediens:${p.id}`,
-      quoi: `${pic} comédien${pic > 1 ? "s" : ""} pour ${p.nom}`,
+      quoi: `${n} comédien${n > 1 ? "s" : ""} pour ${p.nom}`,
       ou: creneau ? creneau.espace || "" : "",
       quand: creneau ? heure(creneau) : "",
       source: `${siennes.length} situation${siennes.length > 1 ? "s" : ""}`,

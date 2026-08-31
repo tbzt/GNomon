@@ -44,6 +44,7 @@ import { couverture } from "../core/couverture.js";
 import { INFLUENCES } from "../core/informationstore.js";
 import { TONALITES, IMPORTANCES, FONCTIONS } from "../core/reseaustore.js";
 import { Mentions } from "./journal/mentions.js";
+import { LienEditeur } from "./lienediteur.js";
 import { Utils } from "../core/utils.js";
 
 /** Réduit une image avant de l'embarquer en `data:` — une photo de
@@ -126,6 +127,7 @@ export const Fiche = {
   _onOuvrir: null,
   _tSave: null,
   _tCarnet: null,
+  _lienOuvert: null,
 
   monter(hote, store, personnageId, { onOuvrir = null, infos = null } = {}) {
     // On quitte peut-être une fiche en cours d'écriture : la sauvegarde
@@ -137,6 +139,8 @@ export const Fiche = {
     this._infos = infos;
     this._id = personnageId;
     this._onOuvrir = onOuvrir;
+    // L'éditeur ouvert appartenait au lien d'un AUTRE personnage.
+    this._lienOuvert = null;
     this.rendre();
   },
 
@@ -192,8 +196,8 @@ export const Fiche = {
     const l = this._hote.querySelector("#fiche-liens");
     const q = this._hote.querySelector("#fiche-squelette");
     if (j) j.innerHTML = this._jauge(p);
-    if (l) l.innerHTML = this._liens(p);
     if (q) q.innerHTML = this._squelette(p);
+    if (l) this._reprojeterLiens(l, p);
     const t = this._hote.querySelector(".fiche-titre");
     if (t && document.activeElement !== t) t.value = p.nom;
     this._brancherJauge();
@@ -368,31 +372,133 @@ export const Fiche = {
     );
   },
 
+  /* ================= les contacts, et leur édition =================
+     ── LE LIEN EST LA VÉRITÉ RACINE, IL DOIT POUVOIR S'ÉCRIRE ──
+     La `@mention` propose l'arête et ne demande que la tonalité — c'est
+     le bon geste au moment d'écrire, et il fige volontairement le reste
+     (`importance: secondaire`, `nature: ""`, `miroir: false`). Mais il
+     n'existait ensuite AUCUNE porte pour reprendre ces trois-là, ni
+     pour retirer un lien posé de travers.
+
+     Conséquence, mesurée : `primaire` et `miroir` étaient inatteignables
+     dans un projet écrit avec l'outil. Cinq calculs les attendent — la
+     règle « personne n'est seul » (qui lit les liens ENTRANTS primaires),
+     la règle « miroir disponible », la pastille contact-miroir, le
+     miroir désaccordé du bilan de casting, et les miroirs perdus de la
+     défection. Tous restaient muets, sauf sur le jeu d'essai, qui pose
+     ces valeurs à la main.
+
+     L'éditeur est donc ici, replié sous chaque contact : on ne quitte
+     pas la fiche qu'on est en train d'écrire pour régler ce qu'on vient
+     d'y déclarer. */
+
   _liens(p) {
     const liens = this._store.liensDe(p.id);
     if (!liens.length)
       return '<p class="liens-vide">Aucun contact déclaré. Mentionnez quelqu\'un dans le carnet.</p>';
     return (
-      '<p class="carnet-titre">Ses contacts</p><ul class="liens">' +
-      liens
-        .map((l) => {
-          const cible = this._store.personnage(l.vers);
-          const retour = this._store.reciproque(l);
-          const sym =
-            retour && retour.tonalite === l.tonalite && retour.importance === l.importance;
-          return (
-            `<li class="lien t-${l.tonalite} i-${l.importance}">` +
-            `<span class="fleche" title="${sym ? "réciproque à l'identique" : retour ? "réciproque, mais différent" : "aucun lien de retour"}">${sym ? "⇄" : retour ? "⇄̸" : "→"}</span> ` +
-            `<b>${Utils.escHtml(cible ? cible.nom : "?")}</b>` +
-            (l.miroir ? ' <span class="miroir" title="contact-miroir">◎</span>' : "") +
-            `<span class="nature">${Utils.escHtml(l.nature) || "—"}</span>` +
-            `<span class="tags">${TONALITES[l.tonalite]} · ${IMPORTANCES[l.importance]}</span>` +
-            "</li>"
-          );
-        })
-        .join("") +
+      '<p class="carnet-titre">Ses contacts' +
+      `<span class="carnet-aide">ce que ${Utils.escHtml(p.nom)} déclare — le lien est orienté</span></p>` +
+      '<ul class="liens">' +
+      liens.map((l) => this._ligneLien(l)).join("") +
       "</ul>"
     );
+  },
+
+  _ligneLien(l) {
+    const cible = this._store.personnage(l.vers);
+    const retour = this._store.reciproque(l);
+    const sym = retour && retour.tonalite === l.tonalite && retour.importance === l.importance;
+    const ouvert = this._lienOuvert === l.id;
+    return (
+      `<li class="lien t-${l.tonalite} i-${l.importance}${ouvert ? " ouvert" : ""}">` +
+      `<span class="fleche" title="${sym ? "réciproque à l'identique" : retour ? "réciproque, mais différent" : "aucun lien de retour"}">${sym ? "⇄" : retour ? "⇄̸" : "→"}</span>` +
+      `<span class="lien-qui"><b>${Utils.escHtml(cible ? cible.nom : "?")}</b>` +
+      (l.miroir ? ' <span class="miroir" title="contact-miroir">◎</span>' : "") +
+      "</span>" +
+      `<span class="nature">${Utils.escHtml(l.nature) || "—"}</span>` +
+      `<span class="tags">${TONALITES[l.tonalite]} · ${IMPORTANCES[l.importance]}</span>` +
+      `<button type="button" class="lien-modifier" data-lien="${l.id}" aria-expanded="${ouvert}">` +
+      `${ouvert ? "Fermer" : "Modifier"}</button>` +
+      "</li>" +
+      (ouvert ? this._editeurLien(l) : "")
+    );
+  },
+
+  /** L'enveloppe seule : le corps de l'éditeur est partagé avec le
+      flanc du graphe (`lienediteur.js`), qui a besoin du même geste. */
+  _editeurLien(l) {
+    return (
+      `<li class="lien-edit" data-edit="${l.id}">` +
+      LienEditeur.html(this._store, l, this._store.personnage(this._id)) +
+      "</li>"
+    );
+  },
+
+  _brancherLiens() {
+    const bloc = this._hote.querySelector("#fiche-liens");
+    if (!bloc) return;
+
+    for (const b of bloc.querySelectorAll("[data-lien]"))
+      b.addEventListener("click", () => {
+        this._lienOuvert = this._lienOuvert === b.dataset.lien ? null : b.dataset.lien;
+        const p = this._store.personnage(this._id);
+        if (!p) return;
+        bloc.innerHTML = this._liens(p);
+        this._brancherLiens();
+        // Ouvrir pour régler quelque chose : le curseur va au seul champ
+        // qui se tape, pas au premier de la rangée.
+        const n = this._lienOuvert && bloc.querySelector('[data-le="nature"]');
+        if (n) n.focus();
+      });
+
+    // Refermer l'éditeur AVANT que le store n'émette : sinon la
+    // re-projection rouvrirait un lien qui n'existe plus.
+    LienEditeur.brancher(bloc, this._store, {
+      avantSuppression: () => {
+        this._lienOuvert = null;
+      },
+    });
+  },
+
+  /** Les contacts se re-projettent comme le reste du dérivé — sauf que
+      depuis l'éditeur, ILS sont ce qu'on est en train de modifier.
+
+      La garde naïve — « si un champ de texte a le focus, ne rien
+      refaire » — a été essayée et jetée : ouvrir l'éditeur donne le
+      focus au champ « nature », donc PLUS RIEN ne se re-projetait tant
+      qu'il était ouvert. La ligne de résumé continuait d'afficher
+      « Positif · Secondaire » alors que le store portait déjà
+      « primaire » et le miroir. Deux vérités à l'écran pour un seul
+      fait, c'est-à-dire le défaut que tout le reste du projet évite.
+
+      On reconstruit donc toujours, et on **reporte** ce qui ne se
+      trouve pas dans le store : le texte en cours de frappe (`nature`
+      n'écrit qu'au `change`, donc il n'y est pas encore) et la position
+      du curseur. Le focus revient au même contrôle — sans quoi régler
+      une tonalité au clavier renverrait en haut de la page. */
+  _reprojeterLiens(bloc, p) {
+    const a = document.activeElement;
+    const vif = a && bloc.contains(a) && a.dataset.le ? a : null;
+    const garde = vif
+      ? {
+          l: vif.dataset.l,
+          le: vif.dataset.le,
+          texte: vif.type === "text" ? vif.value : null,
+          debut: vif.type === "text" ? vif.selectionStart : null,
+          fin: vif.type === "text" ? vif.selectionEnd : null,
+        }
+      : null;
+
+    bloc.innerHTML = this._liens(p);
+    this._brancherLiens();
+
+    if (!garde) return;
+    const el = bloc.querySelector(`[data-le="${garde.le}"][data-l="${garde.l}"]`);
+    if (!el) return;
+    if (garde.texte !== null) el.value = garde.texte;
+    el.focus();
+    if (garde.texte !== null) el.setSelectionRange(garde.debut, garde.fin);
   },
 
   /* ================= câblage ================= */
@@ -463,6 +569,7 @@ export const Fiche = {
     });
 
     this._brancherJauge();
+    this._brancherLiens();
   },
 
   /* ---- objectifs, style, images ---- */
@@ -515,7 +622,9 @@ export const Fiche = {
 
   _signaler(txt) {
     const el = document.getElementById("statut");
-    if (!el) return;
+    // `danger` = une écriture a échoué : ce message-là ne se fait pas
+    // recouvrir par un incident de lecture d'image.
+    if (!el || el.classList.contains("danger")) return;
     el.textContent = txt;
     el.hidden = false;
   },

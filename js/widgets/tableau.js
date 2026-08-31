@@ -175,6 +175,33 @@ export const Tableau = {
     if (!champ) return;
     const tr = t.closest("tr[data-p]");
     if (!tr) return;
+
+    /* ── LA PORTE DE CRÉATION D'UN GROUPE ──
+       Il n'y en avait aucune : `creerGroupe` n'était appelé que par le
+       jeu d'essai, donc un projet écrit dans l'outil n'avait jamais de
+       groupe. Cinq calculs les attendaient sans que rien ne puisse les
+       produire — la couverture « groupe de référence », les ponts
+       inter-groupes, la différenciation morale (qui ne compare qu'à
+       l'intérieur d'un groupe), les poches du graphe et le regroupement
+       de la liste et du trombinoscope.
+
+       Le sélecteur est l'endroit juste, et c'est pour ça qu'on n'ouvre
+       pas d'écran : on nomme un groupe au moment où on range quelqu'un
+       dedans, jamais avant. */
+    if (champ === "groupeId" && t.value === "_nouveau") {
+      const nom = prompt("Nom du nouveau groupe ?", "");
+      const p = this._store.personnage(tr.dataset.p);
+      // Annulé ou vide : on repose le choix précédent, sinon le
+      // sélecteur resterait sur une option qui n'est pas une valeur.
+      if (nom === null || !nom.trim()) {
+        t.value = (p && p.groupeId) || "";
+        return;
+      }
+      const g = this._store.creerGroupe(nom.trim());
+      this._store.majPersonnage(tr.dataset.p, { groupeId: g.id });
+      return;
+    }
+
     const v =
       t.type === "checkbox"
         ? t.checked
@@ -442,6 +469,7 @@ export const Tableau = {
               `<option value="${Utils.escHtml(g.id)}"${p.groupeId === g.id ? " selected" : ""}>${Utils.escHtml(g.nom)}</option>`,
           )
           .join("") +
+        '<option value="_nouveau">＋ Nouveau groupe…</option>' +
         "</select></td>"
       );
     }
