@@ -164,6 +164,18 @@ button:hover {
   color: var(--ink-soft);
 }
 
+/* L'ALARME D'ÉCRITURE. Elle ne dit pas un résultat, elle dit que le
+   travail en cours n'est PAS enregistré — et elle reste jusqu'à ce
+   qu'une écriture aboutisse. D'où le renversement complet du contraste
+   plutôt qu'une teinte : à côté d'un bandeau d'information, elle doit
+   se voir sans être lue. */
+#statut.danger {
+  background: var(--negatif);
+  border-bottom-color: var(--negatif);
+  color: var(--surface);
+  font-weight: 600;
+}
+
 /* ---------- réseau ---------- */
 
 main {
@@ -255,12 +267,19 @@ main {
 
 .lien {
   display: grid;
-  grid-template-columns: 22px minmax(140px, auto) 1fr auto;
+  /* Cinq colonnes depuis que le lien s'édite : le nom et son ◎ ont été
+     réunis dans `.lien-qui`, sinon le miroir débordait sur une seconde
+     ligne, et la commande d'édition tient la dernière. */
+  grid-template-columns: 22px minmax(130px, auto) 1fr auto auto;
   gap: 10px;
   align-items: baseline;
   background: var(--surface);
   padding: 7px 11px;
   font-size: 15px;
+}
+
+.lien.ouvert {
+  background: var(--panel);
 }
 
 .lien .fleche {
@@ -4661,4 +4680,442 @@ main[data-actif="monde"] {
   .tb-defil {
     max-height: none;
   }
+}
+
+
+/* ============================================================
+   L'ÉDITEUR DE LIEN
+   ------------------------------------------------------------
+   Le lien est la vérité racine et n'avait aucune porte d'édition :
+   `primaire` et `miroir` étaient inatteignables, donc cinq calculs
+   restaient muets hors du jeu d'essai. Le panneau se déplie sous le
+   contact, dans la fiche comme dans le flanc du graphe — le corps est
+   le même code (`js/widgets/lienediteur.js`), seule l'enveloppe change.
+
+   Il est DÉPLIÉ, pas flottant : un dialogue par-dessus la fiche
+   cacherait la jauge de couverture, qui est justement ce qui bouge
+   quand on règle une tonalité. On veut voir la pastille s'allumer.
+   ============================================================ */
+
+.lien-modifier,
+.rg-modifier {
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  padding: 3px 8px;
+  border: 1px solid var(--rule);
+  background: transparent;
+  color: var(--ink-faint);
+  border-radius: 2px;
+  cursor: pointer;
+  white-space: nowrap;
+  align-self: center;
+}
+
+.lien-modifier:hover,
+.rg-modifier:hover,
+.lien-modifier[aria-expanded="true"],
+.rg-modifier[aria-expanded="true"] {
+  border-color: var(--accent);
+  color: var(--accent);
+  background: var(--surface);
+}
+
+.lien-edit,
+.rg-edit {
+  background: var(--panel);
+  padding: 12px 14px 14px;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 10px 14px;
+  align-items: end;
+}
+
+.le-champ {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+}
+
+.le-champ > span {
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: 0.11em;
+  text-transform: uppercase;
+  color: var(--ink-faint);
+}
+
+.le-champ select,
+.le-champ input {
+  font-family: var(--sans);
+  font-size: 14px;
+  padding: 5px 7px;
+  border: 1px solid var(--rule);
+  border-radius: 2px;
+  background: var(--surface);
+  color: var(--ink);
+  width: 100%;
+  min-width: 0;
+}
+
+.le-champ select:focus,
+.le-champ input:focus {
+  outline: 2px solid var(--accent);
+  outline-offset: -1px;
+  border-color: var(--accent);
+}
+
+/* La nature est le seul champ qu'on TAPE : elle prend la largeur, sur
+   sa propre ligne, parce qu'on y écrit une phrase et pas un mot. */
+.le-nature {
+  grid-column: 1 / -1;
+}
+
+.le-miroir {
+  grid-column: 1 / -1;
+  justify-self: start;
+  color: var(--ink-soft);
+}
+
+.le-note {
+  grid-column: 1 / -1;
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.45;
+  color: var(--ink-faint);
+}
+
+.le-note b {
+  color: var(--ink-soft);
+}
+
+/* Le retrait se distingue sans se déguiser en bouton principal : il
+   est rare, et il n'a pas d'annulation. */
+.lien-edit .le-suppr,
+.rg-edit .le-suppr {
+  grid-column: 1 / -1;
+  justify-self: start;
+  width: auto;
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  padding: 5px 10px;
+  border: 1px solid var(--negatif);
+  border-radius: 2px;
+  background: transparent;
+  color: var(--negatif);
+  cursor: pointer;
+}
+
+.lien-edit .le-suppr:hover,
+.rg-edit .le-suppr:hover {
+  background: var(--negatif);
+  color: var(--surface);
+}
+
+/* ---- côté graphe : la même chose dans une colonne étroite ---- */
+
+.rg-liens li {
+  grid-template-columns: 22px 1fr auto;
+}
+
+.rg-liens li.ouvert {
+  background: var(--panel);
+}
+
+.rg-edit {
+  grid-column: 1 / -1;
+  margin: 8px -11px -8px;
+  grid-template-columns: 1fr;
+}
+
+/* `.rg-liste button` étale ses boutons sur toute la largeur : les deux
+   commandes de lien n'en font pas partie. */
+.rg-liste .rg-modifier,
+.rg-liste .le-suppr {
+  display: inline-block;
+  width: auto;
+  text-align: center;
+}
+
+/* ============================================================
+   LES GROUPES — nommer et dissoudre là où ils s'affichent
+   ------------------------------------------------------------
+   Aucun écran ne savait en créer : `creerGroupe` n'était appelé que par
+   le jeu d'essai. La création vit dans le sélecteur du tableau (on
+   nomme un groupe quand on range quelqu'un dedans), le nom et la
+   dissolution vivent ici, dans le titre de section — c'est-à-dire là
+   où le groupe est déjà écrit à l'écran.
+   ============================================================ */
+
+.groupe-tete {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+/* Le champ EST le titre : il en reprend la fonte, et ne se signale que
+   par son soulignement au survol et son cadre au focus — c'est là qu'il
+   informe, pas au repos. */
+.groupe-nom {
+  font: inherit;
+  letter-spacing: inherit;
+  text-transform: inherit;
+  color: var(--ink-soft);
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 2px;
+  padding: 2px 5px;
+  margin: -2px -5px;
+  min-width: 8em;
+  flex: 0 1 auto;
+}
+
+.groupe-nom:hover {
+  border-color: var(--rule);
+}
+
+.groupe-nom:focus {
+  outline: none;
+  border-color: var(--accent);
+  background: var(--surface);
+  color: var(--ink);
+}
+
+.groupe-compte {
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: 0.09em;
+  color: var(--ink-faint);
+  text-transform: none;
+}
+
+.groupe-x {
+  font-size: 9.5px;
+  padding: 3px 8px;
+  margin-left: auto;
+  opacity: 0;
+  transition: opacity 0.12s;
+}
+
+/* La dissolution ne s'offre pas au balayage : elle apparaît quand on
+   s'occupe de ce groupe-là. Le focus clavier la révèle aussi, sans
+   quoi elle serait inatteignable sans souris. */
+.groupe:hover .groupe-x,
+.groupe-x:focus-visible {
+  opacity: 1;
+}
+
+.groupe-x:hover {
+  border-color: var(--negatif);
+  color: var(--negatif);
+}
+
+.groupe-vide {
+  font-family: var(--mono);
+  font-size: 11.5px;
+  letter-spacing: 0.04em;
+  color: var(--ink-faint);
+  margin: 0;
+  padding: 10px 0 4px;
+}
+
+/* ============================================================
+   LES PROJETS — plusieurs GN sur le même appareil
+   ------------------------------------------------------------
+   Le sélecteur est posé contre le titre parce qu'il NOMME ce qu'on
+   regarde. Mis dans la rangée d'actions, à droite, il aurait eu l'air
+   d'un bouton de plus — alors qu'il dit dans quel GN on est, ce qui est
+   la première chose à savoir en arrivant devant l'écran.
+   ============================================================ */
+
+.projet-zone {
+  position: relative;
+  display: inline-flex;
+}
+
+.projet {
+  font-family: var(--serif);
+  font-size: 15px;
+  text-transform: none;
+  letter-spacing: 0;
+  padding: 3px 9px;
+  max-width: 20ch;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--ink);
+  border-color: transparent;
+  background: transparent;
+}
+
+.projet::before {
+  content: "/ ";
+  color: var(--ink-faint);
+}
+
+.projet:hover,
+.projet[aria-expanded="true"] {
+  border-color: var(--rule);
+  background: var(--surface);
+}
+
+.projet-panneau {
+  position: absolute;
+  top: calc(100% + 8px);
+  left: 0;
+  z-index: 20;
+  width: min(400px, calc(100vw - 32px));
+  background: var(--surface);
+  border: 1px solid var(--rule);
+  border-radius: 2px;
+  box-shadow: 0 8px 28px rgb(0 0 0 / 0.18);
+  padding: 14px;
+  display: grid;
+  gap: 10px;
+}
+
+.pj-titre {
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--ink-faint);
+  margin: 0;
+}
+
+.pj-liste {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 1px;
+  background: var(--rule);
+  border: 1px solid var(--rule);
+  max-height: 46vh;
+  overflow-y: auto;
+}
+
+.pj-item {
+  background: var(--ground);
+  display: grid;
+  grid-template-columns: 1fr auto auto;
+  align-items: center;
+}
+
+/* Le GN ouvert se signale par la même barre de signal que partout
+   ailleurs — un lien, un fil de conduite, une alerte : le vocabulaire
+   ne change pas d'un écran à l'autre. */
+.pj-item.actif {
+  background: var(--panel);
+  box-shadow: inset 3px 0 0 var(--accent);
+}
+
+.pj-ouvrir {
+  font-family: var(--sans);
+  font-size: 14px;
+  text-transform: none;
+  letter-spacing: 0;
+  text-align: left;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  padding: 9px 11px;
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+  color: var(--ink);
+}
+
+.pj-nom {
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.pj-detail {
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: 0.05em;
+  color: var(--ink-faint);
+}
+
+.pj-act {
+  font-size: 9.5px;
+  padding: 3px 7px;
+  border-color: transparent;
+  background: transparent;
+  opacity: 0;
+}
+
+/* Renommer et supprimer n'apparaissent que sur la ligne qu'on vise :
+   trois GN font six commandes, et six commandes offertes au balayage
+   font chercher celle qu'on veut. Le focus clavier les révèle aussi,
+   sans quoi elles seraient inatteignables sans souris. */
+.pj-item:hover .pj-act,
+.pj-act:focus-visible {
+  opacity: 1;
+}
+
+.pj-suppr:hover {
+  border-color: var(--negatif);
+  color: var(--negatif);
+}
+
+.pj-neuf {
+  justify-self: start;
+}
+
+.pj-note {
+  margin: 0;
+  font-size: 12.5px;
+  line-height: 1.45;
+  color: var(--ink-faint);
+}
+
+/* La saisie de connexion à l'espace. Provisoire — l'écran de l'espace
+   la reprendra — mais un mot de passe mérite un vrai champ dès le
+   premier jour, pas une invite de console qui le garde en historique. */
+.ep-connexion {
+  border: 1px solid var(--rule);
+  border-radius: 2px;
+  background: var(--surface);
+  color: var(--ink);
+  padding: 20px 22px;
+  min-width: min(340px, 90vw);
+}
+.ep-connexion::backdrop {
+  background: rgb(0 0 0 / 0.45);
+}
+.ep-connexion form {
+  display: grid;
+  gap: 12px;
+}
+.ep-connexion input {
+  font-family: var(--sans);
+  font-size: 15px;
+  padding: 7px 9px;
+  border: 1px solid var(--rule);
+  border-radius: 2px;
+  background: var(--ground);
+  color: var(--ink);
+  width: 100%;
+}
+.ep-connexion input:focus {
+  outline: 2px solid var(--accent);
+  outline-offset: -1px;
+}
+.ep-erreur {
+  margin: 0;
+  font-size: 13.5px;
+  color: var(--negatif);
+}
+.ep-actions {
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
 }

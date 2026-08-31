@@ -31,6 +31,10 @@
   <body>
     <div class="barre">
       <p class="titre">GNomon</p>
+      <span class="projet-zone">
+        <button id="act-projet" class="projet" type="button" aria-expanded="false"></button>
+        <div id="projet-panneau" class="projet-panneau" hidden></div>
+      </span>
       <nav class="modes" id="modes" aria-label="Moments de fabrication"></nav>
       <span class="spacer"></span>
       <span id="compteurs"></span>
@@ -45,7 +49,7 @@
 
     <div class="sous-barre" id="sous-barre"></div>
 
-    <p id="statut" hidden></p>
+    <p id="statut" role="status" hidden></p>
 
     <main>
       <div id="ecran-monde" hidden></div>

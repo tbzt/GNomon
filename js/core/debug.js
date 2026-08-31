@@ -34,6 +34,17 @@ export const Debug = {
     trame: "#2ecc71",
     information: "#c678dd",
     conscience: "#f7c948",
+    // Ces cinq-là étaient APPELÉS sans être déclarés : `_emit` filtre
+    // sur `_active`, que `all()` ne remplit que depuis cette table. Les
+    // échecs d'observateur de `monde`, `casting`, `run`, `besoins` et
+    // `liens` disparaissaient donc sans laisser de trace, y compris
+    // quand on avait explicitement tout allumé pour les chercher.
+    monde: "#e59f5a",
+    casting: "#6bd4c4",
+    run: "#f2a93b",
+    besoins: "#9ec46b",
+    liens: "#8aa0c9",
+    espace: "#d16ba5",
   },
 
   _levels: ["debug", "info", "warn", "error"],
