@@ -67,6 +67,8 @@ reviendrait à aplatir la différence qui fait tout le projet.
 | `livrets.js` | `Livrets` | Relecture avant remise, avec l'aperçu réel dans une `iframe`. |
 | `reseaugraphe.js` | `ReseauGraphe` | La **seconde lentille** du réseau : arêtes fusionnées par paire, poches de groupe, et le geste de défection. |
 | `besoins.js` | `Besoins` | L'écran des besoins dérivés, avec le suivi et les liens attachés. |
+| `cockpit.js` | `Cockpit`, `compterOuverts()` | **La porte d'entrée** : ce que GNomon déduit du texte déjà écrit, groupé par objet, cliquable jusqu'à son origine. N'appartient à aucun des quatre moments (cf. §5q). |
+| `degats.js` | `degatsHtml()`, `coupeHtml()`, `jamaisSueHtml()` | Le **texte** d'une absence, en un seul endroit. Rendu pur, sans état ni écouteur : le flanc du graphe et la fiche disent la même chose du même calcul (cf. §5r). |
 | `conduite.js` | `Conduite` | Le tableau de la nuit. **Son propre monde visuel** (cf. §5g), et un battement qui ne touche qu'au temps. |
 | `casting.js` | `Casting` | L'écran des vœux : grille, import à colonne choisie, affectation, bilan. |
 | `frise.js` | `Frise` | L'écran du temps : planning, collisions, charge. Un clic sur un bloc ouvre l'atelier **sur cette situation** (`Atelier.viser`). |
@@ -88,6 +90,10 @@ reviendrait à aplatir la différence qui fait tout le projet.
 | `reseaustore.js` | `ReseauStore` | **La vérité racine.** Personnages, liens orientés, groupes. Détient les trois invariants du modèle (cf. §4). |
 | `utils.js` | `Utils` | `escHtml`, `searchNorm` (recherche sans accents), `plur`. Volontairement maigre : la version de ShadowHerds porte la résolution d'édition, dont il n'y a pas ici. |
 | `conscience.js` | `conscience()` | **Les douze règles, calculées.** Module pur : lit trois stores, n'en mute aucun, ne touche pas au DOM — S6 pourra le rejouer après casting. Ne connaît pas les dérogations : le calcul reste rejouable tel quel. |
+| `diagnostic.js` | `diagnostics()`, `parCategorie()` | **La couche d'interprétation.** Traduit `conscience()`, `frise()`, `classementFragilite()` en signaux humains groupés par objet du GN, et ajoute quatre signaux structurels neufs (cf. §5q). Pur, et comme la conscience : ne connaît pas les dérogations. |
+| `crashtest.js` | `crashTestSituation()`, `crashTestInformation()`, `crashTestArriveeTardive()` | « Et si… ? » posé sur autre chose qu'une personne — `defection()` couvre déjà ce cas-là et est réutilisée telle quelle (cf. §5r). Pur, et **en lecture seule** : on veut savoir ce que coûterait la coupe avant de la faire. |
+| `liaison.js` | `contexteSuite()` | Ce qu'il faut avoir sous les yeux pour écrire la suite d'une conclusion : ce que les présents savent déjà, et les fils tendus sans être rattachés. **Propose, ne décide pas** (cf. §5s). Pur. |
+| `pointdevue.js` | `pointDeVue()`, `trous()` | Le GN vu d'un personnage : ce qu'il sait, peut apprendre, peut provoquer, et **où il risque de n'avoir rien à faire** (cf. §5r). Pur. |
 | `mondestore.js` | `MondeStore` | **Les fondamentaux** — prémisse, propos, thématique, contexte commun, lieux. Les étapes 1 à 3 d'eXpérience, qui manquaient (cf. §5j). |
 | `livret.js` | `livret()`, `livretHtml()` | Le background remis à un joueur. **Calculé par soustraction** (cf. §5j). |
 | `defection.js` | `defection()`, `classementFragilite()` | « Et s'il ne vient pas ? » — les quatre dégâts d'une absence. Module pur (cf. §5n). |
@@ -807,6 +813,218 @@ Un espace ne se crée **pas** depuis le web : les règles y interdisent l'écrit
 console peut poser sa branche `membres`. Personne ne se fabrique un espace. Inscrire son
 `uid` dans `gerants` en plus de `membres` n'est pas un doublon : les règles empêchent qu'un
 gérant soit retiré, sans quoi un membre pourrait verrouiller le propriétaire dehors.
+
+---
+
+## 5q. Le diagnostic — une couche d'interprétation, pas un calcul de plus
+
+La conception complète est dans `PRODUCT_TRANSFORMATION.md`. Ici, seulement ce qu'il faut
+pour reprendre le code.
+
+### Le problème que ça résout
+
+GNomon savait déjà tout ce qu'il fallait : douze règles de conscience, le coût d'une
+absence, les collisions de temps, l'asymétrie de connaissance. Mais **chaque calcul vivait
+dans son écran, avec son vocabulaire** — il fallait visiter quatre écrans, et savoir ce
+qu'est un « miroir désaccordé », pour réunir ce que l'outil savait déjà. Le problème
+n'était pas le calcul, c'était l'accès.
+
+`diagnostic.js` ne recalcule donc **rien** de ce qui existe : il lit `conscience()`,
+`frise()`, `classementFragilite()` et les traduit en une liste commune, groupée par objet
+du GN (personnage · situation · information · temps · groupe) plutôt que par nom de règle.
+
+### Quatre signaux neufs, et seulement ceux qu'aucun module ne portait
+
+| Signal | Ce qu'il regarde | Pourquoi ce n'est pas un doublon |
+|---|---|---|
+| `prise:absente` | Un PJ dans **aucune** situation, ni point de vue ni figurant | La règle `heros` ne regarde que le point de vue |
+| `information:sans-porteur` | Une information requise que **personne au monde** ne sait | La règle `armee` regarde qui est *en scène*, pas qui existe |
+| `reference:orpheline` | Un `pointDeVueId`/`castIds` vers un personnage supprimé | `TrameStore` ne purge jamais (§5b) — rien ne le remontait |
+| `fragilite:defection` | Le résumé de `classementFragilite()`, borné aux cas graves | Pas un calcul : l'exposition d'un calcul déjà écrit |
+
+### Les trois règles tenues, et d'où elles viennent
+
+**1. `gravite` est qualitative, `confiance` distingue le fait de l'heuristique.** Deux
+valeurs chacune, **jamais additionnées**. C'est l'interdit de Fredou déjà en vigueur pour
+la conscience (§5d), étendu à toute la couche. Tous les signaux livrés sont
+`confiance: "haute"` — des faits structurels. Une heuristique (« cette promesse semble
+fragile ») entrera en `"moyenne"`, avec une formulation au conditionnel, jamais mélangée
+au même ton sans le dire.
+
+**2. Une seule vérité pour les dérogations.** `diagnostic.js` **ne connaît pas
+`Derogations`** — exactement comme `conscience()`, pour rester rejouable tel quel. C'est
+le widget qui croise. Conséquence voulue et vérifiée : une alerte écartée depuis le
+cockpit apparaît écartée sur l'écran de conscience, avec la même justification datée. Un
+second mécanisme de « masquage » aurait produit deux vérités qui divergent.
+
+**3. Le doublon se résout dans l'agrégat, pas dans les règles.** `prise:absente` implique
+toujours `heros` — le second dirait moins, en pire, de la même personne. `diagnostics()`
+retire donc `heros` pour toute cible déjà couverte par `prise:absente`. Le point de
+vigilance pour la suite : **chaque signal ajouté doit répondre à « quel signal existant ne
+couvre pas déjà ça ? »**, et le dire en commentaire.
+
+### Le cockpit n'appartient à aucun moment
+
+Les quatre moments (Écrire · Vérifier · Distribuer · Jouer) disent l'ordre de fabrication
+(§5i). Le diagnostic n'est d'aucun d'eux : le ranger dans « Vérifier » en ferait un écran
+qu'on pense à visiter, ce qui est exactement le problème d'origine. `_rendreNav` laisse
+donc `modeActif` à `null` quand on y est, et la sous-barre disparaît — aucun onglet à
+montrer pour un écran qui n'appartient à aucun moment.
+
+Deux points d'entrée, pas un : **la porte** (sans hash, un projet qui a du contenu ouvre
+sur le cockpit ; un projet vierge garde l'accueil, qui n'a rien à diagnostiquer) et **le
+lien permanent** dans la barre, avec son badge, pour y revenir depuis n'importe où.
+
+Le cockpit ne route rien lui-même : il connaît `diagnostic.js`, pas `App`. Chaque cible
+passe par `onNaviguer(ecran, cible)`, et `App._naviguerDepuisCockpit` réutilise le routage
+existant (`ouvrirFiche`, `ouvrirAtelier({situationId})`…) — aucune route nouvelle.
+
+### Le silence est une fonctionnalité
+
+Zéro diagnostic affiche une phrase, pas une grille vide. Un tableau de bord qui se remplit
+pour se justifier d'exister apprend à être ignoré.
+
+---
+
+## 5r. Le crash test et le point de vue — poser la question soi-même
+
+Le diagnostic (§5q) dit ce qui **est**. Ces deux modules répondent à ce que l'auteur
+**demande** : « et si… ? », et « qu'est-ce que cette personne vit ? ». Ce n'est pas la même
+chose, et ils ne vivent donc pas au cockpit : ils vivent là où on se pose la question.
+
+### Le calcul était partagé, le texte ne l'était pas
+
+`defection()` existait depuis longtemps, mais son **rendu** vivait entièrement dans le
+flanc du graphe. Ouvrir le geste depuis la fiche aurait voulu dire réécrire le texte —
+et deux textes pour un même calcul finissent toujours par dire deux choses différentes.
+D'où `widgets/degats.js` : du rendu pur, sans état, sans écouteur, que le graphe et la
+fiche consomment tous les deux. Vérifié en le montant des deux côtés : mot pour mot le
+même rapport sur le même personnage.
+
+### Trois cas que `defection()` ne sait pas traiter
+
+| Cas | Pourquoi ce n'est pas `defection()` |
+|---|---|
+| **Couper une situation** | Elle porte sur une scène, pas une personne. En **lecture seule** — contrairement à `supprimerSituation()`, qui écrit : le but est de savoir ce que coûterait la coupe **avant** de la faire |
+| **Une information jamais sue** | Effet en **cascade** : les scènes qui la requièrent n'arrivent pas, donc ce qu'elles produisaient n'est pas produit, donc les suivantes tombent aussi |
+| **Une arrivée tardive** | Une absence **partielle**. On réutilise `defection()` sur une vue réduite du store — pour ce qui se joue avant son arrivée, un retardataire EST un absent |
+
+### La cascade se propage par vagues, et l'ordre ne doit rien y changer
+
+> **Défaut trouvé par un test, corrigé.** La propagation était une boucle « tant que ça
+> bouge », qui termine et donne le bon ensemble — mais dont la **profondeur** dépendait de
+> l'ordre des situations dans le tableau. Rangées en ordre de dépendance, trois étages de
+> cascade tombaient en un seul tour : l'auteur aurait lu « effet direct » là où la perte
+> traverse tout le scénario. On fige donc l'ensemble des informations mortes au **début**
+> de chaque vague ; ce qui meurt pendant ne prend effet qu'à la suivante. Un test monte le
+> même scénario dans les deux sens et exige la même profondeur.
+
+### Le verdict ne se dit pas pareil pour un PJ et un PNJ
+
+`pointDeVue()` répond à « ce personnage a-t-il quelque chose à vivre ? » — et le seuil est
+volontairement exigeant : figurer au casting sans rien porter, rien apprendre ni rien
+provoquer, c'est être décor.
+
+Mais **le dire en rouge à un PNJ serait une erreur**, trouvée en le regardant tourner sur
+le jeu d'essai : le curé de Valmorel est exactement dans ce cas, et c'est son métier. Un
+PNJ est une **fonction**, pas une personne avec un arc — la même distinction que la frise
+tient déjà entre une collision de PJ (une erreur) et une de PNJ (un besoin, §5e). Le
+verdict rouge est donc réservé aux PJ ; le PNJ reçoit un constat neutre. Une alerte qui se
+trompe une fois sur deux apprend à être ignorée là où elle compte.
+
+### Les trous de jeu — le seul calcul vraiment neuf
+
+Un intervalle sans aucune scène programmée, **entre** la première et la dernière : c'est là
+qu'un joueur erre sans savoir quoi faire. Avant la première et après la dernière, ce n'est
+pas un trou — c'est un début et une fin de GN. Une scène longue couvre celles qu'elle
+englobe (on suit le maximum vu, pas la fin de la précédente), et une situation **sans
+horaire** ne compte pas : elle n'est pas plaçable, et inventer un trou à partir d'une heure
+qu'on n'a pas serait un faux problème (même règle qu'en §5e).
+
+---
+
+## 5s. Le second rang, la réserve, et la suite avec son contexte
+
+### Deux rangs au cockpit, et c'est une correction d'audit
+
+Le cockpit affichait ses vingt-et-un signaux d'un bloc. Mesuré sur le jeu d'essai : un
+seul personnage en occupait quatre à lui seul, et les collisions de Marek trois de plus.
+La page devenait **une liste qu'on parcourt** au lieu d'une réponse à « qu'est-ce que je
+regarde maintenant ? ».
+
+On montre donc d'abord la gravité `attention` (neuf cartes sur Valmorel), et on range les
+observations de fond derrière une porte qui les annonce et les déplie. **Rien n'est
+supprimé ni résumé** : ce qui est montré l'est en entier, avec son explication et sa
+source. C'est « moins d'informations, mais plus pertinentes » — jamais « moins
+d'explications ».
+
+Le tiroir reste ouvert s'il l'a été, y compris après recalcul : écarter une alerte du
+fond ne doit pas refermer le tiroir sous les doigts.
+
+### Une carte par personne, pas par paire
+
+> **Doublon trouvé à l'audit, corrigé.** `frise()` rend les collisions **deux à deux**, ce
+> qui est le bon modèle — c'est le chevauchement qui est l'erreur. Mais trois scènes
+> simultanées font trois paires, donc trois cartes au titre identique. Pour l'auteur, c'est
+> **un** problème : « Marek est attendu partout à 20h30 ». Le diagnostic regroupe donc par
+> personne et nomme toutes les scènes en cause. La clé de dérogation reste stable tant que
+> l'ensemble des scènes ne change pas.
+
+### La confiance moyenne porte sa réserve en toutes lettres
+
+La promesse narrative (§4.G du document de transformation) est le premier signal
+`confiance: "moyenne"` — une heuristique, pas un fait : une situation peut être
+délibérément écrite comme fragile. Trois conséquences, tenues dans le code et pas
+seulement dans la conception :
+
+1. la formulation est au **conditionnel** (« semble promettre »), et un test le vérifie ;
+2. le détail dit explicitement qu'une condition étroite peut être voulue ;
+3. elle est rangée en `a-verifier`, et le tri met **le fait avant l'hypothèse** à gravité
+   égale.
+
+Au rendu, la carte porte un trait discontinu **et** une réserve écrite (« Observation — à
+confirmer par vous »). Une nuance de couleur seule ne s'apprend pas ; une phrase se lit.
+
+### L'accessibilité du graphe — une boucle fermée se voit enfin
+
+`acces:boucle-fermee` répond à « cette situation peut-elle seulement être atteinte ? ». Le
+raisonnement mérite d'être écrit, parce qu'il est plus étroit qu'il n'en a l'air et que
+c'est ce qui le rend fiable :
+
+- une situation **sans conclusion entrante est une racine** — jamais signalée, ce qui
+  couvre les scènes d'ouverture et toutes les scènes isolées ;
+- une situation avec des entrantes est atteignable dès qu'**une seule** vient d'un point
+  atteignable ;
+- donc, par récurrence, les seules situations inatteignables sont celles d'une **boucle
+  fermée où rien n'entre depuis l'extérieur**.
+
+Ce n'est donc pas « une scène qui semble difficile à atteindre » — formulation floue qui
+aurait produit du bruit — mais un fait de structure, rare et vérifiable. Une carte par
+**boucle**, jamais par situation : même leçon que les collisions de temps ci-dessus.
+
+Le signal reste en `confiance: "moyenne"` pour **une** raison, et il faut la connaître
+avant d'y toucher : beaucoup de scènes de GN n'ont pas de déclencheur écrit — un PNJ
+improvise, un orga la lance à la main. Une boucle fermée peut donc être parfaitement
+jouable. Le détail le dit en toutes lettres et invite à écarter ; un test vérifie que
+cette phrase y est.
+
+Six des treize tests de cette règle vérifient qu'elle **ne se déclenche pas** (racine
+seule, scénario linéaire, boucle avec une entrée, conclusion sans cible, conclusion vers
+une situation supprimée…). Sur un signal à confiance moyenne, ce sont les
+non-déclenchements qui comptent.
+
+### Écrire la suite, avec le contexte sous les yeux
+
+C'était un `prompt()` : une boîte grise qui demande un titre et ne montre rien. Or écrire
+la suite d'une scène demande de se rappeler deux choses que les stores savent déjà —
+**ce que les présents savent** (pour ne pas leur faire redécouvrir ce qu'ils savent) et
+**les informations que la scène produit sans que rien ne les réclame** (les fils tendus,
+candidats naturels à ce que la suite exigera).
+
+`core/liaison.js` les calcule ; le panneau les montre ; l'auteur coche, ou pas. **Rien
+n'est pré-rempli ni pré-coché** — c'est le geste du `@mention`, qui propose l'arête sans
+jamais la poser seul (§5), transposé au moment de la suite. La touche Entrée valide, pour
+que le geste rapide ne se perde pas en gagnant du contexte.
 
 ---
 
