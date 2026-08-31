@@ -94,6 +94,12 @@ reviendrait à aplatir la différence qui fait tout le projet.
 | `besoins.js` | `besoins()` | Ce que l'écriture réclame, **dérivé** du texte déjà écrit. Jamais stocké (cf. §5l). |
 | `suivistore.js` | `SuiviStore` | La couche humaine posée sur les besoins : **un responsable, un état**. Pas de date (cf. §5l). |
 | `liensstore.js` | `LiensStore` | Des **adresses**, jamais leur contenu. Validation d'URL par construction, pas par expression régulière. |
+| `projets.js` | `Projets` | **Plusieurs GN sur le même appareil.** Un projet est un préfixe de clés, rien d'autre (cf. §5o). |
+| `objets.js` | `decouper()`, `recoudre()`, `empreinte()` | Découper un GN en documents pour l'écrire à plusieurs, et le recoudre. Pur (cf. §5p). |
+| `sync.js` | `decider()`, `synchroniser()` | Le moteur de l'espace partagé. Trois interfaces injectées, donc éprouvable hors ligne (cf. §5p). |
+| `remote.js` | `connecter()`, `ecrire()`, `garde()` | **Le seul module qui parle à un serveur.** Absent, rien ne casse (cf. §5p). |
+| `config.js` | `DB`, `API_KEY` | Les deux valeurs qui branchent l'espace. Publiques, et ce n'est pas un oubli (cf. §5p). |
+| `epreuve.js` | `Epreuve` | Tenter ce qui **doit** échouer. Une règle qu'on croit posée ne se voit pas (cf. §5p). |
 | `poids.js` | `poids()`, `conseil()` | Ce que pèse le GN et **ce qui pèse dedans**. On mesure ce qu'on écrit plutôt que d'interroger le navigateur (cf. §5k). |
 | `archive.js` | `Archive`, `telecharger()` | Sauvegarder, exporter, partager. Enveloppe versionnée, deux modes d'import. |
 | `runstore.js` | `RunStore` | L'état vivant du GN : fils en cours, main courante, horloge de fiction avec pauses. |
@@ -671,6 +677,139 @@ prévoir une doublure.
 
 ---
 
+## 5o. Les projets — plusieurs GN sur le même appareil
+
+Les clés étaient nues : `gnomon_v1_reseau`, une fois, pour toujours. Il n'y avait donc
+**qu'un GN par navigateur**. Une équipe qui prépare l'édition suivante pendant que la
+précédente n'est pas archivée devait exporter, vider, réimporter à chaque bascule — un
+aller-retour de plusieurs mégaoctets, à faire de tête, et dont chaque oubli coûte un GN.
+
+**Un projet est un préfixe** : `gnomon_v1_<projet>__<clé>`. Pas de table, pas de jointure,
+pas de migration à chaque clé nouvelle. Basculer, c'est déplacer une fenêtre de lecture
+(`Storage.poserProjet`).
+
+**Les clés d'appareil ne sont pas préfixées** — le thème, la version de schéma, l'index des
+projets, la session distante. Elles n'appartiennent à aucun GN, ne s'exportent jamais, et
+recevoir l'archive d'un collègue ne doit pas retourner son écran.
+
+La migration v3 déplace l'existant en **renommant** les clés, jamais en recopiant leur
+contenu : un GN chargé en images pèse plusieurs mégaoctets, et le dupliquer le temps d'une
+migration ferait sauter le quota juste avant de le libérer. Le projet est nommé d'après le
+titre du monde s'il est écrit — le redemander serait le demander deux fois.
+
+Corollaire mesuré : `poids()` compte désormais **toute l'origine**, pas le GN ouvert. Le quota
+du `localStorage` se compte par origine ; un indicateur qui n'aurait mesuré que le GN courant
+aurait annoncé « rien à signaler » à une équipe qui garde trois éditions en réserve.
+
+---
+
+## 5p. L'espace partagé — écrire à plusieurs
+
+Transposé de [RecoHero](https://github.com/tbzt/recohero), dont c'est le module éprouvé :
+Realtime Database consommée au simple `fetch` (donc la règle « aucune dépendance, aucune
+étape de build » tient), jetons renouvelés en silence, invitation par secret jetable — on
+n'est à aucun moment en possession de ce qui authentifie quelqu'un.
+
+### La divergence, et elle n'est pas négociable
+
+Chez RecoHero, `quizzes/.read` vaut `true` : n'importe qui répond sans compte, et c'est le
+produit. **Ici, la lecture est aussi fermée que l'écriture.** L'archive d'un GN porte les
+vérités que les joueurs ignorent, les consignes PNJ et les carnets privés : un espace lisible
+de tous livrerait l'intrigue à qui devine le nom de la branche.
+
+### La maille est l'objet, pas le store
+
+Le `localStorage` range un GN en neuf gros blocs. C'est le bon format pour une lecture-écriture
+locale, et le pire pour écrire à plusieurs : deux personnes sur deux personnages touchent le
+même bloc. `objets.js` traduit — un document par personnage, par situation, par information :
+
+```
+reseau { personnages:[…], liens:[…] }  ↕  reseau~personnages/p1a · reseau~liens/l7c
+```
+
+Ce qui n'a **pas** d'identité (le titre du monde, l'horloge de la run, l'affectation du
+casting) tient dans un document `_` par clé. On y perd la finesse, et c'est le bon prix :
+deux personnes qui écrivent la prémisse écrivent bien la même chose. L'affectation, elle,
+voyage entière — deux moitiés de deux castings ne forment pas un casting, comme en local.
+
+### Le garde-fou est dans la base, pas dans notre politesse
+
+Chaque document porte une révision, et la règle exige d'en recevoir **exactement la
+suivante**. Deux personnes parties du même point ne peuvent donc pas écrire l'une après
+l'autre : la seconde est refusée par la base, ce qui protège même d'un défaut de notre côté.
+C'est précisément ce qui manque au mode « fusionner » de l'archive, qui garde le local sans
+savoir lequel est le plus récent.
+
+**Supprimer pose une pierre tombale** (`sup: true`) au lieu d'effacer la branche. Effacer
+perdrait la révision, et le pair qui détient encore l'objet le repousserait : ce qu'on a
+supprimé reviendrait tout seul.
+
+### Ce qu'on fait d'un conflit
+
+Trois réponses possibles, deux sont mauvaises : garder le local perd la version de l'autre en
+silence ; prendre le distant sans rien dire perd la sienne. On fait le troisième — **prendre
+le distant pour converger, et rendre le local entier dans le rapport**. C'est la règle de
+l'archive (« on peut toujours réimporter, jamais ressusciter ce qui a été écrasé »), à chaud.
+
+Deux cas méritent d'être nommés parce qu'ils sont contre-intuitifs. Les deux ont écrit **la
+même chose** n'est pas un conflit — crier au conflit là-dessus apprendrait à l'équipe à les
+ignorer. Et supprimé d'un côté, modifié de l'autre **est** un conflit, pas une suppression :
+suivre aveuglément effacerait le travail de celui qui écrivait.
+
+### Éprouvé hors ligne, puis contre la vraie base
+
+`sync.js` prend trois interfaces injectées (dépôt, distant, registre), donc il se monte sur
+une base factice qui applique la vraie règle de révision. C'est ce qui permet de jouer le
+**chemin du refus** — celui qu'on ne teste jamais à la main, et celui qui coûte un après-midi
+quand il est faux. Deux pairs, dix-neuf cas, convergence vérifiée.
+
+### La configuration est publique, et la protection est ailleurs
+
+`config.js` porte l'URL de la base et la clé d'API en clair. Dans une application web, c'est
+un **identifiant**, pas un mot de passe : ces valeurs partent dans le JavaScript que le
+navigateur télécharge, et un site statique n'a aucune cachette. Les masquer serait un théâtre
+coûteux, qui laisserait croire à une protection inexistante.
+
+Ce qui protège est dans `firebase.rules.json`, appliqué côté serveur. Et **une règle qu'on
+croit posée ne se voit pas** : d'où `epreuve.js`, qui tente ce qui doit échouer.
+
+### Le registre n'est pas dans le modèle
+
+Savoir si un objet a changé demande de se souvenir de la dernière fois. On pourrait poser un
+`_rev` sur chaque objet — il partirait dans l'archive, dans les livrets, dans le
+trombinoscope. Le registre est donc **à côté**, sous une clé d'appareil. Conséquence voulue :
+exporter puis réimporter un GN ailleurs perd le registre, et la synchronisation repart de
+zéro — elle converge quand même, et c'est testé.
+
+### Lancer l'épreuve
+
+Les règles d'abord, le code ensuite. Depuis n'importe quelle page de l'application :
+
+```js
+const { Epreuve } = await import("./js/core/epreuve.js");
+
+// Sans compte : les quinze doivent être refusées.
+Epreuve.afficher(await Epreuve.anonyme("nom-de-l-espace"));
+
+// Puis, connecté et membre :
+await Epreuve.connexion();
+Epreuve.afficher(await Epreuve.membre("nom-de-l-espace"));
+```
+
+**L'épreuve anonyme seule ne suffit pas**, et il faut le dire : une base laissée en mode
+verrouillé refuse elle aussi tout accès anonyme. De l'extérieur, les deux se ressemblent
+exactement. Seul le premier cas de l'épreuve membre — *un membre peut écrire* — distingue
+« mes règles sont déployées » de « rien n'est en place et personne ne pourra travailler ».
+C'est pour ça qu'il s'arrête net s'il échoue, au lieu de rendre six succès obtenus pour la
+mauvaise raison.
+
+Un espace ne se crée **pas** depuis le web : les règles y interdisent l'écriture, et seule la
+console peut poser sa branche `membres`. Personne ne se fabrique un espace. Inscrire son
+`uid` dans `gerants` en plus de `membres` n'est pas un doublon : les règles empêchent qu'un
+gérant soit retiré, sans quoi un membre pourrait verrouiller le propriétaire dehors.
+
+---
+
 ## 6. Le rendu en deux étages — et pourquoi ce n'est pas de l'optimisation
 
 `Fiche.rendre()` construit tout ; `Fiche.rafraichirDerives()` ne remet à jour que la jauge et
@@ -774,3 +913,27 @@ crée l'arête *(livré)* · **S2** l'atelier de trames *(livré)* · **S3** les
 **L'épine est complète, et la salle de conduite est livrée.** Elle ne réutilise finalement
 *pas* le cockpit de ShadowHerds : le contexte d'usage n'est pas le même, et la peau a été
 refaite pour la nuit (§ 5g).
+
+### S7 — écrire à plusieurs
+
+**Posé :** les projets (§ 5o) · la découpe en documents et le moteur de synchronisation,
+éprouvés hors ligne à deux pairs (§ 5p) · le transport et l'invitation (`remote.js`) · les
+règles (`firebase.rules.json`) et leur épreuve (`epreuve.js`).
+
+**Vérifié contre la vraie base :** quinze requêtes anonymes, quinze refus, sur un espace réel
+et peuplé. Sa liste de membres elle-même est illisible sans compte.
+
+**Pas encore vérifié :** l'épreuve membre. Tant qu'elle n'a pas confirmé qu'un membre peut
+réellement écrire, on ne sait pas distinguer « les règles sont déployées » de « la base est
+verrouillée par défaut » — les deux refusent tout accès anonyme.
+
+**Reste à écrire :** l'écran de l'espace — se connecter, rattacher un GN à une branche, lancer
+un tour, montrer les versions écartées par un conflit. Puis la conduite en direct, qui sera ce
+même moteur branché sur un `EventSource` : l'API REST de Realtime Database diffuse en
+`text/event-stream`, donc toujours sans SDK.
+
+Une conséquence à ne pas oublier au moment d'écrire ces écrans : la phrase du README qui
+justifie la ligne rouge du casting — « une application locale sans serveur ni chiffrement
+n'est pas un endroit pour de la donnée de santé » — devient fausse dès qu'un GN est rattaché.
+Elle doit être réécrite dans le sens qui **durcit** la règle : ces libellés partent désormais
+sur un serveur tiers, donc la pseudonymisation cesse d'être un confort.
