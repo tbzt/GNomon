@@ -18,6 +18,8 @@ import {
 } from "../js/core/crashtest.js";
 import { pointDeVue, trous } from "../js/core/pointdevue.js";
 import { contexteSuite } from "../js/core/liaison.js";
+import { rattachementDe } from "../js/core/espace.js";
+import { CLES_PROJET } from "../js/core/storage.js";
 
 suite("Crash test — supprimer une situation, sans la supprimer", () => {
   test("le store n'est PAS muté — c'est tout l'intérêt d'un essai", () => {
@@ -432,5 +434,66 @@ suite("Liaison — le contexte pour écrire la suite", () => {
     const avant = JSON.stringify(st.trames.situations());
     contexteSuite("c1", st);
     eq(JSON.stringify(st.trames.situations()), avant, "aucune information n'a été rattachée");
+  });
+});
+
+suite("Espace — le rattachement est une clé d'appareil", () => {
+  /** Un faux `Storage` : le vrai écrit dans le `localStorage`, ce que
+      les tests de ce projet ne font jamais. */
+  const fauxStorage = () => {
+    const m = new Map();
+    return {
+      _m: m,
+      get: (k, d = null) => (m.has(k) ? m.get(k) : d),
+      set: (k, v) => m.set(k, v),
+      remove: (k) => m.delete(k),
+    };
+  };
+
+  test("un projet neuf n'est rattaché à rien — c'est l'état par défaut", () => {
+    eq(rattachementDe(fauxStorage(), "p1").lire(), null);
+  });
+
+  test("rattacher puis relire rend le couple espace / GN", () => {
+    const S = fauxStorage();
+    rattachementDe(S, "p1").ecrire("mon-espace", "valmorel");
+    const r = rattachementDe(S, "p1").lire();
+    eq(r.espace, "mon-espace");
+    eq(r.gn, "valmorel");
+  });
+
+  test("un rattachement incomplet est refusé plutôt que stocké à moitié", () => {
+    const S = fauxStorage();
+    eq(rattachementDe(S, "p1").ecrire("mon-espace", ""), null);
+    eq(rattachementDe(S, "p1").lire(), null, "rien n'a été écrit");
+  });
+
+  test("deux projets ont des rattachements indépendants", () => {
+    const S = fauxStorage();
+    rattachementDe(S, "p1").ecrire("espace-a", "gn-a");
+    rattachementDe(S, "p2").ecrire("espace-b", "gn-b");
+    eq(rattachementDe(S, "p1").lire().espace, "espace-a");
+    eq(rattachementDe(S, "p2").lire().espace, "espace-b");
+  });
+
+  test("détacher oublie AUSSI le registre — sinon on croirait connaître des révisions périmées", () => {
+    const S = fauxStorage();
+    rattachementDe(S, "p1").ecrire("mon-espace", "valmorel");
+    S.set("sync_p1", { "reseau~personnages/p1a": { rev: 3, empreinte: "x" } });
+    rattachementDe(S, "p1").oublier();
+    eq(rattachementDe(S, "p1").lire(), null);
+    eq(S.get("sync_p1", null), null, "le registre part avec le rattachement");
+  });
+
+  test("LA CLÉ N'EST PAS UNE CLÉ DE PROJET : elle ne partira jamais dans une archive", () => {
+    // C'est l'invariant qui compte. Une archive qui porterait le
+    // rattachement brancherait le GN d'un collègue sur votre espace —
+    // ou le vôtre sur le sien — à la première fusion.
+    pasOk(
+      CLES_PROJET.includes("espace_p1"),
+      "le rattachement doit rester une clé d'appareil",
+    );
+    for (const k of CLES_PROJET)
+      pasOk(k.startsWith("espace_"), `« ${k} » ne doit pas ressembler à un rattachement`);
   });
 });

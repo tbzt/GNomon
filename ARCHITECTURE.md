@@ -69,6 +69,7 @@ reviendrait à aplatir la différence qui fait tout le projet.
 | `besoins.js` | `Besoins` | L'écran des besoins dérivés, avec le suivi et les liens attachés. |
 | `cockpit.js` | `Cockpit`, `compterOuverts()` | **La porte d'entrée** : ce que GNomon déduit du texte déjà écrit, groupé par objet, cliquable jusqu'à son origine. N'appartient à aucun des quatre moments (cf. §5q). |
 | `degats.js` | `degatsHtml()`, `coupeHtml()`, `jamaisSueHtml()` | Le **texte** d'une absence, en un seul endroit. Rendu pur, sans état ni écouteur : le flanc du graphe et la fiche disent la même chose du même calcul (cf. §5r). |
+| `espace.js` | `Espace` | L'écran de l'espace partagé : se connecter, rattacher, synchroniser, montrer les conflits (cf. §5t). Le seul écran d'où un GN peut se mettre à parler dehors. |
 | `conduite.js` | `Conduite` | Le tableau de la nuit. **Son propre monde visuel** (cf. §5g), et un battement qui ne touche qu'au temps. |
 | `casting.js` | `Casting` | L'écran des vœux : grille, import à colonne choisie, affectation, bilan. |
 | `frise.js` | `Frise` | L'écran du temps : planning, collisions, charge. Un clic sur un bloc ouvre l'atelier **sur cette situation** (`Atelier.viser`). |
@@ -93,6 +94,7 @@ reviendrait à aplatir la différence qui fait tout le projet.
 | `diagnostic.js` | `diagnostics()`, `parCategorie()` | **La couche d'interprétation.** Traduit `conscience()`, `frise()`, `classementFragilite()` en signaux humains groupés par objet du GN, et ajoute quatre signaux structurels neufs (cf. §5q). Pur, et comme la conscience : ne connaît pas les dérogations. |
 | `crashtest.js` | `crashTestSituation()`, `crashTestInformation()`, `crashTestArriveeTardive()` | « Et si… ? » posé sur autre chose qu'une personne — `defection()` couvre déjà ce cas-là et est réutilisée telle quelle (cf. §5r). Pur, et **en lecture seule** : on veut savoir ce que coûterait la coupe avant de la faire. |
 | `liaison.js` | `contexteSuite()` | Ce qu'il faut avoir sous les yeux pour écrire la suite d'une conclusion : ce que les présents savent déjà, et les fils tendus sans être rattachés. **Propose, ne décide pas** (cf. §5s). Pur. |
+| `espace.js` | `rattachementDe()`, `tour()`, `distantDe()` | Le rattachement d'un GN à un espace — **clé d'appareil**, jamais exportée — et le mariage de `remote.js` avec `sync.js` (cf. §5t). `rattachementDe` prend `Storage` en paramètre, donc s'éprouve avec un faux. |
 | `pointdevue.js` | `pointDeVue()`, `trous()` | Le GN vu d'un personnage : ce qu'il sait, peut apprendre, peut provoquer, et **où il risque de n'avoir rien à faire** (cf. §5r). Pur. |
 | `mondestore.js` | `MondeStore` | **Les fondamentaux** — prémisse, propos, thématique, contexte commun, lieux. Les étapes 1 à 3 d'eXpérience, qui manquaient (cf. §5j). |
 | `livret.js` | `livret()`, `livretHtml()` | Le background remis à un joueur. **Calculé par soustraction** (cf. §5j). |
@@ -1013,6 +1015,14 @@ seule, scénario linéaire, boucle avec une entrée, conclusion sans cible, conc
 une situation supprimée…). Sur un signal à confiance moyenne, ce sont les
 non-déclenchements qui comptent.
 
+### Un seul compteur dans la barre
+
+> **Correction.** « Vérifier » portait le compte des alertes de conscience, et c'était juste
+> tant qu'il était seul. Depuis le diagnostic, deux nombres se côtoyaient — 16 et 19 — sans
+> que rien ne dise que le premier est un **sous-ensemble** du second. Deux chiffres qui se
+> contredisent apprennent à n'en croire aucun. Le badge de mode a été retiré ; l'écran de la
+> conscience affiche toujours le sien, dans son en-tête, là où il a un sens précis.
+
 ### Écrire la suite, avec le contexte sous les yeux
 
 C'était un `prompt()` : une boîte grise qui demande un titre et ne montre rien. Or écrire
@@ -1025,6 +1035,64 @@ candidats naturels à ce que la suite exigera).
 n'est pré-rempli ni pré-coché** — c'est le geste du `@mention`, qui propose l'arête sans
 jamais la poser seul (§5), transposé au moment de la suite. La touche Entrée valide, pour
 que le geste rapide ne se perde pas en gagnant du contexte.
+
+---
+
+## 5t. L'écran de l'espace — le moteur avait tout, sauf une porte
+
+Le moteur de synchronisation était livré et éprouvé (§5p) : les règles, la découpe en
+documents, la convergence à deux pairs, dix-neuf cas de test. Mais **rien ne permettait de
+s'en servir** — ni se connecter, ni rattacher un GN, ni lancer un tour. Du code juste, et
+inaccessible. C'est l'écran qui manquait.
+
+### Le rattachement est une clé d'appareil, et ce n'est pas du rangement
+
+`espace_<projetId>`, hors des clés de projet — même forme que le registre de `sync.js`, et
+pour une raison qui se dit en une phrase : **une archive qui porterait le rattachement
+brancherait le GN d'un collègue sur votre espace à la première fusion**, ou le vôtre sur le
+sien. Le rattachement se fait par un geste explicite, fait par quelqu'un de connecté ; il
+ne se reçoit pas dans un fichier. Un test le verrouille en vérifiant que la clé n'est pas
+dans `CLES_PROJET`.
+
+`rattachementDe(Storage, projetId)` prend `Storage` **en paramètre**, comme `registreDe` :
+c'est ce qui permet de l'éprouver avec un faux, sans écrire dans le `localStorage`.
+
+### Quatre états, un seul affiché
+
+Pas configuré · pas connecté · connecté mais non rattaché · rattaché. Montrer
+« Synchroniser » à quelqu'un qui n'est pas connecté produirait une erreur qu'on pouvait
+éviter en ne l'affichant pas.
+
+### C'est ici, et nulle part ailleurs, que la promesse locale cesse
+
+Le rattachement est le seul moment où un GN se met à parler dehors. L'écran le dit donc en
+toutes lettres avant de le faire — **y compris que les libellés de casting partent aussi**,
+ce qui durcit la règle de pseudonymisation (§5f) au lieu de l'assouplir. C'est exactement
+la conséquence que §9 annonçait et qu'il fallait écrire quelque part.
+
+### Les conflits se montrent, sinon la promesse est fausse
+
+`synchroniser()` prend le distant pour converger et **rend la version locale écartée**. Si
+l'écran ne l'affichait pas, « rien n'est détruit » deviendrait un mensonge : la version
+serait perdue, simplement plus tard. Elle est donc rendue entière, sans troncature — c'est
+la seule copie qui reste.
+
+### Les refus se groupent par cause
+
+> **Défaut trouvé en lançant un vrai tour**, avec un jeton périmé : la base a refusé les
+> soixante-trois documents, et l'écran a affiché soixante-trois lignes identiques. La seule
+> chose à savoir — « ce compte n'est pas membre » — était noyée dans sa propre répétition.
+> Une cause systémique se dit **une** fois, avec le nombre ; les chemins ne sont nommés que
+> lorsqu'ils sont peu nombreux, car ils désignent alors un vrai problème par document.
+> Même leçon que les collisions de temps (§5s) — deux fois la même, ce qui la rend digne
+> d'être écrite ici.
+
+### L'écran ne se re-rend pas sur événement de store
+
+Il porte des champs de saisie et un tour en cours, et c'est **lui** qui provoque les
+écritures qu'on observerait. `_surChangement` l'ignore donc explicitement. En revanche, un
+tour terminé recharge les stores (`onChange`) : sans ça, l'écran suivant montrerait le GN
+d'avant la synchronisation.
 
 ---
 
@@ -1145,10 +1213,13 @@ et peuplé. Sa liste de membres elle-même est illisible sans compte.
 réellement écrire, on ne sait pas distinguer « les règles sont déployées » de « la base est
 verrouillée par défaut » — les deux refusent tout accès anonyme.
 
-**Reste à écrire :** l'écran de l'espace — se connecter, rattacher un GN à une branche, lancer
-un tour, montrer les versions écartées par un conflit. Puis la conduite en direct, qui sera ce
-même moteur branché sur un `EventSource` : l'API REST de Realtime Database diffuse en
-`text/event-stream`, donc toujours sans SDK.
+**L'écran est écrit** (cf. §5t) : se connecter, rattacher un GN à une branche, lancer un
+tour, montrer les versions écartées par un conflit, gérer les membres. Le bouton
+« Vérifier la garde » y expose `garde()`, qui n'était atteignable que depuis la console.
+
+**Reste à écrire :** la conduite en direct, qui sera ce même moteur branché sur un
+`EventSource` : l'API REST de Realtime Database diffuse en `text/event-stream`, donc
+toujours sans SDK.
 
 Une conséquence à ne pas oublier au moment d'écrire ces écrans : la phrase du README qui
 justifie la ligne rouge du casting — « une application locale sans serveur ni chiffrement

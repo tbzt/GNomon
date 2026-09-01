@@ -1605,6 +1605,11 @@ table.matrice .cell:hover {
   margin: 0 0 10px;
 }
 
+.vc-essais {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px;
+}
 .vc-crash {
   width: 100%;
   font-family: var(--sans);
@@ -1612,6 +1617,32 @@ table.matrice .cell:hover {
   letter-spacing: 0;
   text-transform: none;
   padding: 7px 10px;
+}
+
+.vc-tard-ligne {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0 0 10px;
+  font-size: 13.5px;
+  color: var(--ink-soft);
+}
+.vc-tard-ligne input {
+  width: 5.5em;
+  font-size: 13.5px;
+  padding: 3px 6px;
+}
+.vc-tard-ligne span {
+  font-family: var(--mono);
+  font-size: 12px;
+  color: var(--ink-faint);
+  font-variant-numeric: tabular-nums;
+}
+
+@media (max-width: 760px) {
+  .vc-essais {
+    grid-template-columns: 1fr;
+  }
 }
 
 .vc-degats {
@@ -2199,6 +2230,282 @@ table.matrice .cell:hover {
 }
 .ck-saisie textarea {
   font-size: 14.5px;
+}
+
+/* ============================================================
+   L'ESPACE PARTAGÉ — le seul écran d'où un GN peut parler dehors.
+   Écran de DOCUMENT (colonne de lecture, comme le monde) et non
+   d'instrument : on y lit ce qu'on s'apprête à faire avant de le faire.
+   ============================================================ */
+
+main[data-actif="espace"] {
+  max-width: 1160px;
+}
+
+.es-entete {
+  border-bottom: 1px solid var(--rule);
+  padding-bottom: 14px;
+  margin-bottom: 20px;
+}
+.es-entete h1 {
+  font-size: 26px;
+  font-weight: 600;
+  letter-spacing: -0.015em;
+  margin: 0 0 6px;
+}
+.es-note {
+  margin: 0;
+  font-size: 15px;
+  line-height: 1.5;
+  color: var(--ink-soft);
+  max-width: 68ch;
+}
+
+.es-bloc {
+  background: var(--surface);
+  border: 1px solid var(--rule);
+  border-radius: 3px;
+  padding: 16px 18px;
+  margin: 0 0 14px;
+  max-width: 74ch;
+}
+
+/* L'avertissement de rattachement : c'est le moment où la promesse
+   « 100 % local » cesse de valoir pour ce GN. Il se lit avant. */
+.es-bloc.es-avert {
+  border-left: 3px solid var(--complique);
+}
+
+.es-etat {
+  font-size: 17px;
+  margin: 0 0 8px;
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+.es-etat.ko {
+  color: var(--negatif);
+}
+
+.es-sous {
+  font-family: var(--mono);
+  font-size: 10.5px;
+  letter-spacing: 0.11em;
+  text-transform: uppercase;
+  color: var(--ink-faint);
+  margin: 0 0 10px;
+}
+.es-sous.es-sous-serre {
+  margin-top: 16px;
+}
+.es-sous.ko {
+  color: var(--negatif);
+}
+
+.es-aide {
+  font-size: 13.5px;
+  line-height: 1.5;
+  color: var(--ink-soft);
+  margin: 8px 0 0;
+  max-width: 70ch;
+}
+.es-aide.ok {
+  color: var(--positif);
+}
+
+.es-form {
+  display: grid;
+  gap: 10px;
+  max-width: 44ch;
+}
+.es-form-ligne {
+  grid-template-columns: 1fr auto;
+  align-items: end;
+  max-width: 52ch;
+}
+
+.es-lien {
+  border: 0;
+  background: none;
+  color: var(--accent);
+  font-family: var(--sans);
+  font-size: 12px;
+  letter-spacing: 0;
+  text-transform: none;
+  padding: 2px 4px;
+}
+.es-lien:hover {
+  background: none;
+  text-decoration: underline;
+}
+
+.es-principal {
+  border-color: var(--accent);
+  color: var(--accent-ink);
+}
+
+.es-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.es-lien-gn {
+  font-size: 16px;
+  margin: 0 0 12px;
+}
+.es-lien-gn span {
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--ink-faint);
+}
+
+.es-gn,
+.es-membres,
+.es-conflits,
+.es-refus {
+  list-style: none;
+  margin: 0 0 10px;
+  padding: 0;
+  display: grid;
+  gap: 4px;
+}
+
+.es-gn button {
+  width: 100%;
+  text-align: left;
+  font-family: var(--sans);
+  font-size: 14px;
+  letter-spacing: 0;
+  text-transform: none;
+  padding: 8px 11px;
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+}
+.es-gn i {
+  font-style: normal;
+  font-family: var(--mono);
+  font-size: 10px;
+  color: var(--ink-faint);
+}
+.es-vide {
+  font-size: 14px;
+  color: var(--ink-faint);
+}
+
+.es-membres li {
+  display: flex;
+  align-items: baseline;
+  gap: 9px;
+  font-size: 14px;
+  padding: 4px 0;
+  border-bottom: 1px solid var(--rule);
+}
+.es-membres code {
+  font-family: var(--mono);
+  font-size: 12px;
+  flex: 1;
+  overflow-wrap: anywhere;
+}
+.es-gerant {
+  font-family: var(--mono);
+  font-size: 9.5px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--complique);
+}
+
+.es-message {
+  font-size: 14.5px;
+  line-height: 1.5;
+  color: var(--ink);
+  background: var(--panel);
+  border-left: 3px solid var(--accent);
+  padding: 10px 13px;
+  margin: 0 0 14px;
+  max-width: 74ch;
+}
+
+.es-rapport {
+  border-left: 3px solid var(--accent);
+}
+.es-chiffres {
+  font-family: var(--mono);
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+  margin: 0;
+  color: var(--ink);
+}
+
+/* La version locale écartée par un conflit. Elle est montrée ENTIÈRE,
+   sans troncature : c'est la seule copie qui reste, et un aperçu
+   partiel ne permettrait pas de la remettre en place. */
+.es-conflits li {
+  border-left: 3px solid var(--negatif);
+  padding: 8px 0 8px 11px;
+}
+.es-conflit-chemin {
+  margin: 0 0 6px;
+  font-family: var(--mono);
+  font-size: 12px;
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+.es-conflit-chemin span {
+  color: var(--negatif);
+  text-transform: none;
+  letter-spacing: 0;
+}
+.es-conflits pre {
+  margin: 0;
+  font-family: var(--mono);
+  font-size: 11.5px;
+  line-height: 1.45;
+  background: var(--ground);
+  border: 1px solid var(--rule);
+  border-radius: 2px;
+  padding: 9px 11px;
+  overflow-x: auto;
+  max-height: 240px;
+}
+
+.es-refus li {
+  font-size: 13.5px;
+  color: var(--ink-soft);
+  border-left: 3px solid var(--negatif);
+  padding: 5px 0 5px 11px;
+}
+.es-refus b {
+  color: var(--ink);
+  font-family: var(--mono);
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+}
+.es-refus-chemins {
+  display: block;
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--ink-faint);
+  margin-top: 3px;
+  overflow-wrap: anywhere;
+}
+
+/* La pastille du bouton de barre : ce GN parle dehors. */
+.es-pastille {
+  color: var(--complique);
+  font-size: 9px;
+  vertical-align: middle;
+}
+
+@media (max-width: 760px) {
+  .es-form-ligne {
+    grid-template-columns: 1fr;
+  }
 }
 
 /* ============================================================

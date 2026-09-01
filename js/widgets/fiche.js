@@ -45,6 +45,7 @@ import { INFLUENCES } from "../core/informationstore.js";
 import { TONALITES, IMPORTANCES, FONCTIONS } from "../core/reseaustore.js";
 import { pointDeVue } from "../core/pointdevue.js";
 import { defection } from "../core/defection.js";
+import { crashTestArriveeTardive } from "../core/crashtest.js";
 import { heure } from "../core/temps.js";
 import { Mentions } from "./journal/mentions.js";
 import { LienEditeur } from "./lienediteur.js";
@@ -150,6 +151,7 @@ export const Fiche = {
     // état permanent de la fiche : on les replie en changeant de
     // personne, comme l'éditeur de lien juste au-dessus.
     this._crashOuvert = false;
+    this._heureTard = null;
     this.rendre();
   },
 
@@ -388,8 +390,18 @@ export const Fiche = {
           `${Utils.plur(v.sansHoraire.length, "sans horaire")} — non ${Utils.plur(v.sansHoraire.length, "placée")} sur la frise, ` +
           "donc hors du calcul des temps morts.</p>"
         : "") +
+      '<div class="vc-essais">' +
       `<button type="button" class="vc-crash" data-crash aria-expanded="${this._crashOuvert}">` +
       `${this._crashOuvert ? "Masquer" : "Et s'il ne vient pas ?"}</button>` +
+      // ── L'ABSENCE PARTIELLE ──
+      // Un retard n'est pas une absence, et c'est justement pour ça
+      // qu'il mérite sa porte : « je n'arrive qu'à 22 h » est le message
+      // qu'on reçoit vraiment, bien plus souvent que « je ne viens
+      // pas ». Le calcul réutilise `defection()` sur les seules scènes
+      // manquées (cf. `core/crashtest.js`).
+      `<button type="button" class="vc-crash" data-tard aria-expanded="${this._heureTard != null}">` +
+      `${this._heureTard != null ? "Masquer" : "…ou s'il arrive tard ?"}</button>` +
+      "</div>" +
       (this._crashOuvert
         ? '<div class="vc-degats">' +
           degatsHtml(
@@ -397,21 +409,67 @@ export const Fiche = {
           ) +
           "</div>"
         : "") +
+      (this._heureTard != null ? this._tardif(p) : "") +
+      "</div>"
+    );
+  },
+
+  /** Ce qu'un retard coûte. L'heure est saisie, parce qu'elle vient
+      d'un message reçu — il n'y a pas de défaut sensé à deviner. */
+  _tardif(p) {
+    const r = crashTestArriveeTardive(p.id, this._heureTard, {
+      reseau: this._store,
+      trames: this._trames,
+      infos: this._infos,
+    });
+    return (
+      '<div class="vc-degats">' +
+      '<p class="vc-tard-ligne"><label>Arrive à</label>' +
+      `<input type="number" step="0.5" min="0" max="48" data-tard-h value="${this._heureTard}" aria-label="Heure d'arrivée" />` +
+      `<span>${heure(this._heureTard)}</span></p>` +
+      (!r || !r.manquees.length
+        ? '<p class="dg-aide ok">Il ne manque rien : aucune de ses scènes ne se termine avant cette heure.</p>'
+        : `<p class="dg-aide">Il manquerait <b>${r.manquees.length}</b> ${Utils.plur(r.manquees.length, "scène")} : ` +
+          r.manquees.map((s) => `« ${Utils.escHtml(s.titre)} »`).join(", ") +
+          ".</p>" + degatsHtml(r.degats)) +
       "</div>"
     );
   },
 
   _brancherVecu() {
-    const b = this._hote.querySelector("[data-crash]");
-    if (!b) return;
-    b.addEventListener("click", () => {
-      this._crashOuvert = !this._crashOuvert;
-      const v = this._hote.querySelector("#fiche-vecu");
+    const v = this._hote.querySelector("#fiche-vecu");
+    if (!v) return;
+    const rejouer = () => {
       const p = this._store.personnage(this._id);
-      if (!v || !p) return;
+      if (!p) return;
       v.innerHTML = this._vecu(p);
       this._brancherVecu();
-    });
+    };
+
+    const b = v.querySelector("[data-crash]");
+    if (b)
+      b.addEventListener("click", () => {
+        this._crashOuvert = !this._crashOuvert;
+        rejouer();
+      });
+
+    const t = v.querySelector("[data-tard]");
+    if (t)
+      t.addEventListener("click", () => {
+        // Une heure par défaut plutôt qu'un champ vide : ouvrir le
+        // panneau doit montrer un résultat, pas demander une saisie
+        // avant de servir à quelque chose.
+        this._heureTard = this._heureTard == null ? 22 : null;
+        rejouer();
+      });
+
+    const h = v.querySelector("[data-tard-h]");
+    if (h)
+      h.addEventListener("change", (e) => {
+        const n = Number(e.target.value);
+        this._heureTard = Number.isFinite(n) ? n : this._heureTard;
+        rejouer();
+      });
   },
 
   _champs(p) {

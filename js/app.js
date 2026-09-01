@@ -43,7 +43,6 @@ import { Archive, telecharger, AVERTISSEMENT } from "./core/archive.js";
 import { poids, conseil, formaterOctets, BORNE } from "./core/poids.js";
 import { SuiviStore } from "./core/suivistore.js";
 import { LiensStore } from "./core/liensstore.js";
-import { conscience } from "./core/conscience.js";
 import { frise as calculerFrise } from "./core/temps.js";
 import { tousLesBesoins as besoinsPlats } from "./core/besoins.js";
 import { chargerValmorel } from "./data/valmorel.js";
@@ -60,6 +59,8 @@ import { Livrets } from "./widgets/livrets.js";
 import { Besoins } from "./widgets/besoins.js";
 import { Accueil } from "./widgets/accueil.js";
 import { Cockpit, compterOuverts } from "./widgets/cockpit.js";
+import { Espace } from "./widgets/espace.js";
+import { rattachement } from "./core/espace.js";
 import { Theme, LIBELLES } from "./core/theme.js";
 import { Utils } from "./core/utils.js";
 
@@ -103,6 +104,10 @@ const MODES = [
   { cle: "jouer", nom: "Jouer", ecrans: [{ cle: "conduite", nom: "La conduite" }] },
 ];
 
+/** L'espace partagé n'est d'aucun moment de fabrication — on n'y va pas
+    « après avoir distribué », on y va quand on veut écrire à plusieurs.
+    Il vit donc à côté, comme le cockpit, et se rejoint par la barre. */
+
 /** La fiche appartient au moment « écrire » sans en être une destination. */
 const MODE_DE = { fiche: "ecrire" };
 for (const m of MODES) for (const e of m.ecrans) MODE_DE[e.cle] = m.cle;
@@ -136,6 +141,7 @@ export const App = {
 
     this._hotes = {
       cockpit: document.getElementById("ecran-cockpit"),
+      espace: document.getElementById("ecran-espace"),
       reseau: document.getElementById("ecran-reseau"),
       fiche: document.getElementById("ecran-fiche"),
       atelier: document.getElementById("ecran-atelier"),
@@ -192,6 +198,7 @@ export const App = {
     if (/^#\/livrets/.test(h)) return this.ouvrirLivrets({ silencieux: true });
     if (/^#\/besoins/.test(h)) return this.ouvrirBesoins({ silencieux: true });
     if (/^#\/diagnostic/.test(h)) return this.ouvrirCockpit({ silencieux: true });
+    if (/^#\/espace/.test(h)) return this.ouvrirEspace({ silencieux: true });
     // Sans hash : un projet vierge garde l'accueil (porté par l'écran
     // réseau, cf. `Reseau.rendre`) ; un projet qui a déjà du contenu
     // ouvre sur le diagnostic — la porte d'entrée du cockpit remplace
@@ -212,6 +219,7 @@ export const App = {
     // Le moteur de graphe est un singleton : deux écrans ne peuvent pas
     // le tenir en même temps. On le rend en sortant.
     if (this._ecran === "reseau") Reseau.demonter();
+    if (this._ecran === "espace") Espace.demonter();
     // ── IDEMPOTENCE ──
     // `_quitter()` peut être appelé deux fois pour une seule sortie :
     // l'import le fait avant d'écrire, puis `ouvrirReseau()` le refait.
@@ -259,21 +267,22 @@ export const App = {
     // `null`, et la sous-barre se vide : pas d'onglets à montrer pour
     // un écran qui n'appartient à aucun moment.
     const modeActif = this._ecran === "cockpit" ? null : MODE_DE[this._ecran] || "ecrire";
-    const alertes = this._alertesOuvertes();
 
-    hoteModes.innerHTML = MODES.map((m) => {
-      // Le compte d'alertes est porté par le moment « vérifier »
-      // lui-même : le signal vit là où on va le traiter.
-      const badge =
-        m.cle === "verifier" && alertes
-          ? `<span class="mode-badge">${alertes}</span>`
-          : "";
-      return (
+    // ── UN SEUL COMPTEUR DANS LA BARRE ──
+    // « Vérifier » portait le compte des alertes de conscience, et c'était
+    // juste tant qu'il était seul. Depuis le diagnostic, deux nombres se
+    // côtoyaient — 16 et 19 — sans que rien ne dise que le premier est un
+    // SOUS-ENSEMBLE du second : le diagnostic traduit les douze règles ET
+    // ajoute ses propres signaux. Deux chiffres qui se contredisent
+    // apprennent à n'en croire aucun. On garde celui qui couvre tout ;
+    // l'écran de la conscience affiche toujours le sien, dans son
+    // en-tête, là où il a un sens précis.
+    hoteModes.innerHTML = MODES.map(
+      (m) =>
         `<button type="button" class="mode${m.cle === modeActif ? " actif" : ""}" ` +
         `data-mode="${m.cle}" aria-current="${m.cle === modeActif}">` +
-        `${Utils.escHtml(m.nom)}${badge}</button>`
-      );
-    }).join("");
+        `${Utils.escHtml(m.nom)}</button>`,
+    ).join("");
 
     const mode = MODES.find((m) => m.cle === modeActif);
     const onglets = mode
@@ -322,13 +331,6 @@ export const App = {
     if (routes[ecran]) routes[ecran]();
   },
 
-  _alertesOuvertes() {
-    let n = 0;
-    for (const r of conscience(ReseauStore, TrameStore, InformationStore))
-      for (const a of r.alertes) if (!Derogations.pour(r.cle, a.cible)) n++;
-    return n;
-  },
-
   ouvrirReseau({ silencieux = false } = {}) {
     this._quitter();
     this._basculer("reseau", "Le réseau");
@@ -352,6 +354,27 @@ export const App = {
       onNaviguer: (ecran, cible) => this._naviguerDepuisCockpit(ecran, cible),
     });
     if (!silencieux) location.hash = "#/diagnostic";
+  },
+
+  /** L'espace partagé. Hors des quatre moments, comme le cockpit — on
+      n'y va pas « après avoir distribué », on y va quand on veut
+      écrire à plusieurs. */
+  ouvrirEspace({ silencieux = false } = {}) {
+    if (this._ecran === "espace") {
+      if (!silencieux && location.hash !== "#/espace") location.hash = "#/espace";
+      return;
+    }
+    this._quitter();
+    this._basculer("espace", "L'espace partagé");
+    Espace.monter(this._hotes.espace, Projets, {
+      // Une synchronisation réécrit les blocs sous les stores : sans
+      // rechargement, l'écran suivant montrerait le GN d'avant le tour.
+      onChange: () => {
+        this._rechargerTout();
+        this._compteurs();
+      },
+    });
+    if (!silencieux) location.hash = "#/espace";
   },
 
   /** Une cible de diagnostic route vers l'écran qui l'a produite — le
@@ -572,6 +595,11 @@ export const App = {
       Besoins.rendre();
     } else if (this._ecran === "cockpit") {
       Cockpit.rendre();
+    } else if (this._ecran === "espace") {
+      // L'espace ne se re-rend PAS sur événement de store : il porte
+      // des champs de saisie (adresse, mot de passe, nom d'espace) et
+      // un tour en cours. Le reconstruire arracherait la frappe, et
+      // c'est justement lui qui provoque les écritures qu'on observe.
     } else {
       Reseau.rendre();
     }
@@ -742,6 +770,7 @@ export const App = {
     document.getElementById("poids").addEventListener("click", () => this._detailPoids());
 
     document.getElementById("act-diagnostic").addEventListener("click", () => this.ouvrirCockpit());
+    document.getElementById("act-espace").addEventListener("click", () => this.ouvrirEspace());
 
     /* Le bouton NOMME l'état courant, il ne promet pas le suivant : une
        bascule qui affiche « Sombre » alors qu'on est en clair, ou
@@ -903,10 +932,22 @@ export const App = {
       une seule vérité, `compterOuverts`. */
   _rendreBoutonDiagnostic() {
     const b = document.getElementById("act-diagnostic");
-    if (!b) return;
-    const n = compterOuverts(this._stores(), Derogations);
-    b.innerHTML = `Diagnostic${n ? ` <span class="mode-badge">${n}</span>` : ""}`;
-    b.classList.toggle("actif", this._ecran === "cockpit");
+    if (b) {
+      const n = compterOuverts(this._stores(), Derogations);
+      b.innerHTML = `Diagnostic${n ? ` <span class="mode-badge">${n}</span>` : ""}`;
+      b.classList.toggle("actif", this._ecran === "cockpit");
+    }
+    // Le bouton de l'espace dit si CE GN est rattaché — c'est la seule
+    // chose qu'on a besoin de savoir sans ouvrir l'écran, et elle
+    // rappelle qu'un GN rattaché n'est plus purement local.
+    const e = document.getElementById("act-espace");
+    if (!e) return;
+    const r = rattachement(Projets.actif());
+    e.innerHTML = r ? 'Espace <span class="es-pastille" title="Ce GN est rattaché">●</span>' : "Espace";
+    e.title = r
+      ? `Ce GN est rattaché à « ${r.espace} ». Il échange avec les membres de cet espace.`
+      : "Écrire ce GN à plusieurs. Ce GN n'est rattaché à aucun espace : il reste sur cet appareil.";
+    e.classList.toggle("actif", this._ecran === "espace");
   },
 
   _detailPoids() {
