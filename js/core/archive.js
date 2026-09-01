@@ -41,6 +41,7 @@
    Feuille : ne dépend que de `Storage`.
    ============================================================ */
 import { Storage, CLES_PROJET } from "./storage.js";
+import { normaliserBloc, resumeAnomalies } from "./normaliser.js";
 
 export const FORMAT = "gnomon-archive";
 export const VERSION = 1;
@@ -129,15 +130,33 @@ export const Archive = {
     };
   },
 
-  /** Applique le paquet. `mode` vaut « remplacer » ou « fusionner ». */
+  /** Applique le paquet. `mode` vaut « remplacer » ou « fusionner ».
+
+      ── L'ENVELOPPE NE SUFFISAIT PAS ──
+      `verifier()` lit `format` et `version`, puis on écrivait le contenu
+      tel quel. Une archive d'enveloppe valide mais au contenu abîmé
+      passait donc, s'écrivait, et cassait un écran de façon permanente —
+      le rechargement ne répare rien, puisque le mauvais paquet est
+      devenu la vérité locale. Constaté sur une information sans `etats` :
+      « Qui sait quoi » restait vide, sans un mot.
+
+      Chaque bloc passe maintenant par `normaliserBloc`, qui répare ce
+      qui peut l'être et écarte ce qui ne le peut pas. Refuser tout le
+      fichier serait pire : on perdrait quarante fiches pour une virgule.
+      Ce qui a été réparé remonte dans le bilan — un import silencieux
+      qui corrige des données est un import qui ment. */
   appliquer(paquet, mode = "fusionner") {
     const v = this.verifier(paquet);
     if (!v.ok) return v;
 
     const bilan = {};
+    const anomalies = [];
     for (const cle of CLES) {
-      const entrant = paquet.data[cle];
-      if (entrant === undefined) continue;
+      const brut = paquet.data[cle];
+      if (brut === undefined) continue;
+      const norme = normaliserBloc(cle, brut);
+      anomalies.push(...norme.anomalies);
+      const entrant = norme.bloc;
 
       if (mode !== "remplacer" && LISTES_NUES.includes(cle) && Array.isArray(entrant)) {
         const local = Storage.get(cle, null);
@@ -175,7 +194,7 @@ export const Archive = {
       Storage.set(cle, fusionne);
       bilan[cle] = `${ajoutes} ajouté${ajoutes > 1 ? "s" : ""}`;
     }
-    return { ok: true, bilan };
+    return { ok: true, bilan, anomalies, reparations: resumeAnomalies(anomalies) };
   },
 
   /** Nom de fichier lisible et triable. */

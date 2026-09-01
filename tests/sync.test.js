@@ -17,7 +17,40 @@ import { synchroniser, decider, ACTES } from "../js/core/sync.js";
 import { fauxDistant, fauxDepot, fauxRegistre } from "./fauxdistant.js";
 import { empreinte } from "../js/core/objets.js";
 
-const perso = (id, nom, extra = {}) => ({ id, nom, pj: true, ...extra });
+/** Un personnage de la forme que `ReseauStore.creerPersonnage` produit.
+
+    Un objet minuscule (`{id, nom, pj}`) ferait un mauvais témoin : la
+    normalisation d'entrée le complèterait en le tirant de la base, son
+    empreinte changerait, et le tour suivant le croirait modifié
+    localement — un conflit que l'application ne connaît pas, puisque
+    ses objets sont complets dès leur création. On teste donc contre la
+    forme réelle. L'idempotence de la normalisation sur cette forme est
+    éprouvée dans `normaliser.test.js`. */
+const perso = (id, nom, extra = {}) => ({
+  id,
+  nom,
+  role: "",
+  pj: true,
+  groupeId: null,
+  fonction: null,
+  moral: "",
+  desir: "",
+  besoin: "",
+  faiblesse: "",
+  pouvoirs: "",
+  transformation: "",
+  archetype: "",
+  surprise: false,
+  notes: "",
+  background: "",
+  style: "",
+  objectifs: [],
+  portrait: "",
+  images: [],
+  x: null,
+  y: null,
+  ...extra,
+});
 const gn = (personnages) => ({ reseau: { personnages, liens: [], groupes: [] } });
 
 /** Un pair : son dépôt, son registre, et un tour de synchronisation. */

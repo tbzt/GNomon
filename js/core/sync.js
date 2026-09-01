@@ -47,6 +47,7 @@
    ============================================================ */
 import { decouperTout, recoudre, empreinte, chemin as versChemin, planDe } from "./objets.js";
 import { CLES_PROJET } from "./storage.js";
+import { normaliserDocument, resumeAnomalies } from "./normaliser.js";
 import { Debug } from "./debug.js";
 
 /** Les décisions possibles pour un chemin. Nommées, parce que le
@@ -138,6 +139,7 @@ export async function synchroniser(depot, distant, registre) {
     tombes: 0,
     conflits: [],
     refus: [],
+    anomalies: [],
     actes: {},
   };
 
@@ -178,21 +180,40 @@ export async function synchroniser(depot, distant, registre) {
       case ACTES.poserTombe:
         aPousser.push({ chemin: c, d: null, rev: d.rev, sup: true });
         break;
-      case ACTES.tirer:
-        aRecoudre.set(c, D.d);
-        reg[c] = { rev: d.rev, empreinte: empreinte(D.d) };
+      case ACTES.tirer: {
+        // ── CE QUI ARRIVE VIENT DE QUELQU'UN D'AUTRE ──
+        // C'est la différence avec l'archive : personne n'a choisi
+        // d'ouvrir ce document-là. Un lien du hub voyage avec son `url`,
+        // qui sera rendue dans un `href` sans repasser par la porte de
+        // `LiensStore`. On normalise donc à l'entrée, comme l'import.
+        const n = normaliserDocument(collectionDe(c), D.d, idDe(c));
+        rapport.anomalies.push(...n.anomalies);
+        if (n.d === null) {
+          // Écarté : on retient quand même sa révision, sinon on le
+          // re-tirerait à chaque tour sans jamais l'accepter.
+          reg[c] = { rev: d.rev, empreinte: null };
+          break;
+        }
+        aRecoudre.set(c, n.d);
+        reg[c] = { rev: d.rev, empreinte: empreinte(n.d) };
         break;
+      }
       case ACTES.tirerTombe:
         aRecoudre.set(c, null);
         reg[c] = { rev: d.rev, empreinte: null };
         break;
-      case ACTES.conflit:
+      case ACTES.conflit: {
         // Le distant l'emporte pour que tout le monde converge ; le
-        // local part dans le rapport, entier, pour ne rien perdre.
-        rapport.conflits.push({ chemin: c, cause: d.cause, local: L, distant: D.sup ? null : D.d });
-        aRecoudre.set(c, D.sup ? null : D.d);
-        reg[c] = { rev: d.rev, empreinte: D.sup ? null : empreinte(D.d) };
+        // local part dans le rapport, entier, pour ne rien perdre. Il
+        // passe par la même normalisation que les tirages : un conflit
+        // n'est pas une raison d'accepter n'importe quoi.
+        const n = D.sup ? { d: null, anomalies: [] } : normaliserDocument(collectionDe(c), D.d, idDe(c));
+        rapport.anomalies.push(...n.anomalies);
+        rapport.conflits.push({ chemin: c, cause: d.cause, local: L, distant: n.d });
+        aRecoudre.set(c, n.d);
+        reg[c] = { rev: d.rev, empreinte: n.d === null ? null : empreinte(n.d) };
         break;
+      }
       default:
         if (d.rev) reg[c] = { rev: d.rev, empreinte: L === undefined ? null : empreinte(L) };
     }
@@ -233,6 +254,7 @@ export async function synchroniser(depot, distant, registre) {
   }
 
   registre.ecrire(reg);
+  rapport.reparations = resumeAnomalies(rapport.anomalies);
   Debug.log("espace", "synchronisation", {
     pousses: rapport.pousses,
     tires: rapport.tires,
