@@ -238,8 +238,25 @@ export const RunStore = {
 
   /* ================= La main courante ================= */
 
+  /** La main courante, **du plus récent au plus ancien**.
+
+      ── L'ORDRE EST UNE DONNÉE, PAS UNE POSITION DANS UN TABLEAU ──
+      `_noter()` empile en tête, et `conduite.js` en dépend : il prend la
+      PREMIÈRE entrée trouvée pour chaque personnage comme étant la plus
+      récente. Tant que ce tableau ne bougeait que par cette porte, s'en
+      remettre à l'ordre d'insertion suffisait.
+
+      Un tour de synchronisation le recoud (`objets.recoudre` trie par
+      identifiant croissant, donc du plus ANCIEN au plus récent) et
+      inversait donc la main courante. Conséquence, la nuit du jeu :
+      `dernier` retenait le plus vieil horodatage de chacun, et tout le
+      monde passait pour délaissé depuis le début du GN.
+
+      On trie donc ici, sur `ts`, qui est le fait. Le store tient son
+      invariant plutôt que d'espérer que personne ne réordonne — c'est la
+      règle du projet, et elle valait déjà pour la réciprocité des liens. */
   journal() {
-    return this._d().journal;
+    return [...this._d().journal].sort((a, b) => (b.ts || 0) - (a.ts || 0));
   },
 
   _noter({ type = "note", texte = "", trameId = null, situationId = null }) {
@@ -266,6 +283,7 @@ export const RunStore = {
 
   retirerEntree(id) {
     const d = this._d();
+    // Sur le tableau INTERNE, pas sur la copie triée de `journal()`.
     d.journal = d.journal.filter((e) => e.id !== id);
     this.save();
     this._emit({ type: "journal:retirer", id });
