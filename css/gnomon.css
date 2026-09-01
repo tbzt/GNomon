@@ -5403,6 +5403,20 @@ main[data-actif="monde"] {
   gap: 10px;
 }
 
+/* ── `display` ÉCRASE `hidden`, ET C'EST UN PIÈGE ──
+   `[hidden] { display: none }` vient de la feuille du navigateur : sa
+   spécificité est celle d'un attribut, donc la règle de classe
+   ci-dessus gagnait. Le panneau restait affiché quoi que fasse
+   `_fermerPanneauProjets()` — visible en surimpression du travail, et
+   impossible à refermer. Le bug ne se voyait pas dans le JS, qui
+   posait bien `hidden = true`.
+
+   Toute règle qui pose `display` sur un élément piloté par `hidden`
+   doit donc porter sa garde. La sous-barre a déjà la sienne. */
+.projet-panneau[hidden] {
+  display: none;
+}
+
 .pj-titre {
   font-family: var(--mono);
   font-size: 10px;
