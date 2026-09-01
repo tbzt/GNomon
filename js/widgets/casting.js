@@ -36,6 +36,7 @@ export const Casting = {
   _trames: null,
   _import: false,
   _brut: "",
+  _sig: "",
 
   monter(hote, casting, reseau, trames) {
     this._hote = hote;
@@ -43,6 +44,59 @@ export const Casting = {
     this._reseau = reseau;
     this._trames = trames;
     this.rendre();
+  },
+
+  /** ── LA GRILLE NE SE RECONSTRUIT PAS À CHAQUE VŒU ──
+      Cinquante-cinq candidatures sur quarante rôles font 2 200 cases, et
+      c'est un écran où l'on clique deux mille fois. `rendre()`
+      réécrivait tout : le conteneur `.scroll-x` devenait un nœud neuf et
+      son défilement repartait de zéro. Mesuré : scrollLeft 251 → 0 à
+      chaque case. On règle un vœu, on est renvoyé à la première colonne,
+      on re-défile pour atteindre la suivante.
+
+      Même discipline que le tableau du réseau (§6) : la signature ne
+      porte que la STRUCTURE — quelles candidatures, quels rôles, l'état
+      des panneaux — jamais les vœux ni l'affectation, qui sont
+      précisément ce qu'on modifie. */
+  _signature() {
+    return [
+      this._casting.candidatures().map((c) => c.id).join(","),
+      this._reseau.pj().map((p) => `${p.id}:${p.nom}`).join(","),
+      this._import ? "import" : "-",
+      Object.keys(this._casting.affectation()).length ? "bilan" : "-",
+    ].join("|");
+  },
+
+  rafraichir() {
+    if (!this._hote || !this._hote.querySelector("td.cell")) return this.rendre();
+    if (this._signature() !== this._sig) return this.rendre();
+
+    const aff = this._casting.affectation();
+    for (const td of this._hote.querySelectorAll("td.cell")) {
+      const e = this._casting.etatVoeu(td.dataset.k, td.dataset.p);
+      const tenu = aff[td.dataset.k] === td.dataset.p;
+      const p = this._reseau.personnage(td.dataset.p);
+      td.className = `cell v-${e}${tenu ? " tenu" : ""}`;
+      td.textContent = SIGNE[e];
+      td.title = `${p ? p.nom : "?"} — ${LIBELLE[e]}${tenu ? " · attribué" : ""}`;
+    }
+    // Le sélecteur de rôle de chaque ligne suit l'affectation — sauf
+    // celui qu'on est en train d'ouvrir.
+    const actif = document.activeElement;
+    for (const sel of this._hote.querySelectorAll("[data-role]")) {
+      if (sel === actif) continue;
+      const v = aff[sel.dataset.role] || "";
+      if (sel.value !== v) sel.value = v;
+    }
+    // Le bilan est dérivé de l'affectation : il se refait entier, mais
+    // il vit SOUS la grille et ne porte aucune saisie.
+    const bilan = this._hote.querySelector(".cast-bilan");
+    if (bilan && Object.keys(aff).length) {
+      const neuf = document.createElement("div");
+      neuf.innerHTML = this._bilan();
+      const remplacant = neuf.firstElementChild;
+      if (remplacant) bilan.replaceWith(remplacant);
+    }
   },
 
   rendre() {
@@ -64,6 +118,7 @@ export const Casting = {
       "</div>";
 
     this._brancher();
+    this._sig = this._signature();
   },
 
   _barre(cands, roles) {

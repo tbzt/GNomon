@@ -578,13 +578,13 @@ export const App = {
     } else if (this._ecran === "atelier") {
       Atelier.rafraichir();
     } else if (this._ecran === "matrice") {
-      Matrice.rendre();
+      Matrice.rafraichir();
     } else if (this._ecran === "conscience") {
       Conscience.rendre();
     } else if (this._ecran === "frise") {
       Frise.rendre();
     } else if (this._ecran === "casting") {
-      Casting.rendre();
+      Casting.rafraichir();
     } else if (this._ecran === "conduite") {
       Conduite.rendre();
     } else if (this._ecran === "monde") {
