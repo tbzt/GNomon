@@ -376,12 +376,16 @@ export const Espace = {
     try {
       const r = await fn();
       if (succes) this._message = typeof succes === "function" ? succes(r) : succes;
+      // `onChange` veut dire « le stockage a bougé sous les stores »,
+      // pas « il s'est passé quelque chose ». Le poser dans le `finally`
+      // rechargeait les neuf stores après un mot de passe refusé, ce qui
+      // ne recharge rien d'utile et brouille ce que le signal annonce.
+      if (this._onChange) this._onChange();
     } catch (e) {
       this._message = e.message || "Quelque chose n'a pas fonctionné.";
     } finally {
       this._occupe = false;
       this.rendre();
-      if (this._onChange) this._onChange();
     }
   },
 
@@ -401,6 +405,15 @@ export const Espace = {
   _ouvrirEspace() {
     const nom = ((this._hote.querySelector("#es-nom") || {}).value || "").trim();
     if (!nom) return this._dire("Donnez le nom de l'espace.");
+    // Même validation que l'identifiant de GN (`_deposer`), et pour la
+    // même raison : ces caractères sont interdits dans une clé Realtime
+    // Database. Sans ça, un nom contenant un point échouait plus loin et
+    // rendait « vous n'êtes pas membre » — une phrase fausse, qui envoie
+    // chercher du côté des droits un problème de frappe.
+    if (/[\s.#$/[\]]/.test(nom))
+      return this._dire(
+        "Ce nom ne peut pas désigner une branche : évitez espaces, points et / # $ [ ].",
+      );
     this._espaceSaisi = nom;
     this._faire(async () => {
       // On vérifie l'appartenance AVANT de lister : « vous n'êtes pas

@@ -22,7 +22,16 @@
 import { Utils } from "../core/utils.js";
 
 /** Un bloc de dégâts, ou rien du tout si la liste est vide — on ne
-    montre pas un titre suivi du néant. */
+    montre pas un titre suivi du néant.
+
+    ── `items` ARRIVE DÉJÀ ÉCHAPPÉ ──
+    Chaque appelant passe par `Utils.escHtml` avant d'appeler, parce que
+    les items portent du balisage voulu (`<b>plus aucun joueur</b>`) : on
+    ne peut donc pas échapper ici sans le détruire. Même contrat que
+    `Markdown.inline`, qui travaille sur du texte déjà échappé — sauf
+    que lui le dit, et pas celui-ci. C'est dit maintenant : un appelant
+    qui passerait du texte d'auteur nu ouvrirait une injection, et les
+    noms viennent désormais d'autres membres de l'espace. */
 function bloc(titre, items, ton = "") {
   if (!items.length) return "";
   return (
