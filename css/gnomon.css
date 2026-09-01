@@ -5865,3 +5865,35 @@ main[data-actif="monde"] {
   gap: 8px;
   justify-content: flex-end;
 }
+
+/* Un paquet de diagnostics — le même signal, répété. Il se lit comme
+   une carte, se déplie sur les cartes entières, et se distingue par sa
+   barre de gauche : c'est un compte, pas un cas. */
+.ck-paquet {
+  box-shadow: inset 3px 0 0 var(--accent);
+}
+.ck-deplier {
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  padding: 4px 10px;
+  border: 1px solid var(--rule);
+  border-radius: 2px;
+  background: transparent;
+  color: var(--accent);
+  cursor: pointer;
+}
+.ck-deplier:hover,
+.ck-deplier[aria-expanded="true"] {
+  border-color: var(--accent);
+  background: var(--surface);
+}
+.ck-sous {
+  margin-top: 12px;
+  padding-left: 0;
+}
+.ck-paquet .ck-sous .ck-diag {
+  box-shadow: none;
+  border-left: 1px solid var(--rule);
+}
