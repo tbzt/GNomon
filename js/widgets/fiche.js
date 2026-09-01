@@ -742,10 +742,19 @@ export const Fiche = {
     if (px) px.addEventListener("click", () => this._store.majPortrait(this._id, ""));
     this._brancherExtras();
 
-    // Une puce ouvre la fiche du personnage mentionné.
-    q("#apercu").addEventListener("click", (e) => {
+    // Une puce ouvre la fiche du personnage mentionné. Elle porte
+    // `role="button"` et prend le focus : elle doit donc répondre à
+    // Entrée et Espace, sinon on l'annonce comme une commande qu'on ne
+    // peut pas déclencher.
+    const puce = (e) => {
       const chip = e.target.closest('[data-action="ouvrir-personnage"]');
       if (chip && this._onOuvrir) this._onOuvrir(chip.dataset.id);
+      return !!chip;
+    };
+    q("#apercu").addEventListener("click", puce);
+    q("#apercu").addEventListener("keydown", (e) => {
+      if (e.key !== "Enter" && e.key !== " ") return;
+      if (puce(e)) e.preventDefault();
     });
 
     this._brancherJauge();

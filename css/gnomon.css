@@ -15,6 +15,14 @@
   --ink-soft: #485966;
   --ink-faint: #56646d;
   --rule: #c0cbd2;
+  /* La limite d'une COMMANDE, distincte de celle d'un séparateur.
+     WCAG 1.4.11 demande 3:1 pour ce qui délimite un contrôle ; `--rule`
+     donnait 1,55 sur la surface d'un bouton, et comme cette surface est
+     à 1,1 du fond, la bordure était le SEUL indice qu'il y avait là
+     quelque chose à cliquer. Les traits de tableau et les séparateurs
+     gardent `--rule` : les monter à 3:1 alourdirait chaque grille sans
+     rien identifier. Mesuré : 3,05 à 3,75 selon le fond. */
+  --rule-controle: #74818a;
   --accent: #1d4e7a;
   --accent-ink: #0e3557;
   --positif: #2f6e4f;
@@ -57,6 +65,7 @@
     --ink-soft: #9aaebb;
     --ink-faint: #728ea3;
     --rule: #233440;
+    --rule-controle: #64717c;
     --accent: #83b7e6;
     --accent-ink: #b5d5f2;
     --positif: #5fb88a;
@@ -75,6 +84,7 @@
   --ink-soft: #9aaebb;
   --ink-faint: #728ea3;
   --rule: #233440;
+  --rule-controle: #64717c;
   --accent: #83b7e6;
   --accent-ink: #b5d5f2;
   --positif: #5fb88a;
@@ -139,7 +149,7 @@ button {
   letter-spacing: 0.1em;
   text-transform: uppercase;
   padding: 6px 11px;
-  border: 1px solid var(--rule);
+  border: 1px solid var(--rule-controle);
   background: var(--surface);
   color: var(--ink-soft);
   border-radius: 2px;
@@ -581,7 +591,7 @@ textarea {
   line-height: 1.5;
   color: var(--ink);
   background: var(--ground);
-  border: 1px solid var(--rule);
+  border: 1px solid var(--rule-controle);
   border-radius: 2px;
   padding: 7px 9px;
   resize: vertical;
@@ -1115,7 +1125,7 @@ textarea::placeholder {
   font-size: 15px;
   color: var(--ink);
   background: var(--ground);
-  border: 1px solid var(--rule);
+  border: 1px solid var(--rule-controle);
   border-radius: 2px;
   padding: 6px 8px;
 }
@@ -1134,7 +1144,7 @@ textarea::placeholder {
   font-size: 13px;
   color: var(--ink);
   background: var(--ground);
-  border: 1px solid var(--rule);
+  border: 1px solid var(--rule-controle);
   border-radius: 2px;
   padding: 5px 6px;
 }
@@ -1459,7 +1469,7 @@ table.matrice .cell:hover {
   font-size: 14.5px;
   color: var(--ink);
   background: var(--ground);
-  border: 1px solid var(--rule);
+  border: 1px solid var(--rule-controle);
   border-radius: 2px;
   padding: 5px 8px;
 }
@@ -2819,7 +2829,7 @@ main[data-actif="espace"] {
   font-size: 11px;
   color: var(--ink);
   background: var(--ground);
-  border: 1px solid var(--rule);
+  border: 1px solid var(--rule-controle);
   border-radius: 2px;
   padding: 2px 4px;
 }
@@ -3880,7 +3890,7 @@ main[data-actif="monde"] {
   font-size: 14px;
   color: var(--ink);
   background: var(--ground);
-  border: 1px solid var(--rule);
+  border: 1px solid var(--rule-controle);
   border-radius: 2px;
   padding: 6px 8px;
 }
@@ -4083,7 +4093,7 @@ main[data-actif="monde"] {
   font-size: 14.5px;
   color: var(--ink);
   background: var(--ground);
-  border: 1px solid var(--rule);
+  border: 1px solid var(--rule-controle);
   border-radius: 2px;
   padding: 6px 9px;
 }
@@ -4122,7 +4132,7 @@ main[data-actif="monde"] {
   font-size: 13.5px;
   color: var(--ink);
   background: var(--ground);
-  border: 1px solid var(--rule);
+  border: 1px solid var(--rule-controle);
   border-radius: 2px;
   padding: 5px 8px;
 }
@@ -4539,7 +4549,7 @@ main[data-actif="monde"] {
   font-size: 13.5px;
   color: var(--ink);
   background: var(--ground);
-  border: 1px solid var(--rule);
+  border: 1px solid var(--rule-controle);
   border-radius: 2px;
   padding: 6px 8px;
 }
@@ -5139,7 +5149,7 @@ main[data-actif="monde"] {
   font-family: var(--sans);
   font-size: 13px;
   padding: 4px 7px;
-  border: 1px solid var(--rule);
+  border: 1px solid var(--rule-controle);
   border-radius: 2px;
   background: var(--surface);
   color: var(--ink);
@@ -5299,7 +5309,7 @@ main[data-actif="monde"] {
 
 .tb td input[type="text"]:hover,
 .tb td select:hover {
-  border-color: var(--rule);
+  border-color: var(--rule-controle);
 }
 
 .tb td input[type="text"]:focus,
@@ -5483,7 +5493,7 @@ main[data-actif="monde"] {
   font-family: var(--sans);
   font-size: 14px;
   padding: 5px 7px;
-  border: 1px solid var(--rule);
+  border: 1px solid var(--rule-controle);
   border-radius: 2px;
   background: var(--surface);
   color: var(--ink);
@@ -5845,7 +5855,7 @@ main[data-actif="monde"] {
   font-family: var(--sans);
   font-size: 15px;
   padding: 7px 9px;
-  border: 1px solid var(--rule);
+  border: 1px solid var(--rule-controle);
   border-radius: 2px;
   background: var(--ground);
   color: var(--ink);

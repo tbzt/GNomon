@@ -88,6 +88,22 @@ export const Reseau = {
       if (carte && this._onOuvrir) this._onOuvrir(carte.dataset.personnage);
     });
 
+    /* ── UN `role="button"` DOIT RÉPONDRE COMME UN BOUTON ──
+       La carte est annoncée « bouton » et prend le focus, mais seul le
+       clic était écouté : au clavier, Entrée ne faisait rien. C'est le
+       geste PRINCIPAL de l'application — ouvrir une fiche — et il était
+       inatteignable sans souris. La matrice et le casting gèrent déjà
+       Entrée et Espace sur leurs cases ; la connaissance était dans
+       l'équipe, elle n'avait pas été appliquée ici. */
+    this._hote.addEventListener("keydown", (e) => {
+      if (e.key !== "Enter" && e.key !== " ") return;
+      const carte = e.target.closest("[data-personnage]");
+      if (!carte || !this._onOuvrir) return;
+      // Espace fait défiler la page par défaut : sur une commande, non.
+      e.preventDefault();
+      this._onOuvrir(carte.dataset.personnage);
+    });
+
     // Le renommage part au `change` — donc à la sortie du champ, pas à
     // la frappe : `rendre()` reconstruit tout à chaque écriture, et
     // enregistrer lettre par lettre arracherait le champ des doigts.
