@@ -324,7 +324,9 @@ export const ReseauGraphe = {
       },
       onBackgroundTap: () => {
         if (this._mode) this._absent = null;
-        else this._selId = null;
+        // Toucher le fond désélectionne — il fallait le DIRE au moteur, qui
+        // gardait sinon son anneau et, désormais, tout un voisinage allumé.
+        else { this._selId = null; GraphEngine.select(null); }
         this._peindre();
         this._rafraichirFlanc();
       },
@@ -508,6 +510,7 @@ export const ReseauGraphe = {
       this._mode = !this._mode;
       this._absent = null;
       this._selId = null;
+      GraphEngine.select(null); // le voisinage mis en avant n'a plus cours ici
       // On re-rend la barre plutôt que de retoucher trois attributs à la
       // main : le rendu était la SEULE source de l'état visuel, et le
       // bricoler en parallèle créait deux vérités — le texte suivait

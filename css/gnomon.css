@@ -859,10 +859,23 @@ textarea::placeholder {
 }
 
 .graph-edge {
-  stroke-width: 1.6;
   stroke-opacity: 0.55;
   pointer-events: none;
   transition: stroke-width 120ms ease, stroke-opacity 120ms ease;
+}
+/* ── L'ÉPAISSEUR VIENT DU MODÈLE, PAS D'ICI ──
+   Le moteur pose `stroke-width` en ATTRIBUT, une arête à la fois, parce que
+   l'importance d'un lien (primaire · secondaire · confort) est une donnée du
+   GN et doit se lire au trait. Un attribut de présentation a une spécificité
+   nulle : la règle `.graph-edge { stroke-width: 1.6 }` qui était ici le
+   battait, et les trois épaisseurs sortaient toutes identiques. Le défaut ne
+   se voyait pas — un graphe où tout se vaut ressemble à un graphe.
+
+   Le défaut ne s'applique donc plus qu'aux arêtes qui n'en portent PAS (les
+   conclusions de l'atelier, qui se valent bien, elles), et l'arête
+   sélectionnée reste plus épaisse : une règle de classe bat un attribut. */
+.graph-edge:not([stroke-width]) {
+  stroke-width: 1.6;
 }
 .graph-edge.selected {
   stroke-width: 2.6;
@@ -880,9 +893,30 @@ textarea::placeholder {
 }
 /* Vue d'ensemble : les mots des arêtes se chevaucheraient et couvriraient le
    dessin. La classe est posée par le moteur, qui seul connaît l'étendue
-   visible ; ils reviennent dès qu'on se rapproche assez pour les lire. */
-.graph-svg.loin .graph-edge-labels {
+   visible ; ils reviennent dès qu'on se rapproche assez pour les lire.
+   Exception : quand un nœud est sélectionné, seuls ceux de son voisinage
+   restent — ils sont dix, et c'est précisément ce qu'on veut lire. */
+.graph-svg.loin:not(.focalise) .graph-edge-labels {
   display: none;
+}
+
+/* ── Sélection d'un nœud : son voisinage passe devant, le reste s'efface ──
+   L'épaisseur n'apparaît nulle part ici : elle porte l'importance du lien,
+   posée en attribut par le moteur, et une règle CSS la remplacerait. */
+.graph-svg.focalise .graph-edge:not(.voisine) {
+  stroke-opacity: 0.09;
+}
+.graph-svg.focalise .graph-edge.voisine {
+  stroke-opacity: 1;
+}
+.graph-svg.focalise .graph-node:not(.voisin) {
+  opacity: 0.26;
+}
+.graph-svg.focalise .graph-edge-label:not(.voisine) {
+  display: none;
+}
+.graph-svg.focalise .graph-pockets {
+  opacity: 0.4;
 }
 .graph-edge-label {
   font-family: var(--mono);

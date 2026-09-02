@@ -526,6 +526,48 @@ export const GraphEngine = {
     s.selectedEdgeId = null;
     for (const n of s.N) n._g.classList.toggle("selected", n.id === s.selectedId);
     for (const e of s.E) e._line.classList.remove("selected");
+    this._focaliser(s);
+  },
+
+  /** ── ON SÉLECTIONNE UN NŒUD POUR VOIR CE QUI LE RELIE ──
+      La sélection ne marquait que le disque. Savoir QUI on a touché ne dit
+      rien de ce qu'on est venu chercher : sur quarante-six personnages et
+      deux cent soixante-six liens, ses arêtes se perdent dans les autres.
+
+      On marque donc l'arête dès qu'elle touche le nœud, ainsi que le voisin
+      au bout, on éteint le reste — et on REDESSINE les arêtes concernées en
+      dernier. Sur un graphe dense, être au-dessus compte autant qu'être plus
+      vif : un lien de confort passe sous quatre traits primaires et
+      disparaît, quelle que soit son opacité.
+
+      L'épaisseur n'est jamais touchée : elle porte l'importance du lien, qui
+      ne change pas parce qu'on a cliqué. Seuls l'opacité, l'ordre de dessin
+      et l'affichage des mots bougent — c'est un état de VUE, pas une vérité.
+
+      Les mots des arêtes du voisinage s'affichent même en vue d'ensemble,
+      là où le repli par densité les cache tous : ils sont dix, pas cent. */
+  _focaliser(s) {
+    const id = s.selectedId;
+    s.svg.classList.toggle("focalise", !!id);
+    const voisins = new Set();
+    if (id) voisins.add(id); // le sélectionné, même s'il n'a aucun lien
+    for (const e of s.E) {
+      const a = s.N[e.a], b = s.N[e.b];
+      const touche = !!id && (a.id === id || b.id === id);
+      e._line.classList.toggle("voisine", touche);
+      e._label.classList.toggle("voisine", touche);
+      if (touche) { voisins.add(a.id); voisins.add(b.id); }
+    }
+    for (const n of s.N) n._g.classList.toggle("voisin", voisins.has(n.id));
+    if (!id || !s.E.length) return;
+    const pistes = s.E[0]._line.parentNode;
+    const mots = s.E[0]._label.parentNode;
+    for (const e of s.E) {
+      if (!e._line.classList.contains("voisine")) continue;
+      // La zone de clic reste sous son trait, sinon elle le masquerait.
+      if (pistes) { pistes.appendChild(e._hit); pistes.appendChild(e._line); }
+      if (mots) mots.appendChild(e._label);
+    }
   },
 
   /** A3b — marque/démarque un nœud comme MULTI-sélectionné (construction d'une
