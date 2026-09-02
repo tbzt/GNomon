@@ -171,6 +171,12 @@ contact-miroir — et surtout **la vérité derrière une croyance fausse**. Qua
 croit autre chose, son livret n'écrit que ce qu'il croit. Sortir les deux livrerait l'intrigue
 au joueur dans le document censé la lui cacher.
 
+Une information a deux textes : son **contenu**, écrit pour l'équipe, et sa **formulation pour
+le joueur**, la seule que le livret imprime — et il signale chaque fois qu'elle manque. Un lieu
+a de même une note publique et une note d'équipe. Ces deux séparations viennent d'un GN réel où
+« Ange a six semaines à vivre » et « ne pas y placer de scène avant 45 h » étaient partis dans
+les livrets.
+
 Le **background** remis est distinct du **carnet de l'auteur**, qui ne sort jamais : sans cette
 séparation, un « à révéler plus tard » griffonné en écrivant partait au joueur. Le background
 prend la place qu'il faut (une ligne `---` commence une nouvelle page), accepte des images, et

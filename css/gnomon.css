@@ -3825,6 +3825,7 @@ table.matrice .cell,
 #carnet,
 .perso .moral,
 #info-contenu,
+#info-enonce,
 .sq-txt,
 .cd-txt,
 .prose-demo,
@@ -3948,7 +3949,7 @@ main[data-actif="monde"] {
 }
 .lieux li {
   display: grid;
-  grid-template-columns: minmax(140px, 1fr) minmax(0, 2fr) auto;
+  grid-template-columns: minmax(140px, 1fr) minmax(0, 2fr) minmax(0, 2fr) auto;
   gap: 7px;
   align-items: center;
 }
@@ -3965,6 +3966,11 @@ main[data-actif="monde"] {
   border-color: var(--accent);
   outline: none;
 }
+/* La note d'équipe se distingue à l'œil : c'est celle qui ne sort pas. */
+.lieux input.lieu-prive {
+  border-style: dashed;
+  color: var(--ink-soft);
+}
 .lieux button {
   font-size: 9.5px;
   padding: 3px 7px;
@@ -3973,7 +3979,8 @@ main[data-actif="monde"] {
   .lieux li {
     grid-template-columns: 1fr auto;
   }
-  .lieux li input:nth-child(2) {
+  .lieux li input:nth-child(2),
+  .lieux li input:nth-child(3) {
     grid-column: 1 / -1;
   }
 }

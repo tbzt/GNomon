@@ -296,17 +296,25 @@ export const MondeStore = {
      (`espaceDédié`). Ici on tient la liste de référence — celle qu'on
      imprime dans le livret et qu'on affiche à l'équipe. Aucune des deux
      n'est autorité sur l'autre : la situation dit où ELLE se joue, le
-     monde dit ce que le site COMPORTE. */
+     monde dit ce que le site COMPORTE.
+
+     Un lieu porte DEUX notes. `note` est ce que le joueur lit dans son
+     livret (« le seul endroit où l'on peut être seul à deux »). `prive`
+     est ce que l'équipe se dit du même endroit (« ne pas y placer de
+     scène avant 45 h de frise ») : elle ne sort que dans la consigne.
+     Tant qu'il n'y avait qu'un champ, la consigne d'orga partait au
+     joueur avec le nom du lieu — vu sur un GN réel. */
 
   lieux() {
     return this._d().lieux;
   },
 
-  ajouterLieu(nom = "", note = "") {
+  ajouterLieu(nom = "", note = "", prive = "") {
     const l = {
       id: "x" + Date.now().toString(36) + Math.random().toString(36).slice(2, 6),
       nom,
       note,
+      prive,
     };
     this._d().lieux.push(l);
     this.save();

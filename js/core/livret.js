@@ -26,6 +26,14 @@
      quand un personnage *croit autre chose*, le livret n'écrit QUE ce
      qu'il croit. Sortir les deux livrerait l'intrigue au joueur dans le
      document censé la lui cacher.
+   · **Le texte d'équipe d'une information.** Le `contenu` est écrit
+     pour l'orga — troisième personne, notes de fabrication. Ce que lit
+     le joueur est l'`enonce`. Quand il manque, le livret imprime le
+     contenu faute de mieux, et le signale à l'auteur : un livret muet
+     sur ce que le personnage sait serait pire, mais un livret qui
+     parle comme l'orga est une fuite, et elle doit se voir.
+   · **La note privée d'un lieu** (`prive`). Le lieu a une note pour le
+     joueur et une pour l'équipe ; seule la première sort ici.
 
    ── CE QUE LES DEUX PORTENT TOUJOURS ──
    La note d'intention, les avertissements de contenu et les mécaniques
@@ -66,8 +74,14 @@ function cadre(monde) {
     securiteNote: m.securiteNote,
     pratique: m.pratique,
     costume: m.costume,
-    lieux: monde.lieux(),
+    // Rien que la note publique : la note d'équipe reste à la consigne.
+    lieux: monde.lieux().map((x) => ({ id: x.id, nom: x.nom, note: x.note || "" })),
   };
+}
+
+/** Le texte qu'un joueur lit pour une information qu'il sait. */
+function enonceDe(i) {
+  return (i.enonce || "").trim() || i.contenu || "";
 }
 
 /* ================= LE LIVRET ================= */
@@ -106,6 +120,13 @@ export function livret(personnageId, { reseau, monde, infos, casting = null }) {
   const avertissements = [];
   if (!(p.background || "").trim())
     avertissements.push("Le background est vide : le livret n'aura pas de récit.");
+  sait.forEach((i) => {
+    if (!(i.enonce || "").trim())
+      avertissements.push(
+        `« ${i.contenu || "une information"} » : aucune formulation pour le joueur — ` +
+          "le livret imprime le texte d'équipe tel quel.",
+      );
+  });
   croit.forEach((i) => {
     if (!(infos.croyance(i.id, p.id) || "").trim())
       avertissements.push(
@@ -135,7 +156,7 @@ export function livret(personnageId, { reseau, monde, infos, casting = null }) {
     images: (p.images || []).filter((i) => i && i.src),
     traits,
     contacts,
-    sait: sait.map((i) => i.contenu).filter(Boolean),
+    sait: sait.map(enonceDe).filter(Boolean),
     croit: croyances.filter(Boolean),
     avertissements,
   };
@@ -240,6 +261,8 @@ export function consigne(personnageId, { reseau, monde, infos, trames }) {
       croyance: infos.croyance(i.id, p.id) || "— non écrit —",
     })),
     croyancesAutour,
+    // L'addition : les deux notes du lieu, la publique et celle d'équipe.
+    lieux: monde.lieux().map((x) => ({ nom: x.nom, note: x.note || "", prive: x.prive || "" })),
     style: (p.style || "").trim(),
     notes: (p.notes || "").trim(),
     background: (p.background || "").trim(),
@@ -516,6 +539,18 @@ ${bloc(
 )}
 ${bloc("Comment le jouer", k.style ? proseHtml(k.style) : "")}
 ${bloc("Notes d'écriture", k.notes ? proseHtml(k.notes) : "")}
+${
+  k.lieux.length
+    ? bloc(
+        "Les lieux",
+        liste(
+          k.lieux.map(
+            (x) => `${x.nom}${x.note ? " — " + x.note : ""}${x.prive ? " · équipe : " + x.prive : ""}`,
+          ),
+        ),
+      )
+    : ""
+}
 ${cadreHtml(c, { pratique: false })}`,
   );
 }

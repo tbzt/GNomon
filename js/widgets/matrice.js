@@ -226,9 +226,9 @@ export const Matrice = {
     const hote = this._hote && this._hote.querySelector("#info-panneau");
     const a = document.activeElement;
     if (!hote || !a || !hote.contains(a)) return null;
-    if (a.id !== "info-contenu" && !a.dataset.croyance) return null;
+    if (a.id !== "info-contenu" && a.id !== "info-enonce" && !a.dataset.croyance) return null;
     return {
-      cle: a.id === "info-contenu" ? "#info-contenu" : `[data-croyance="${a.dataset.croyance}"]`,
+      cle: a.id ? `#${a.id}` : `[data-croyance="${a.dataset.croyance}"]`,
       texte: a.value,
       debut: a.selectionStart,
       fin: a.selectionEnd,
@@ -266,7 +266,12 @@ export const Matrice = {
 
     hote.innerHTML =
       '<div class="info-detail">' +
-      `<textarea rows="2" id="info-contenu" placeholder="Le fait, tel qu'il est vrai">${Utils.escHtml(i.contenu)}</textarea>` +
+      `<textarea rows="2" id="info-contenu" placeholder="Le fait, tel qu'il est vrai — pour l'équipe">${Utils.escHtml(i.contenu)}</textarea>` +
+      // Deux textes pour un fait : le vrai, pour l'équipe, et ce que lit
+      // celui qui le sait. Sans le second, le livret imprime le premier
+      // — troisième personne, notes d'orga comprises — et le signale.
+      '<span class="champ-label" title="Ce que lit, dans son livret, un personnage qui sait cette information. À la deuxième personne, sans rien de ce que seule l\'équipe sait. Vide : le livret imprime le texte d\'équipe et le signale.">Pour le joueur</span>' +
+      `<textarea rows="2" id="info-enonce" placeholder="Vous savez que… — ce que lit celui qui le sait">${Utils.escHtml(i.enonce || "")}</textarea>` +
       '<div class="info-ligne">' +
       '<span class="champ-label" title="Directe : le joueur peut la traduire en acte dès la lecture. Latente : elle ne permet aucune anticipation. C\'est le réglage de tension du GN.">Influence</span>' +
       Object.entries(INFLUENCES)
@@ -317,6 +322,9 @@ export const Matrice = {
 
     hote.querySelector("#info-contenu").addEventListener("change", (e) =>
       this._infos.maj(i.id, { contenu: e.target.value }),
+    );
+    hote.querySelector("#info-enonce").addEventListener("change", (e) =>
+      this._infos.maj(i.id, { enonce: e.target.value }),
     );
     for (const b of hote.querySelectorAll("[data-infl]"))
       b.addEventListener("click", () => this._infos.maj(i.id, { influence: b.dataset.infl }));

@@ -201,6 +201,8 @@ const REGLES = {
     return {
       ...o,
       contenu: txt(o.contenu),
+      // Ce que lit celui qui la sait. Absent = vide, et le livret le dit.
+      enonce: txt(o.enonce),
       influence: garder(dans(o.influence, INFLUENCES, null), o.influence, note, "influence inconnue") || "latente",
       etats,
       croyances,
@@ -224,7 +226,10 @@ const REGLES = {
     };
   },
 
-  "monde.lieux": (o) => ({ ...o, nom: txt(o.nom), note: txt(o.note) }),
+  // `note` sort dans le livret ; `prive` est la note d'équipe — « ne pas
+  // y placer de scène avant 45 h », « l'orga n'y envoie personne » — et
+  // ne sort que dans la consigne.
+  "monde.lieux": (o) => ({ ...o, nom: txt(o.nom), note: txt(o.note), prive: txt(o.prive) }),
 
   // L'ordre est de la donnée : une époque sans `ordre` lisible passe en
   // tête plutôt que de casser le tri de `MondeStore.epoques()`.

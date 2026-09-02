@@ -169,6 +169,59 @@ suite("Livret — la soustraction", () => {
       "la croyance muette doit etre signalee",
     );
   });
+
+  /* Le contenu d'une information est écrit pour l'équipe — troisième
+     personne, notes de fabrication. Ce que lit le joueur est l'énoncé.
+     Vu sur un GN réel : « Ange a six semaines à vivre » imprimé dans le
+     livret d'Ange, et un « socle factuel identique dans les neuf
+     livrets » parti tel quel chez le joueur. */
+  test("une information sort dans les mots du joueur, pas ceux de l'equipe", () => {
+    const st = cas();
+    const i = st.infos.information("i1");
+    i.contenu = "ORGA : le fils est mort au tunnel — socle identique dans les neuf livrets";
+    i.enonce = "Vous savez que le fils est mort au tunnel.";
+    i.etats.elena = "sait";
+    const html = livretHtml(livret("elena", st));
+    contient(html, "Vous savez que le fils est mort au tunnel.");
+    neContientPas(html, "socle identique", "le texte d'equipe a fuite dans le livret");
+    neContientPas(livretMarkdown(livret("elena", st)), "socle identique", "fuite en markdown");
+  });
+
+  test("sans formulation joueur, le livret imprime le texte d'equipe et le SIGNALE", () => {
+    const st = cas();
+    const i = st.infos.information("i1");
+    i.etats.elena = "sait";
+    const l = livret("elena", st);
+    ok(
+      l.avertissements.some((a) => a.includes("aucune formulation pour le joueur")),
+      "l'absence d'enonce doit etre signalee a l'auteur",
+    );
+    // Faute de mieux, le contenu sort : un livret muet sur ce que le
+    // personnage sait serait pire. Mais l'auteur l'a vu.
+    contient(livretHtml(l), VERITE);
+  });
+
+  test("la croyance fausse ne depend pas de l'enonce", () => {
+    const st = cas();
+    st.infos.information("i1").enonce = "Vous savez que le fils est mort au tunnel.";
+    const html = livretHtml(livret("lucie", st));
+    contient(html, CROYANCE);
+    neContientPas(html, "mort au tunnel", "l'enonce vrai a fuite chez qui croit autre chose");
+  });
+
+  /* Le lieu a deux notes : celle du joueur et celle de l'équipe. Tant
+     qu'il n'y en avait qu'une, « ne pas y placer de scène avant 45 h »
+     partait dans le livret avec le nom du lieu. */
+  test("la note privee d'un lieu ne sort pas du livret, mais la consigne la porte", () => {
+    const st = cas();
+    st.monde.lieux = () => [
+      { id: "x1", nom: "Les platanes", note: "Le fond de la propriete.", prive: "NE-PAS-Y-JOUER-AVANT-45H" },
+    ];
+    const html = livretHtml(livret("lucie", st));
+    contient(html, "Le fond de la propriete.");
+    neContientPas(html, "NE-PAS-Y-JOUER", "la note d'equipe du lieu a fuite");
+    contient(consigneHtml(consigne("corvin", st)), "NE-PAS-Y-JOUER");
+  });
 });
 
 suite("Consigne PNJ — l'addition", () => {

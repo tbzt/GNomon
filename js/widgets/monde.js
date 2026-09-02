@@ -328,7 +328,8 @@ export const Monde = {
         .map(
           (x) =>
             `<li><input data-lieu-nom="${x.id}" value="${Utils.escHtml(x.nom)}" placeholder="Le dispensaire" aria-label="Nom du lieu" />` +
-            `<input data-lieu-note="${x.id}" value="${Utils.escHtml(x.note)}" placeholder="Ce qu'il permet, ce qu'il empêche…" aria-label="Note" />` +
+            `<input data-lieu-note="${x.id}" value="${Utils.escHtml(x.note)}" placeholder="Pour le joueur : ce qu'il permet, ce qu'il empêche…" aria-label="Note pour le joueur" />` +
+            `<input data-lieu-prive="${x.id}" value="${Utils.escHtml(x.prive || "")}" placeholder="Pour l'équipe seulement — ne sort pas du livret" aria-label="Note d'équipe" class="lieu-prive" />` +
             `<button type="button" data-lieu-x="${x.id}" title="Retirer">✕</button></li>`,
         )
         .join("") +
@@ -397,6 +398,10 @@ export const Monde = {
     for (const el of this._hote.querySelectorAll("[data-lieu-note]"))
       el.addEventListener("change", (e) =>
         this._store.majLieu(el.dataset.lieuNote, { note: e.target.value }),
+      );
+    for (const el of this._hote.querySelectorAll("[data-lieu-prive]"))
+      el.addEventListener("change", (e) =>
+        this._store.majLieu(el.dataset.lieuPrive, { prive: e.target.value }),
       );
     for (const b of this._hote.querySelectorAll("[data-lieu-x]"))
       b.addEventListener("click", () => this._store.supprimerLieu(b.dataset.lieuX));

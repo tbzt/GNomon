@@ -509,6 +509,8 @@ sait-on ? » mais **« que peut-il lire ? »**. Quatre exclusions, et chacune d�
 | L'**importance** d'un lien et le **miroir** | Instruments de construction. Aucun personnage ne pense « ce contact est secondaire » de quelqu'un qu'il connaît. |
 | **Le carnet de l'auteur** (`notes`) | Privé depuis la migration v2. C'est `background` qui est publié — sans cette séparation, un « à révéler en S3 » griffonné dans le carnet partait au joueur. |
 | **La vérité derrière une croyance fausse** | LE point critique. Quand un personnage *croit autre chose*, le livret n'écrit QUE ce qu'il croit. Sortir les deux — ce que fait tout tableur — livre l'intrigue au joueur dans le document censé la lui cacher. |
+| **Le texte d'équipe d'une information** (`contenu`) | Il est écrit pour l'orga : troisième personne, notes de fabrication. Ce que lit le joueur est l'`enonce`, saisi en face. Sans lui, le livret imprime le contenu faute de mieux et le **signale** — un livret muet sur ce que le personnage sait serait pire, mais un livret qui parle comme l'orga est une fuite, et elle doit se voir. Ce champ ne porte pas un texte par porteur : une information que deux personnes doivent lire différemment est deux informations. |
+| **La note privée d'un lieu** (`prive`) | Le lieu a une note pour le joueur (`note`) et une pour l'équipe. « Ne pas y placer de scène avant 45 h de frise » partait dans le livret avec le nom du lieu ; seule la consigne porte désormais les deux. |
 
 Les **avertissements** (carnet vide, croyance sans texte, aucun contact) s'adressent à l'auteur
 et ne sortent jamais dans le document.

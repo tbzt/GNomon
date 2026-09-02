@@ -129,6 +129,7 @@ export function fauxInfos(informations = []) {
   const I = informations.map((i, k) => ({
     id: i.id || `i${k}`,
     contenu: "",
+    enonce: "",
     influence: "latente",
     etats: {},
     croyances: {},

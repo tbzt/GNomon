@@ -19,6 +19,21 @@
    monde, et le stocker pour quarante personnages × trente informations
    remplirait la base de mille deux cents façons de ne rien dire.
 
+   `enonce` est ce que LIT celui qui la sait, dans son livret. Le
+   `contenu` est écrit pour l'équipe — à la troisième personne, avec
+   ses notes d'orga — et c'est lui qui servait de texte de livret :
+   un joueur lisait « Ange a six semaines à vivre » dans le livret
+   d'Ange, et un « socle factuel identique dans les neuf livrets »
+   partait tel quel chez le joueur. Un fait a donc deux textes : le
+   vrai, pour l'équipe, et sa formulation pour qui le sait. Le livret
+   n'imprime que la seconde, et signale quand elle manque.
+
+   Ce que ce champ NE règle PAS : une information que ses porteurs
+   doivent lire différemment (« trois personnes sont armées, aucune ne
+   sait pour les deux autres ») n'a pas UNE formulation. C'est alors
+   deux informations, une par fait — le modèle ne cherche pas à porter
+   un texte par porteur.
+
    `croyances` porte le TEXTE de ce qu'un personnage croit à la place.
    Sans lui, « croit autre chose » ne serait qu'un drapeau — or c'est
    précisément la fausse croyance qui se joue à table. Lucie ne « croit
@@ -149,12 +164,12 @@ export const InformationStore = {
 
   /* ================= Mutation ================= */
 
-  creer({ contenu = "", influence = "latente" } = {}) {
+  creer({ contenu = "", influence = "latente", enonce = "" } = {}) {
     if (!(influence in INFLUENCES)) {
       Debug.warn("information", "influence inconnue, refusée", { influence });
       return null;
     }
-    const i = { id: this._uid(), contenu, influence, etats: {}, croyances: {} };
+    const i = { id: this._uid(), contenu, enonce, influence, etats: {}, croyances: {} };
     this._d().informations.push(i);
     this.save();
     this._emit({ type: "information:creer", id: i.id });

@@ -194,6 +194,25 @@ suite("Normaliser — un bloc entier", () => {
     eq(r.anomalies.length, 0);
   });
 
+  test("la note privee d'un lieu traverse, et manque proprement", () => {
+    const r = normaliserBloc("monde", {
+      lieux: [{ id: "x1", nom: "Les platanes", note: "Le fond", prive: "pas avant 45 h" }, { id: "x2", nom: "La cour" }],
+    });
+    eq(r.bloc.lieux[0].prive, "pas avant 45 h");
+    eq(r.bloc.lieux[1].prive, "", "un lieu sans note privee en a une vide, pas undefined");
+  });
+
+  test("la formulation joueur d'une information traverse, et manque proprement", () => {
+    const r = normaliserBloc("informations", {
+      informations: [
+        { id: "i1", contenu: "le duc a menti", enonce: "Vous savez que le duc a menti." },
+        { id: "i2", contenu: "le duc a menti" },
+      ],
+    });
+    eq(r.bloc.informations[0].enonce, "Vous savez que le duc a menti.");
+    eq(r.bloc.informations[1].enonce, "");
+  });
+
   test("un fil qui n'est pas un texte en devient un", () => {
     eq(normaliserBloc("monde", { fil: null, lieux: [] }).bloc.fil, "");
     eq(normaliserBloc("monde", { fil: 1965, lieux: [] }).bloc.fil, "1965");
