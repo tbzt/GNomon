@@ -4740,6 +4740,25 @@ main[data-actif="monde"] {
   margin-bottom: 12px;
 }
 
+/* Le sélecteur d'époque n'apparaît que si le GN en déclare plusieurs :
+   il se range dans la barre du graphe, à côté de « Ranger ». */
+.rg-epoque {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.82rem;
+  color: var(--douce, #56646d);
+  white-space: nowrap;
+}
+.rg-epoque select {
+  font: inherit;
+  color: inherit;
+  padding: 0.15rem 0.3rem;
+  border: 1px solid var(--trait, #c0cbd2);
+  border-radius: 3px;
+  background: transparent;
+}
+
 .rg-mode {
   font-family: var(--sans);
   font-size: 13px;
@@ -5997,4 +6016,68 @@ main[data-actif="monde"] {
 .ck-paquet .ck-sous .ck-diag {
   box-shadow: none;
   border-left: 1px solid var(--rule);
+}
+
+
+/* Les flèches d'ordre d'une époque : elles disent « avant / après »,
+   pas un rang à saisir — un numéro tapé se contredit dès qu'on insère
+   au milieu de la liste. */
+.epoque-ordre {
+  display: inline-flex;
+  gap: 2px;
+}
+.epoque-ordre button {
+  padding: 2px 7px;
+  line-height: 1.1;
+}
+.epoque-ordre button[disabled] {
+  opacity: 0.35;
+  cursor: default;
+}
+
+
+/* ── Les sièges ──
+   Le panneau ne s'affiche que pour un GN à plusieurs époques. Les
+   anomalies passent AVANT la liste : ce sont elles qu'on vient voir. */
+.sieges-bloc {
+  margin-top: 22px;
+}
+.sieges-ecarts {
+  list-style: none;
+  margin: 0 0 12px;
+  padding: 10px 14px;
+  border-left: 3px solid var(--rouge, #9e2b25);
+  background: color-mix(in srgb, var(--rouge, #9e2b25) 7%, transparent);
+  font-size: 0.88rem;
+}
+.sieges-ecarts li + li {
+  margin-top: 6px;
+}
+.sieges {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 4px;
+}
+.sieges li {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  padding: 5px 0;
+  border-bottom: 1px solid var(--trait, #c0cbd2);
+  font-size: 0.9rem;
+}
+.siege-nom {
+  min-width: 14ch;
+  font-weight: 600;
+}
+.siege-genre {
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--douce, #56646d);
+}
+.siege-gens {
+  color: var(--douce, #56646d);
 }

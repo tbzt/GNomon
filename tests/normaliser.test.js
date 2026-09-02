@@ -117,7 +117,8 @@ suite("Normaliser — un document venu d'ailleurs", () => {
       repousserait tout le GN à chaque tour, en croyant l'avoir modifié. */
   test("normaliser ne bouge pas un objet déjà bien formé", () => {
     const complet = {
-      id: "p1", nom: "Elena", role: "", pj: true, groupeId: null, fonction: null,
+      id: "p1", nom: "Elena", role: "", pj: true, groupeId: null,
+      roleId: null, epoqueId: null, fonction: null,
       moral: "", desir: "", besoin: "", faiblesse: "", pouvoirs: "",
       transformation: "", archetype: "", surprise: false, notes: "",
       background: "", style: "", objectifs: [], portrait: "", images: [],

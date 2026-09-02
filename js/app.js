@@ -506,7 +506,7 @@ export const App = {
     }
     this._quitter();
     this._basculer("casting", "Le casting");
-    Casting.monter(this._hotes.casting, CastingStore, ReseauStore, TrameStore);
+    Casting.monter(this._hotes.casting, CastingStore, ReseauStore, TrameStore, MondeStore);
     if (!silencieux) location.hash = "#/casting";
   },
 

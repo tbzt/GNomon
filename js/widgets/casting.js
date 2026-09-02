@@ -25,6 +25,7 @@ import { RANGS } from "../core/castingstore.js";
 import { bilan, caster, coutDe } from "../core/bilancasting.js";
 import { heure } from "../core/temps.js";
 import { Utils } from "../core/utils.js";
+import { sieges as siegesDe, anomalies, continu, comptes } from "../core/epoques.js";
 
 const SIGNE = { 3: "★", 2: "◆", 1: "○", veto: "✕", 0: "·" };
 const LIBELLE = { ...RANGS, veto: "Surtout pas", 0: "Rien d'exprimé" };
@@ -38,11 +39,13 @@ export const Casting = {
   _brut: "",
   _sig: "",
 
-  monter(hote, casting, reseau, trames) {
+  monter(hote, casting, reseau, trames, monde = null) {
     this._hote = hote;
     this._casting = casting;
     this._reseau = reseau;
     this._trames = trames;
+    // Facultatif : sert seulement à signaler une époque non déclarée.
+    this._monde = monde;
     this.rendre();
   },
 
@@ -115,6 +118,7 @@ export const Casting = {
               : "Aucun PJ dans le réseau — il n'y a rien à distribuer."
           }</p>`) +
       (Object.keys(this._casting.affectation()).length ? this._bilan() : "") +
+      this._sieges() +
       "</div>";
 
     this._brancher();
@@ -280,6 +284,59 @@ export const Casting = {
   },
 
   /* ================= câblage ================= */
+
+  /* ================= Sièges =================
+     Un siège est la place qu'une personne réelle occupe : la suite des
+     incarnations qu'elle jouera. Il ne concerne que les GN à plusieurs
+     époques, et le panneau ne s'affiche pas ailleurs.
+
+     Ce qu'on montre d'abord, ce sont les ANOMALIES — un même rôle
+     revendiqué par deux sièges, un joueur à deux endroits le même soir.
+     Ce sont des erreurs qui ne se voient pas en lisant les fiches : on
+     les découvre au casting, quand deux personnes se présentent au même
+     costume. Les afficher ici, c'est les découvrir six mois plus tôt. */
+
+  _sieges() {
+    const S = siegesDe(this._reseau);
+    const ecarts = anomalies(this._reseau, this._monde || null);
+    if (!S.length && !ecarts.length) return "";
+
+    const c = comptes(this._reseau);
+    const nom = (id) => this._reseau.personnage(id)?.nom || id;
+
+    const alertes = ecarts.length
+      ? '<ul class="sieges-ecarts">' +
+        ecarts
+          .map((e) => `<li>${Utils.escHtml(e.message)}</li>`)
+          .join("") +
+        "</ul>"
+      : "";
+
+    const liste = S.length
+      ? '<ul class="sieges">' +
+        S.map((si) => {
+          const ids = si.personnageIds || [];
+          const genre = continu(this._reseau, si)
+            ? '<span class="siege-genre">continu</span>'
+            : ids.length > 1
+              ? '<span class="siege-genre">change de rôle</span>'
+              : "";
+          return (
+            `<li><span class="siege-nom">${Utils.escHtml(si.nom || si.id)}</span>${genre}` +
+            `<span class="siege-gens">${ids.map((i) => Utils.escHtml(nom(i))).join(" → ") || "personne"}</span></li>`
+          );
+        }).join("") +
+        "</ul>"
+      : "";
+
+    return (
+      '<div class="sieges-bloc"><p class="carnet-titre">Les sièges' +
+      `<span class="carnet-aide">${c.sieges} places · ${c.continus} continues · ${c.changements} avec changement de rôle</span></p>` +
+      alertes +
+      liste +
+      "</div>"
+    );
+  },
 
   _brancher() {
     const q = (s) => this._hote.querySelectorAll(s);

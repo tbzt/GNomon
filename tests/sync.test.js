@@ -32,6 +32,8 @@ const perso = (id, nom, extra = {}) => ({
   role: "",
   pj: true,
   groupeId: null,
+  roleId: null,
+  epoqueId: null,
   fonction: null,
   moral: "",
   desir: "",
@@ -51,7 +53,7 @@ const perso = (id, nom, extra = {}) => ({
   y: null,
   ...extra,
 });
-const gn = (personnages) => ({ reseau: { personnages, liens: [], groupes: [] } });
+const gn = (personnages) => ({ reseau: { personnages, liens: [], groupes: [], sieges: [] } });
 
 /** Un pair : son dépôt, son registre, et un tour de synchronisation. */
 function pair(distant, blocs) {
@@ -62,7 +64,7 @@ function pair(distant, blocs) {
     registre,
     sync: () => synchroniser(depot, distant, registre),
     persos: () => depot._blocs().reseau.personnages,
-    ecrire: (persos) => depot.ecrire("reseau", { personnages: persos, liens: [], groupes: [] }),
+    ecrire: (persos) => depot.ecrire("reseau", { personnages: persos, liens: [], groupes: [], sieges: [] }),
   };
 }
 

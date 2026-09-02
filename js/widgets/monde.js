@@ -152,6 +152,9 @@ export const Monde = {
       `<div class="monde-lieux"><p class="carnet-titre">Les lieux<span class="carnet-aide">le site tel qu'il est, indépendamment des scènes qui s'y jouent</span></p>` +
       `<div id="liste-lieux">${this._lieux()}</div>` +
       '<button type="button" id="ajout-lieu">+ Lieu</button></div>' +
+      `<div class="monde-lieux"><p class="carnet-titre">Les époques<span class="carnet-aide">un GN à un seul moment n'en déclare aucune</span></p>` +
+      `<div id="liste-epoques">${this._epoques()}</div>` +
+      '<button type="button" id="ajout-epoque">+ Époque</button></div>' +
       "</div>";
     this._brancher();
   },
@@ -249,6 +252,72 @@ export const Monde = {
     );
   },
 
+  /* ================= Époques =================
+     Deux moments de jeu — un flashback la veille, un opus précédent —
+     et tout ce que porte une fiche est daté. La liste vide veut dire
+     « un seul moment », et c'est le cas de presque tous les GN : on ne
+     crée donc rien d'office, on ouvre juste la porte.
+
+     L'ORDRE est la seule chose que le reste du code demande : il dit ce
+     qui vient avant, et c'est lui qui fait la frise et la projection
+     des liens. Il se règle par les flèches, pas par un champ à saisir —
+     un numéro à taper se contredit dès qu'on insère au milieu. */
+
+  _epoques() {
+    const l = this._store.epoques();
+    if (!l.length)
+      return '<p class="liens-vide">Aucune époque. Un GN qui se déroule à un seul moment n\'en a pas besoin.</p>';
+    return (
+      '<ul class="lieux">' +
+      l
+        .map(
+          (e, i) =>
+            `<li><input data-epoque-nom="${e.id}" value="${Utils.escHtml(e.nom)}" placeholder="1965" aria-label="Nom de l'époque" />` +
+            `<span class="epoque-ordre">` +
+            `<button type="button" data-epoque-haut="${e.id}"${i === 0 ? " disabled" : ""} title="Plus tôt" aria-label="Plus tôt">↑</button>` +
+            `<button type="button" data-epoque-bas="${e.id}"${i === l.length - 1 ? " disabled" : ""} title="Plus tard" aria-label="Plus tard">↓</button>` +
+            `</span>` +
+            `<button type="button" data-epoque-x="${e.id}" title="Retirer">✕</button></li>`,
+        )
+        .join("") +
+      "</ul>"
+    );
+  },
+
+  _brancherEpoques() {
+    const rendre = () => {
+      const n = this._hote.querySelector("#liste-epoques");
+      if (n) {
+        n.innerHTML = this._epoques();
+        this._brancherEpoques();
+      }
+    };
+    for (const el of this._hote.querySelectorAll("[data-epoque-nom]"))
+      el.addEventListener("input", (e) =>
+        this._store.majEpoque(el.dataset.epoqueNom, { nom: e.target.value }),
+      );
+    for (const el of this._hote.querySelectorAll("[data-epoque-x]"))
+      el.addEventListener("click", () => {
+        this._store.supprimerEpoque(el.dataset.epoqueX);
+        rendre();
+      });
+    // Échanger deux ordres plutôt que renuméroter toute la liste : on ne
+    // touche qu'aux deux qui bougent, et l'opération est son propre inverse.
+    const glisser = (id, delta) => {
+      const l = this._store.epoques();
+      const i = l.findIndex((x) => x.id === id);
+      const j = i + delta;
+      if (i < 0 || j < 0 || j >= l.length) return;
+      this._store.majEpoque(l[i].id, { ordre: l[j].ordre });
+      this._store.majEpoque(l[j].id, { ordre: l[i].ordre });
+      rendre();
+    };
+    for (const el of this._hote.querySelectorAll("[data-epoque-haut]"))
+      el.addEventListener("click", () => glisser(el.dataset.epoqueHaut, -1));
+    for (const el of this._hote.querySelectorAll("[data-epoque-bas]"))
+      el.addEventListener("click", () => glisser(el.dataset.epoqueBas, 1));
+  },
+
   _lieux() {
     const lieux = this._store.lieux();
     if (!lieux.length)
@@ -307,6 +376,17 @@ export const Monde = {
       .querySelector("#ajout-lieu")
       .addEventListener("click", () => this._store.ajouterLieu());
     this._brancherLieux();
+    const ajout = this._hote.querySelector("#ajout-epoque");
+    if (ajout)
+      ajout.addEventListener("click", () => {
+        this._store.creerEpoque("");
+        const n = this._hote.querySelector("#liste-epoques");
+        if (n) {
+          n.innerHTML = this._epoques();
+          this._brancherEpoques();
+        }
+      });
+    this._brancherEpoques();
   },
 
   _brancherLieux() {

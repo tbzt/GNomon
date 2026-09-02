@@ -43,6 +43,7 @@ import { TONALITES, IMPORTANCES } from "../core/reseaustore.js";
 import { LienEditeur } from "./lienediteur.js";
 import { degatsHtml } from "./degats.js";
 import { Utils } from "../core/utils.js";
+import { epoques as epoquesDe, grapheA } from "../core/epoques.js";
 
 const COULEUR = {
   positif: "#2f6e4f",
@@ -70,6 +71,9 @@ export const ReseauGraphe = {
   _hote: null,
   _store: null,
   _stores: null,
+  /* null = toutes les époques confondues. Un GN qui n'en déclare
+     aucune ne verra jamais ce filtre. */
+  _epoque: null,
   _selId: null,
   _mode: false, // mode défection
   _absent: null,
@@ -207,8 +211,15 @@ export const ReseauGraphe = {
 
   /* ================= projection ================= */
 
+  /** Le réseau tel qu'il faut le dessiner : filtré sur l'époque choisie,
+      liens projetés sur les incarnations de cette époque-là. Sans époque,
+      c'est le réseau entier — le cas de tous les GN à un seul moment. */
+  _graphe() {
+    return grapheA(this._store, this._epoque);
+  },
+
   _noeuds() {
-    return this._store.personnages().map((p) => ({
+    return this._graphe().personnages.map((p) => ({
       id: p.id,
       label: p.nom.split(" ").slice(-1)[0],
       shape: p.pj ? "circle" : "diamond",
@@ -219,11 +230,28 @@ export const ReseauGraphe = {
     }));
   },
 
+  /** Le sélecteur d'époque, ou rien du tout. Un GN à un seul moment ne
+      doit pas voir apparaître un filtre qui ne filtre rien. */
+  _selectEpoque() {
+    const l = this._stores && this._stores.monde ? epoquesDe(this._stores.monde) : [];
+    if (l.length < 2) return "";
+    const opt = (v, t) =>
+      `<option value="${Utils.escHtml(v)}"${this._epoque === (v || null) ? " selected" : ""}>` +
+      `${Utils.escHtml(t)}</option>`;
+    return (
+      '<label class="rg-epoque">Époque ' +
+      '<select id="rg-epoque">' +
+      opt("", "Toutes") +
+      l.map((e) => opt(e.id, e.nom)).join("") +
+      "</select></label>"
+    );
+  },
+
   /** Fusionne les deux sens en une arête visuelle. */
   _aretes() {
     const vus = new Set();
     const out = [];
-    for (const l of this._store.liens()) {
+    for (const l of this._graphe().liens) {
       const paire = [l.de, l.vers].sort().join("|");
       if (vus.has(paire)) continue;
       vus.add(paire);
@@ -282,6 +310,7 @@ export const ReseauGraphe = {
       `aria-pressed="${this._mode}">` +
       `${this._mode ? "Mode défection actif" : "Et s'il ne vient pas ?"}</button>` +
       '<button type="button" id="rg-ranger">Ranger</button>' +
+      this._selectEpoque() +
       '<span class="rg-legende">' +
       Object.entries(TONALITES)
         .map(
@@ -523,6 +552,20 @@ export const ReseauGraphe = {
       this.arranger({ tout: true });
       this._monterGraphe();
     });
+    // Le sélecteur n'existe que si le GN a plusieurs époques.
+    const sel = q("#rg-epoque");
+    if (sel)
+      sel.addEventListener("change", () => {
+        this._epoque = sel.value || null;
+        // Changer d'époque change l'ensemble des nœuds : la sélection
+        // et le mode défection portaient sur des gens qui n'y sont
+        // peut-être plus, et les garder afficherait un flanc fantôme.
+        this._selId = null;
+        this._absent = null;
+        GraphEngine.select(null);
+        this._monterGraphe();
+        this._rafraichirFlanc();
+      });
     this._brancherFlanc();
   },
 

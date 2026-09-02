@@ -170,12 +170,13 @@ export const MondeStore = {
       ...(raw && typeof raw === "object" ? raw : {}),
       lieux: Array.isArray(raw?.lieux) ? raw.lieux : [],
       securite: Array.isArray(raw?.securite) ? raw.securite : Object.keys(MECANIQUES),
+      epoques: Array.isArray(raw?.epoques) ? raw.epoques : [],
     };
     return this._data;
   },
 
   save() {
-    Storage.set(this._key, this._data || { ...CHAMPS, lieux: [], securite: [] });
+    Storage.set(this._key, this._data || { ...CHAMPS, lieux: [], securite: [], epoques: [] });
   },
 
   _d() {
@@ -224,6 +225,52 @@ export const MondeStore = {
   /* ================= Sécurité =================
      Toutes actives par défaut : le défaut sûr est celui qui protège.
      Une équipe qui en retire une le fait sciemment. */
+
+  /* ================= Époques =================
+     Un GN se déroule à un moment. Certains en ont deux — un flashback
+     joué la veille, un opus précédent — et alors tout ce que porte une
+     fiche est daté. La liste est ORDONNÉE : `ordre` dit ce qui vient
+     avant, et c'est la seule chose que le reste du code lui demande.
+
+     Un GN mono-époque n'écrit rien ici : la liste vide veut dire « un
+     seul moment », et tout le code sait la lire ainsi. */
+
+  epoques() {
+    return [...this._d().epoques].sort((a, b) => (a.ordre ?? 0) - (b.ordre ?? 0));
+  },
+
+  creerEpoque(nom = "") {
+    const d = this._d();
+    const e = { id: "e" + Date.now().toString(36) + Math.random().toString(36).slice(2, 5),
+                nom, ordre: d.epoques.length };
+    d.epoques.push(e);
+    this.save();
+    this._emit({ type: "monde:epoques" });
+    return e;
+  },
+
+  majEpoque(id, patch = {}) {
+    const e = this._d().epoques.find((x) => x.id === id);
+    if (!e) return null;
+    Object.assign(e, patch, { id: e.id });
+    this.save();
+    this._emit({ type: "monde:epoques" });
+    return e;
+  },
+
+  /** Supprime une époque. Les personnages qui la portaient deviennent
+      sans époque — donc visibles partout — plutôt qu'invisibles : on ne
+      fait pas disparaître du travail écrit en retirant une étiquette. */
+  supprimerEpoque(id) {
+    const d = this._d();
+    const i = d.epoques.findIndex((x) => x.id === id);
+    if (i < 0) return false;
+    d.epoques.splice(i, 1);
+    d.epoques.forEach((e, n) => (e.ordre = n));
+    this.save();
+    this._emit({ type: "monde:epoques" });
+    return true;
+  },
 
   securite() {
     return this._d().securite;

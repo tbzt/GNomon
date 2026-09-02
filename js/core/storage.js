@@ -49,7 +49,7 @@ export const CLES_PROJET = Object.freeze([
 ]);
 
 export const Storage = {
-  SCHEMA_VERSION: 3,
+  SCHEMA_VERSION: 4,
   _observers: [],
   _writeFailNotified: false,
   _signaler: null,
@@ -282,6 +282,86 @@ export const Storage = {
       S.set("projets", [{ id, nom: nom || "Mon GN", cree: maintenant, ouvert: maintenant }]);
       S.set("projet_actif", id);
       Debug.log("storage", "migration v3 : projet créé", { id, cles: nues.length });
+    },
+
+    /* v3 → v4 — SÉPARER L'IDENTITÉ DE L'INCARNATION.
+       Un GN à deux moments — un flashback joué la veille, un opus
+       précédent — ne peut pas se dire avec un seul `Personnage` : tout
+       ce que porte une fiche est daté, y compris les liens. Le contact
+       de quelqu'un vingt ans plus tard n'est pas le même contact.
+
+       On NOMME donc ce qui existait déjà (une incarnation : `roleId`,
+       `epoqueId`) et on ajoute ce qui manquait (le siège, c'est-à-dire
+       la place qu'une personne réelle occupe). Le rôle se dérive du
+       `roleId` et n'a pas de table ; le siège se déclare, parce qu'un
+       casting ne se devine pas.
+
+       ── CE QUE CETTE MIGRATION NE FAIT PAS ──
+       Elle ne touche AUCUN lien. `epoqueId` y est optionnel et son
+       absence veut dire « vrai à toutes les époques » — le bon défaut
+       pour la parenté, le sang et l'histoire commune. Un GN existant
+       garde donc son graphe intact, et l'on date les liens de situation
+       le jour où on en a besoin, pas avant.
+
+       ── ET ELLE NE CHANGE RIEN POUR PRESQUE TOUT LE MONDE ──
+       Un GN à un seul moment migre vers un état strictement
+       équivalent : aucune époque déclarée, chaque personnage son propre
+       rôle, un siège par personnage. Personne ne voit rien bouger — et
+       c'est la condition pour qu'une migration de schéma soit
+       déployable. */
+    (S) => {
+      /* ── POURQUOI ON PASSE PAR `localStorage` ET PAS PAR `S.get` ──
+         `runMigrations()` tourne AVANT `Projets.init()` — il le faut,
+         puisque la v3 fabrique justement le premier projet. À cet
+         instant aucun projet n'est actif, et `S.get("reseau")` lirait
+         la clé nue au lieu de celle du projet. On adresse donc les
+         clés en clair, comme la v3, et on migre TOUS les projets : le
+         suivant qu'on ouvrira ne doit pas rester en v3 pendant que le
+         compteur, lui, est passé à 4. */
+      const projets = S.get("projets", []);
+      const ids = Array.isArray(projets) ? projets.map((p) => p && p.id).filter(Boolean) : [];
+      const prefixes = ids.length ? ids.map((id) => `${PREFIX}${id}__`) : [PREFIX];
+
+      const lire = (k) => {
+        try {
+          return JSON.parse(localStorage.getItem(k));
+        } catch {
+          return null; /* une clé illisible ne doit pas bloquer les autres */
+        }
+      };
+
+      let sieges = 0;
+      let touches = 0;
+      for (const pre of prefixes) {
+        const reseau = lire(pre + "reseau");
+        if (reseau && Array.isArray(reseau.personnages)) {
+          if (!Array.isArray(reseau.sieges)) reseau.sieges = [];
+          const assis = new Set(reseau.sieges.flatMap((s) => (s && s.personnageIds) || []));
+          for (const p of reseau.personnages) {
+            if (!p || !p.id) continue;
+            // Son propre rôle, pas d'époque : le cas dégénéré est le cas juste.
+            if (p.roleId === undefined) p.roleId = null;
+            if (p.epoqueId === undefined) p.epoqueId = null;
+            if (!assis.has(p.id)) {
+              reseau.sieges.push({ id: "S" + p.id.slice(1), nom: p.nom || "", personnageIds: [p.id] });
+              sieges++;
+            }
+          }
+          localStorage.setItem(pre + "reseau", JSON.stringify(reseau));
+          touches++;
+        }
+
+        // La liste vide vaut « un seul moment ». On ne fabrique pas une
+        // époque « Le jeu » : elle apparaîtrait dans l'interface de tous
+        // les GN qui n'en ont pas besoin.
+        const monde = lire(pre + "monde");
+        if (monde && typeof monde === "object" && !Array.isArray(monde.epoques)) {
+          monde.epoques = [];
+          localStorage.setItem(pre + "monde", JSON.stringify(monde));
+        }
+      }
+
+      Debug.log("storage", "migration v4 : incarnations et sièges", { projets: touches, sieges });
     },
   ],
 

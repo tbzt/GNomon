@@ -95,6 +95,8 @@ const REGLES = {
     role: txt(o.role),
     pj: bool(o.pj),
     groupeId: idOuNull(o.groupeId),
+    roleId: idOuNull(o.roleId),
+    epoqueId: o.epoqueId || null,
     fonction: o.fonction == null ? null : dans(o.fonction, FONCTIONS, null),
     moral: txt(o.moral),
     desir: txt(o.desir),
@@ -126,6 +128,8 @@ const REGLES = {
       ...o,
       de: txt(o.de),
       vers: txt(o.vers),
+      /* Pas d'époque = vrai partout. La parenté n'a pas de date. */
+      epoqueId: o.epoqueId || null,
       nature: txt(o.nature),
       tonalite: garder(dans(o.tonalite, TONALITES, null), o.tonalite, note, "tonalité inconnue") || "neutre",
       importance:
@@ -136,6 +140,14 @@ const REGLES = {
   },
 
   "reseau.groupes": (o) => ({ ...o, nom: txt(o.nom) }),
+
+  /* Un siège sans occupant est légitime — on le crée avant de caster.
+     Un identifiant de personnage vide, non : il ne désigne rien. */
+  "reseau.sieges": (o) => ({
+    ...o,
+    nom: txt(o.nom),
+    personnageIds: liste(o.personnageIds).map(txt).filter(Boolean),
+  }),
 
   "trames.trames": (o) => ({ ...o, titre: txt(o.titre), porteurId: idOuNull(o.porteurId), notes: txt(o.notes) }),
 

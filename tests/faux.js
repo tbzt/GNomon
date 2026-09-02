@@ -16,7 +16,7 @@
    ============================================================ */
 
 /** `{ personnages, liens, groupes }` → l'interface de `ReseauStore`. */
-export function fauxReseau({ personnages = [], liens = [], groupes = [] } = {}) {
+export function fauxReseau({ personnages = [], liens = [], groupes = [], sieges = [] } = {}) {
   const P = personnages.map((p, i) => ({
     id: p.id || `p${i}`,
     nom: p.nom || `Personnage ${i}`,
@@ -39,6 +39,8 @@ export function fauxReseau({ personnages = [], liens = [], groupes = [] } = {}) 
     images: [],
     x: null,
     y: null,
+    roleId: null,
+    epoqueId: null,
     ...p,
   }));
   const L = liens.map((l, i) => ({
@@ -52,6 +54,8 @@ export function fauxReseau({ personnages = [], liens = [], groupes = [] } = {}) 
   const G = groupes.map((g, i) => ({ id: g.id || `g${i}`, nom: g.nom || `Groupe ${i}`, ...g }));
 
   return {
+    sieges: () => sieges,
+    siege: (id) => sieges.find((x) => x.id === id) || null,
     personnages: () => P,
     personnage: (id) => P.find((p) => p.id === id) || null,
     pj: () => P.filter((p) => p.pj),
@@ -170,6 +174,7 @@ export function fauxMonde(champs = {}, securite = [], lieux = []) {
   };
   return {
     monde: () => m,
+    epoques: () => [...(m.epoques || [])].sort((a, b) => (a.ordre ?? 0) - (b.ordre ?? 0)),
     mecaniquesActives: () => securite,
     lieux: () => lieux,
     securite: () => securite.map((s) => s.nom),

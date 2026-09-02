@@ -83,7 +83,7 @@ export const FONCTIONS = Object.freeze({
   secondaire: "Personnage secondaire",
 });
 
-const VIDE = { personnages: [], liens: [], groupes: [] };
+const VIDE = { personnages: [], liens: [], groupes: [], sieges: [] };
 
 export const ReseauStore = {
   _key: "reseau",
@@ -98,6 +98,7 @@ export const ReseauStore = {
       personnages: Array.isArray(raw?.personnages) ? raw.personnages : [],
       liens: Array.isArray(raw?.liens) ? raw.liens : [],
       groupes: Array.isArray(raw?.groupes) ? raw.groupes : [],
+      sieges: Array.isArray(raw?.sieges) ? raw.sieges : [],
     };
     return this._data;
   },
@@ -163,6 +164,11 @@ export const ReseauStore = {
       role: "",
       pj: !!pj,
       groupeId,
+      /* Une incarnation appartient à un rôle et se situe à une époque.
+         Par défaut elle est son propre rôle et n'a pas d'époque : c'est
+         le cas d'un GN à un seul moment, et il ne doit rien écrire. */
+      roleId: null,
+      epoqueId: null,
       fonction: null,
       moral: "",
       desir: "",
@@ -401,6 +407,94 @@ export const ReseauStore = {
     return l;
   },
 
+  /* ================= Sièges =================
+     Un siège est ce qu'une personne réelle occupe : la suite des
+     incarnations qu'elle jouera. Il ne se DÉRIVE pas — deux fiches
+     jouées par le même comédien sont une décision de casting, pas un
+     fait lisible dans le texte — alors que le rôle, lui, se lit dans
+     `roleId` et n'a donc pas de table.
+
+     Le store ne REFUSE pas un siège invalide : un GN à moitié écrit en
+     contient tout le temps, et refuser empêcherait d'écrire. Les règles
+     se lisent dans `epoques.anomalies()`, comme les anomalies de
+     normalisation se lisent au lieu de bloquer l'import. */
+
+  sieges() {
+    return this._d().sieges;
+  },
+
+  siege(id) {
+    return this._d().sieges.find((s) => s && s.id === id) || null;
+  },
+
+  creerSiege(nom = "", personnageIds = []) {
+    const s = { id: this._uid("S"), nom, personnageIds: [...personnageIds] };
+    this._d().sieges.push(s);
+    this.save();
+    this._emit({ type: "siege:creer", id: s.id });
+    return s;
+  },
+
+  majSiege(id, patch = {}) {
+    const s = this.siege(id);
+    if (!s) return null;
+    Object.assign(s, patch, { id: s.id });
+    this.save();
+    this._emit({ type: "siege:maj", id });
+    return s;
+  },
+
+  supprimerSiege(id) {
+    const d = this._d();
+    const i = d.sieges.findIndex((s) => s && s.id === id);
+    if (i < 0) return false;
+    d.sieges.splice(i, 1);
+    this.save();
+    this._emit({ type: "siege:supprimer", id });
+    return true;
+  },
+
+  /** Assied un personnage. Il quitte son siège précédent : un joueur
+      n'occupe qu'une place, et laisser le doublon serait exactement le
+      bug qu'on cherche à rendre impossible. */
+  asseoir(siegeId, personnageId) {
+    const s = this.siege(siegeId);
+    if (!s || !this.personnage(personnageId)) return null;
+    for (const autre of this._d().sieges) {
+      if (autre.id === siegeId) continue;
+      autre.personnageIds = (autre.personnageIds || []).filter((x) => x !== personnageId);
+    }
+    if (!s.personnageIds.includes(personnageId)) s.personnageIds.push(personnageId);
+    this.save();
+    this._emit({ type: "siege:maj", id: siegeId });
+    return s;
+  },
+
+  lever(siegeId, personnageId) {
+    const s = this.siege(siegeId);
+    if (!s) return null;
+    s.personnageIds = (s.personnageIds || []).filter((x) => x !== personnageId);
+    this.save();
+    this._emit({ type: "siege:maj", id: siegeId });
+    return s;
+  },
+
+  /** Déclare que deux incarnations sont la MÊME personne. Le rôle de la
+      première l'emporte : on rattache la nouvelle à l'ancienne, jamais
+      l'inverse, pour que l'identité la plus anciennement écrite reste
+      la référence. */
+  fusionnerRoles(idReference, idAutre) {
+    const a = this.personnage(idReference);
+    const b = this.personnage(idAutre);
+    if (!a || !b || a.id === b.id) return null;
+    const rid = a.roleId || a.id;
+    a.roleId = rid;
+    b.roleId = rid;
+    this.save();
+    this._emit({ type: "personnage:maj", id: b.id });
+    return rid;
+  },
+
   /* ================= Groupes ================= */
 
   groupes() {
@@ -448,7 +542,7 @@ export const ReseauStore = {
   /* ================= Remise à zéro ================= */
 
   vider() {
-    this._data = { personnages: [], liens: [], groupes: [] };
+    this._data = { personnages: [], liens: [], groupes: [], sieges: [] };
     this.save();
     this._emit({ type: "reseau:vider" });
   },
