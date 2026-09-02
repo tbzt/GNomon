@@ -294,7 +294,7 @@ suite("Amorce du monde — ce qui compte comme écrit", () => {
       ok(amorce({ [k]: "x" }), k);
   });
 
-  test("les sept autres aussi", () => {
+  test("les huit autres aussi", () => {
     for (const k of [
       "thematique",
       "intention",
@@ -303,6 +303,7 @@ suite("Amorce du monde — ce qui compte comme écrit", () => {
       "pratique",
       "costume",
       "references",
+      "fil",
     ])
       ok(amorce({ [k]: "x" }), k);
   });

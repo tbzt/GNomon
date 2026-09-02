@@ -257,6 +257,10 @@ const RESTES = {
     pratique: txt(o.pratique),
     costume: txt(o.costume),
     references: txt(o.references),
+    // Le fil de l'histoire : un texte long, d'organisation. Il entre
+    // par l'archive et la synchronisation comme les autres, et repart
+    // texte — jamais autre chose, quelle que soit la forme reçue.
+    fil: txt(o.fil),
     securite: liste(o.securite).map(txt),
   }),
   casting: (o) => {

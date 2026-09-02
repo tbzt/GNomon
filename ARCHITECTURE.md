@@ -96,7 +96,7 @@ reviendrait à aplatir la différence qui fait tout le projet.
 | `liaison.js` | `contexteSuite()` | Ce qu'il faut avoir sous les yeux pour écrire la suite d'une conclusion : ce que les présents savent déjà, et les fils tendus sans être rattachés. **Propose, ne décide pas** (cf. §5s). Pur. |
 | `espace.js` | `rattachementDe()`, `tour()`, `distantDe()` | Le rattachement d'un GN à un espace — **clé d'appareil**, jamais exportée — et le mariage de `remote.js` avec `sync.js` (cf. §5t). `rattachementDe` prend `Storage` en paramètre, donc s'éprouve avec un faux. |
 | `pointdevue.js` | `pointDeVue()`, `trous()` | Le GN vu d'un personnage : ce qu'il sait, peut apprendre, peut provoquer, et **où il risque de n'avoir rien à faire** (cf. §5r). Pur. |
-| `mondestore.js` | `MondeStore` | **Les fondamentaux** — prémisse, propos, thématique, contexte commun, lieux. Les étapes 1 à 3 d'eXpérience, qui manquaient (cf. §5j). |
+| `mondestore.js` | `MondeStore` | **Les fondamentaux** — prémisse, propos, thématique, contexte commun, lieux, et le **fil de l'histoire** (ce qui s'est passé, jamais dans un livret). Les étapes 1 à 3 d'eXpérience, qui manquaient (cf. §5j). |
 | `livret.js` | `livret()`, `livretHtml()` | Le background remis à un joueur. **Calculé par soustraction** (cf. §5j). |
 | `defection.js` | `defection()`, `classementFragilite()` | « Et s'il ne vient pas ? » — les quatre dégâts d'une absence. Module pur (cf. §5n). |
 | `besoins.js` | `besoins()` | Ce que l'écriture réclame, **dérivé** du texte déjà écrit. Jamais stocké (cf. §5l). |
@@ -467,6 +467,27 @@ elles qu'on commence, et c'est d'elles que sort le livret de contexte remis à t
 Le **contexte commun** n'est pas une information au sens d'`InformationStore`. Ce dernier porte
 l'*asymétrie* — qui sait ce que les autres ignorent. Le savoir commun est le sol, pas une
 asymétrie : le mélanger aux informations noierait les vraies divergences sous le décor.
+
+### Le fil de l'histoire : ce qui s'est passé, en une seule version
+
+Un GN a trois niveaux de vérité, et ils ne doivent jamais se confondre : **ce qui est arrivé**
+(une seule version, que personne en jeu ne connaît en entier), **ce que chaque personnage
+croit** (les livrets — une trentaine de versions, presque toutes fausses quelque part), et **ce
+que tout le monde sait** (le contexte commun). Le premier n'avait pas de place dans l'outil : il
+vivait dans un fichier à côté, et c'est là qu'on cherchait, à 2 h du matin, l'ordre exact des
+événements.
+
+Le monde porte donc un champ `fil` : un texte long en Markdown, la chronologie datée de ce qui
+s'est réellement passé, avec les conventions que l'équipe s'est données — un fait **[FIXE]**,
+un **[INTERRUPTEUR]** que le jeu décide, une **[PROPOSITION]** à valider — et un tableau « qui
+sait quoi ». C'est un **document d'organisation** : `livret.js` ne le lit pas, donc il ne sort
+ni dans un livret, ni dans une consigne, ni sur la planche, et un test le vérifie sur les quatre
+sorties. Il voyage en revanche dans l'archive, qui contient déjà tout et dont l'avertissement le
+nomme ; l'inventaire d'import dit s'il est là.
+
+Premier jet volontairement simple : un texte, sans lien vers les informations ni les situations.
+Le relier viendra quand on saura ce qu'on veut en tirer — probablement la ligne « qui sait quoi »
+générée depuis `InformationStore`, plutôt que tenue à la main.
 
 ### Deux documents opposés dans leur principe
 

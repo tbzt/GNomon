@@ -19,7 +19,7 @@
 
        Monde { titre, premisse, propos, thematique, contexte,
                intention, avertissements, securite[], securiteNote,
-               pratique, costume, references, lieux[] }
+               pratique, costume, references, fil, lieux[] }
 
    ── LA PRÉMISSE A UNE FORME, ET ON LA RAPPELLE ──
    eXpérience la donne littéralement : *[le héros] + va à + [action
@@ -50,6 +50,27 @@
    commun n'est pas une asymétrie : c'est le sol. Le mélanger aux
    informations noierait les vraies divergences sous le décor.
 
+   ── LE FIL N'EST NI LE CONTEXTE NI UN LIVRET ──
+   Un GN a trois niveaux de vérité, et ils ne doivent jamais se
+   confondre : **ce qui s'est passé** (une seule version), **ce que
+   chaque personnage croit** (les livrets, presque tous faux quelque
+   part), et **ce que tout le monde sait** (le contexte). Le premier
+   n'avait pas de place : il vivait dans un fichier à côté de l'outil,
+   et c'est là qu'on cherchait, à 2 h du matin, si Régis était mort
+   avant ou après les phares.
+
+   `fil` est ce document : la chronologie datée de ce qui est réellement
+   arrivé, telle que l'équipe l'écrit — en Markdown, avec ses propres
+   conventions (un fait [FIXE], un [INTERRUPTEUR] que le jeu décide,
+   une [PROPOSITION] à valider) et son tableau « qui sait quoi ». C'est
+   un **document d'organisation** : il ne sort **jamais** dans un livret,
+   ni dans une consigne, ni sur la planche — `livret.js` ne le lit pas.
+   Il voyage en revanche dans l'archive, qui contient déjà tout.
+
+   Premier jet volontairement simple : un texte long, sans lien vers les
+   informations ni les situations. Le relier viendra quand on saura ce
+   qu'on veut en tirer.
+
    Feuille : ne dépend que de `Storage` et `Debug`.
    ============================================================ */
 import { Storage } from "./storage.js";
@@ -67,11 +88,12 @@ const CHAMPS = {
   pratique: "",
   costume: "",
   references: "",
+  fil: "",
 };
 
 /** Ce monde porte-t-il une trace d'écriture ?
 
-    ── LES ONZE CHAMPS, PAS QUATRE ──
+    ── LES DOUZE CHAMPS, PAS QUATRE ──
     Un seul appelant pose la question — `Accueil.estVierge` — et il la
     pose pour savoir s'il doit afficher « Rien n'est encore écrit ».
     N'en regarder que quatre le faisait mentir : l'auteur qui avait
@@ -83,7 +105,9 @@ const CHAMPS = {
 
     Les mécaniques de sécurité n'en font pas partie : elles sont toutes
     actives par défaut, donc leur présence ne prouve aucune écriture.
-    `securiteNote`, elle, se saisit — elle compte comme les autres.
+    `securiteNote`, elle, se saisit — elle compte comme les autres, et
+    le fil de l'histoire aussi : une équipe qui a commencé par écrire
+    ce qui s'est passé a bel et bien commencé.
 
     Pure et exportée pour être testée sur des objets nus, sans toucher
     au `localStorage` (cf. le harnais). */

@@ -28,8 +28,9 @@
 
    ── L'ARCHIVE CONTIENT TOUT, ET ÇA SE DIT ──
    Le livret est calculé par soustraction avec beaucoup de soin ; la
-   consigne PNJ porte les vérités ; le carnet de l'auteur est privé.
-   **L'archive, elle, contient les trois.** L'envoyer à un joueur
+   consigne PNJ porte les vérités ; le carnet de l'auteur est privé ;
+   le fil de l'histoire dit, daté, ce qui s'est réellement passé.
+   **L'archive, elle, contient les quatre.** L'envoyer à un joueur
    annulerait d'un coup toutes ces précautions.
 
    Le fichier porte donc un champ `avertissement` en clair — visible
@@ -49,8 +50,9 @@ export const VERSION = 1;
 /** Écrit en clair dans le fichier, en tête. */
 export const AVERTISSEMENT =
   "Ce fichier contient TOUT le GN : les vérités que les joueurs ignorent, " +
-  "les consignes PNJ et les carnets privés de l'équipe. Il se partage entre " +
-  "organisateurs, jamais avec un participant. Pour un joueur, exportez son livret.";
+  "le fil de l'histoire, les consignes PNJ et les carnets privés de l'équipe. " +
+  "Il se partage entre organisateurs, jamais avec un participant. Pour un joueur, " +
+  "exportez son livret.";
 
 /** Les clés qui composent un GN. La liste vit dans `storage.js` — savoir
     quelle clé appartient à un projet et laquelle appartient à l'appareil
@@ -113,13 +115,17 @@ export const Archive = {
   },
 
   /** Ce que le paquet contient, sans rien écrire — pour que l'auteur
-      voie ce qu'il s'apprête à importer avant de le faire. */
+      voie ce qu'il s'apprête à importer avant de le faire. `fil` dit
+      si le fil de l'histoire est écrit : c'est la pièce la plus
+      sensible du paquet, et celle qu'on veut savoir présente avant de
+      remplacer la sienne. */
   inventaire(paquet) {
     const d = paquet.data || {};
     const n = (v, k) => (Array.isArray(v?.[k]) ? v[k].length : 0);
     return {
       titre: paquet.titre || d.monde?.titre || "",
       date: (paquet.date || "").slice(0, 10),
+      fil: typeof d.monde?.fil === "string" && d.monde.fil.trim().length > 0,
       personnages: n(d.reseau, "personnages"),
       liens: n(d.reseau, "liens"),
       trames: n(d.trames, "trames"),

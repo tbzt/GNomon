@@ -128,6 +128,23 @@ suite("Livret — la soustraction", () => {
     neContientPas(livretHtml(livret("lucie", st)), "A REVELER EN S3", "le carnet a fuite");
   });
 
+  test("le fil de l'histoire ne sort dans AUCUN document", () => {
+    // Un livret est une coupe du fil, plus les erreurs de son
+    // propriétaire. Le fil entier montrerait ces erreurs au joueur.
+    // La consigne et la planche non plus : le fil est un document
+    // d'organisation, il a sa propre place et n'en a qu'une.
+    const st = cas();
+    st.monde.monde().fil = "LE-FIL-SECRET : Marcel a fait demi-tour devant la porte.";
+    neContientPas(livretHtml(livret("lucie", st)), "LE-FIL-SECRET", "le fil a fuité dans le livret");
+    neContientPas(livretMarkdown(livret("lucie", st)), "LE-FIL-SECRET", "fuite en markdown");
+    neContientPas(consigneHtml(consigne("corvin", st)), "LE-FIL-SECRET", "fuite dans la consigne");
+    neContientPas(
+      trombinoscopeHtml(trombinoscope(st, { avecPnj: true })),
+      "LE-FIL-SECRET",
+      "fuite sur la planche",
+    );
+  });
+
   test("l'intention et la securite y sont toujours", () => {
     const st = cas();
     const html = livretHtml(livret("lucie", st));

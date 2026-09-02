@@ -27,6 +27,7 @@ const GN = () => ({
   monde: {
     titre: "Les Cendres de Valmorel",
     premisse: "Un village brûle et personne ne dit pourquoi.",
+    fil: "## 1912\n\n- [FIXE] Le tunnel n'a pas cédé tout seul.",
     securite: ["coupez", "referent"],
     lieux: [
       { id: "x1", nom: "Le dispensaire", note: "" },
@@ -108,6 +109,7 @@ suite("Objets — découper un GN, et le recoudre", () => {
     const reste = docs.find((d) => d.id === RESTE);
     ok(reste, "le monde a un document de reste");
     eq(reste.d.titre, "Les Cendres de Valmorel");
+    ok(reste.d.fil.startsWith("## 1912"), "le fil de l'histoire voyage avec le reste");
     eqProfond(reste.d.securite, ["coupez", "referent"]);
     pasOk("lieux" in reste.d, "les lieux en sont sortis : ils ont un id");
     eq(docs.filter((d) => d.collection === "monde.lieux").length, 2);

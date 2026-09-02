@@ -14,10 +14,32 @@
    Sauvegarde débouncée et rendu en deux étages, comme la fiche — le
    store émet à chaque frappe, et reconstruire l'écran écraserait le
    champ sous le curseur.
+
+   ── LE FIL A SA PROPRE SECTION, ET ELLE LE DIT ──
+   Le fil de l'histoire n'est pas un champ parmi les autres : tout ce
+   qui précède est public ou repris dans les livrets, lui ne sort
+   jamais de l'équipe. Il est donc rangé à part, sous un titre qui
+   l'annonce comme document d'organisation, plutôt que glissé dans la
+   liste où un œil pressé le prendrait pour un « contexte » de plus.
    ============================================================ */
 import { MECANIQUES } from "../core/mondestore.js";
 import { hote } from "../core/liensstore.js";
 import { Utils } from "../core/utils.js";
+
+/** Le fil de l'histoire — hors de `CHAMPS` parce qu'il a sa section. */
+const FIL = {
+  cle: "fil",
+  label: "Le fil de l'histoire",
+  lignes: 18,
+  aide:
+    "Ce qui s'est RÉELLEMENT passé, daté, en une seule version — distinct du contexte (ce que tout le monde sait) " +
+    "et des livrets (ce que chacun croit). En Markdown. Marquez ce qui est [FIXE], ce qui est un [INTERRUPTEUR] " +
+    "que le jeu décide, ce qui est une [PROPOSITION] à valider ; finissez par un tableau « qui sait quoi ».",
+  invite:
+    "## Lundi 12 avril 1965 — le coup [FIXE]\n\n- 6h40, sur la départementale, quatre minutes. Aucun des neuf n'a tiré.\n" +
+    "- [INTERRUPTEUR] Vers 22h30, Marcel va jusqu'à la porte de la doctoresse et fait demi-tour.\n\n" +
+    "## Qui sait quoi\n\n| Vérité | Qui la sait | Qui croit autre chose |\n|---|---|---|",
+};
 
 const CHAMPS = [
   {
@@ -124,6 +146,7 @@ export const Monde = {
           `<span class="monde-aide">${Utils.escHtml(c.aide)}</span>` +
           `<textarea rows="${c.lignes}" data-m="${c.cle}" placeholder="${Utils.escHtml(c.invite)}">${Utils.escHtml(m[c.cle] || "")}</textarea></label>`,
       ).join("") +
+      this._fil() +
       this._securite() +
       this._hub() +
       `<div class="monde-lieux"><p class="carnet-titre">Les lieux<span class="carnet-aide">le site tel qu'il est, indépendamment des scènes qui s'y jouent</span></p>` +
@@ -145,6 +168,31 @@ export const Monde = {
       h.outerHTML = this._hub();
       this._brancher();
     }
+  },
+
+  /** Document d'organisation : ce qui s'est passé, en une seule version.
+      Il ne sort jamais d'un livret — l'écran le dit en toutes lettres,
+      parce que c'est la seule protection qui ait du sens pour un texte
+      qu'on rédige soi-même. Même mécanique de saisie que les autres
+      champs (`data-m`) : le flush et la sauvegarde débouncée le
+      prennent sans rien de plus. */
+  _fil() {
+    const m = this._store.monde();
+    return (
+      '<div class="monde-fil"><p class="carnet-titre">' +
+      Utils.escHtml(FIL.label) +
+      '<span class="carnet-aide">document d\'organisation — ne sort jamais dans un livret</span></p>' +
+      '<p class="monde-aide">' +
+      "Un GN a trois niveaux de vérité : <b>ce qui s'est passé</b> (ici, une seule version), " +
+      "<b>ce que chaque personnage croit</b> (les livrets), et <b>ce que tout le monde sait</b> " +
+      "(le contexte commun, plus haut). Ce texte reste dans l'équipe : il n'est repris dans " +
+      "aucun livret, aucune consigne, aucune planche. Il part avec l'archive, qui contient déjà tout." +
+      "</p>" +
+      `<label class="champ monde-champ"><span class="champ-label" title="${Utils.escHtml(FIL.aide)}">Le fil, en Markdown</span>` +
+      `<span class="monde-aide">${Utils.escHtml(FIL.aide)}</span>` +
+      `<textarea rows="${FIL.lignes}" data-m="${FIL.cle}" placeholder="${Utils.escHtml(FIL.invite)}">${Utils.escHtml(m.fil || "")}</textarea></label>` +
+      "</div>"
+    );
   },
 
   /** Toutes actives par défaut : le défaut sûr est celui qui protège.

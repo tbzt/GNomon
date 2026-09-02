@@ -159,6 +159,12 @@ propos, thématique, contexte commun — manquaient : l'outil était bâti sur l
 a aussi une histoire générale. Elles ont maintenant leur écran, et c'est le **contexte commun**
 qui ouvre chaque livret.
 
+Le même écran porte le **fil de l'histoire** : ce qui s'est *réellement* passé, daté, en une
+seule version — distinct du contexte (ce que tout le monde sait) et des livrets (ce que chacun
+croit). C'est un document d'organisation, en Markdown, avec ses conventions — [FIXE],
+[INTERRUPTEUR], [PROPOSITION] — et son tableau « qui sait quoi ». Il ne sort jamais dans un
+livret ; il part avec l'archive, qui contient déjà tout.
+
 Le **livret** est le seul document qui sorte de l'équipe, et il est calculé pour ça : on en
 retire la fonction narrative, la transformation possible, l'importance des liens, le
 contact-miroir — et surtout **la vérité derrière une croyance fausse**. Quand un personnage

@@ -165,6 +165,7 @@ export function fauxMonde(champs = {}, securite = [], lieux = []) {
     pratique: "",
     costume: "",
     references: "",
+    fil: "",
     ...champs,
   };
   return {

@@ -11,7 +11,7 @@
    ============================================================ */
 import { suite, test, eq, ok, pasOk, eqDonnees } from "./harnais.js";
 import { normaliserDocument, normaliserBloc, resumeAnomalies } from "../js/core/normaliser.js";
-import { Archive } from "../js/core/archive.js";
+import { Archive, AVERTISSEMENT } from "../js/core/archive.js";
 
 const causes = (a) => a.map((x) => x.quoi);
 
@@ -175,6 +175,29 @@ suite("Normaliser — un bloc entier", () => {
     eqDonnees(r.bloc.securite, ["coupez"]);
   });
 
+  /* Le fil de l'histoire est le document le plus sensible du GN, et il
+     n'entre que par ici : l'archive et la synchronisation. Il doit
+     traverser intact, et ressortir texte quoi qu'on ait reçu. */
+  test("le fil de l'histoire traverse le reste du monde intact", () => {
+    const fil = "## Lundi 12 avril 1965 [FIXE]\n\n| Vérité | Qui la sait |\n|---|---|\n| le compte | Simone |";
+    const r = normaliserBloc("monde", { titre: "Le compte n'y est pas", fil, lieux: [] });
+    eq(r.bloc.fil, fil, "pas un caractère de changé — le Markdown est de la donnée");
+    eq(r.anomalies.length, 0);
+  });
+
+  test("un fil absent devient un texte vide, sans un mot", () => {
+    // Toute archive d'avant ce champ en est dépourvue : ce n'est pas
+    // une anomalie, c'est le passé.
+    const r = normaliserBloc("monde", { titre: "Valmorel", lieux: [] });
+    eq(r.bloc.fil, "");
+    eq(r.anomalies.length, 0);
+  });
+
+  test("un fil qui n'est pas un texte en devient un", () => {
+    eq(normaliserBloc("monde", { fil: null, lieux: [] }).bloc.fil, "");
+    eq(normaliserBloc("monde", { fil: 1965, lieux: [] }).bloc.fil, "1965");
+  });
+
   test("une carte se normalise entrée par entrée", () => {
     const r = normaliserBloc("derogations", {
       "seul::p1": { justification: "il arrive tard", date: "2026-08-30" },
@@ -211,6 +234,22 @@ suite("Archive — le contenu aussi, pas seulement l'enveloppe", () => {
     const r = normaliserBloc("informations", { informations: [{ id: "i1", contenu: "le duc a menti" }] });
     eq(typeof r.bloc.informations[0].etats, "object");
     ok(faux, "le faux dépôt n'a pas servi, et c'est voulu");
+  });
+
+  test("l'inventaire dit si le fil de l'histoire est là", () => {
+    // C'est la pièce qu'on veut savoir présente avant de remplacer la
+    // sienne — et celle qui rappelle que ce fichier ne va pas à un joueur.
+    ok(Archive.inventaire(paquet({ monde: { titre: "X", fil: "## 1965\n- [FIXE] …" } })).fil);
+    pasOk(Archive.inventaire(paquet({ monde: { titre: "X", fil: "   " } })).fil, "des blancs ne sont pas un fil");
+    pasOk(Archive.inventaire(paquet({ monde: { titre: "X" } })).fil, "une archive d'avant le champ");
+    pasOk(Archive.inventaire(paquet({})).fil, "ni monde, ni fil");
+  });
+
+  test("l'avertissement de l'archive nomme le fil de l'histoire", () => {
+    // Il est écrit en clair dans le fichier : c'est la seule protection
+    // qui ait du sens pour un JSON qu'on s'envoie soi-même.
+    ok(/fil de l'histoire/.test(AVERTISSEMENT));
+    eq(Archive.construire("T").avertissement, AVERTISSEMENT);
   });
 
   test("l'enveloppe reste un contrat, elle n'est pas remplacée", () => {

@@ -58,6 +58,20 @@ export const MONDE = {
   costume:
     "Laine, lin, coton épais. Couleurs éteintes — bruns, gris, bleus délavés. Pas de fermeture éclair visible, pas de montre, pas de lunettes modernes si vous pouvez faire autrement.",
   references: "La Grande Illusion · Les Révoltés de l'an 2000 · les photographies de mineurs de Bourgogne",
+  fil:
+    "## Ce qui s'est passé — document d'organisation, ne sort jamais de l'équipe\n\n" +
+    "### Novembre 1912 — l'avalanche [FIXE]\n\n" +
+    "- Le tunnel haut n'a pas cédé sous la neige : l'étai central avait été retiré la veille pour gagner deux jours sur le rachat.\n" +
+    "- Sept hommes y étaient. Le contremaître Thomas a donné l'ordre ; il ne l'a écrit nulle part.\n" +
+    "- Le rapport de la compagnie est signé en quarante-huit heures. La doctoresse Elena y a apposé sa signature sans l'avoir lu.\n\n" +
+    "### Le soir du conseil [INTERRUPTEUR]\n\n" +
+    "- *Défaut :* le rachat est signé. Si Elena produit le registre avant minuit, il ne l'est pas, et le dimanche change pour Thomas.\n" +
+    "- [PROPOSITION] Corvin a vu l'étai retiré depuis la scierie. À valider : sinon personne ne peut le prouver.\n\n" +
+    "### Qui sait quoi\n\n" +
+    "| Vérité | Qui la sait | Qui croit autre chose |\n" +
+    "|---|---|---|\n" +
+    "| L'étai a été retiré | Thomas, Corvin | Lucie (croit à une cause naturelle) |\n" +
+    "| Elena a signé sans lire | Elena | Le village (croit qu'elle a couvert la compagnie) |",
   lieux: [
     { nom: "Le dispensaire", note: "Chaud, exigu. On y parle bas parce qu'il y a des blessés à côté." },
     { nom: "La mairie", note: "La grande salle. Une porte, un poêle, le registre sous clé." },

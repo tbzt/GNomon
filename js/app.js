@@ -845,7 +845,8 @@ export const App = {
       const resume =
         `${inv.titre || "Archive sans titre"} (${inv.date}) — ${inv.personnages} personnages, ` +
         `${inv.liens} liens, ${inv.trames} trames, ${inv.situations} situations, ` +
-        `${inv.informations} informations, ${inv.candidatures} candidatures.`;
+        `${inv.informations} informations, ${inv.candidatures} candidatures` +
+        (inv.fil ? ", et le fil de l'histoire." : ".");
       // Deux sémantiques opposées : on nomme laquelle avant d'écrire.
       const remplacer = confirm(
         `${resume}\n\nOK = REMPLACER tout ce qui est ici par l'archive.\n` +

@@ -47,7 +47,14 @@ const TRAITS_PUBLIABLES = [
   { cle: "archetype", label: "Ce que je suis" },
 ];
 
-/** Les blocs communs aux deux documents, tirés du monde. */
+/** Les blocs communs aux deux documents, tirés du monde.
+
+    Ce qui n'y est PAS l'est exprès : `references` (pour l'équipe
+    d'écriture) et `fil` (le fil de l'histoire — ce qui s'est réellement
+    passé, en une seule version). Le second surtout : un livret est une
+    coupe du fil à laquelle on ajoute les erreurs de son propriétaire.
+    Y mettre le fil entier rendrait toutes ces erreurs visibles au
+    joueur, dans le document censé les lui faire croire. */
 function cadre(monde) {
   const m = monde.monde();
   return {

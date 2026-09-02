@@ -4215,6 +4215,29 @@ main[data-actif="monde"] {
   max-width: 62ch;
 }
 
+/* ---------- le fil de l'histoire, sur l'écran du monde ----------
+   Un document d'organisation au milieu d'un écran dont tout le reste
+   sort dans les livrets : il se distingue par un filet à gauche et une
+   saisie en chasse fixe, parce qu'on y écrit du Markdown — des titres
+   datés, des listes, un tableau — et que les colonnes d'un tableau ne
+   s'alignent qu'en chasse fixe. */
+
+.monde-fil {
+  margin-top: 34px;
+  border-top: 1px solid var(--rule);
+  padding-top: 20px;
+}
+.monde-fil .monde-champ {
+  border-left: 3px solid var(--rule-controle);
+  padding-left: 14px;
+}
+.monde-fil textarea {
+  font-family: var(--mono);
+  font-size: 13.5px;
+  line-height: 1.55;
+  tab-size: 4;
+}
+
 /* ---------- sécurité, sur l'écran du monde ---------- */
 
 .monde-securite {
