@@ -821,6 +821,33 @@ textarea::placeholder {
   cursor: grabbing;
 }
 
+/* Commandes de vue, posées dans le coin du canvas par le moteur — les deux
+   graphes de l'outil les portent donc au même endroit. En surimpression :
+   le graphe occupe tout le cadre, et ces trois boutons ne doivent pas lui
+   en reprendre une bande. */
+.graph-vue {
+  position: absolute;
+  right: 10px;
+  bottom: 10px;
+  display: flex;
+  z-index: 2;
+}
+.graph-vue button {
+  font-family: var(--mono);
+  font-size: 14px;
+  line-height: 1;
+  padding: 7px 11px;
+  min-width: 34px;
+  background: var(--surface);
+  opacity: 0.92;
+}
+.graph-vue button + button {
+  margin-left: -1px;
+}
+.graph-vue button:hover {
+  opacity: 1;
+}
+
 .graph-pockets {
   pointer-events: none;
 }
@@ -850,6 +877,12 @@ textarea::placeholder {
 }
 .graph-edge-labels {
   pointer-events: none;
+}
+/* Vue d'ensemble : les mots des arêtes se chevaucheraient et couvriraient le
+   dessin. La classe est posée par le moteur, qui seul connaît l'étendue
+   visible ; ils reviennent dès qu'on se rapproche assez pour les lire. */
+.graph-svg.loin .graph-edge-labels {
+  display: none;
 }
 .graph-edge-label {
   font-family: var(--mono);
@@ -1059,8 +1092,8 @@ textarea::placeholder {
 
 .atelier-canvas {
   position: relative;
-  height: min(62vh, 540px);
-  min-height: 320px;
+  height: min(72vh, 700px);
+  min-height: 360px;
   overflow: hidden;
   border: 1px solid var(--rule);
   border-radius: 3px;
@@ -4705,8 +4738,8 @@ main[data-actif="monde"] {
 
 .rg-canvas {
   position: relative;
-  height: min(66vh, 580px);
-  min-height: 340px;
+  height: min(76vh, 760px);
+  min-height: 380px;
   overflow: hidden;
   border: 1px solid var(--rule);
   border-radius: 3px;
@@ -4718,9 +4751,10 @@ main[data-actif="monde"] {
   border: 1px solid var(--rule);
   border-radius: 3px;
   padding: 15px 16px;
-  max-height: min(66vh, 580px);
+  max-height: min(76vh, 760px);
   overflow-y: auto;
 }
+
 
 .rg-titre {
   font-family: var(--sans);

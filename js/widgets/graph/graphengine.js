@@ -175,13 +175,25 @@ export const GraphEngine = {
 
   /** Monte un graphe dans `container`. `onNodeTap(id)` est appelé sur un
       tap net (clic sans glisser). Rappeler `mount` remonte proprement. */
-  mount(container, { nodes = [], edges = [], accent = "#35e0e6", onNodeTap = null, onWeave = null, onBackgroundTap = null, onEdgeTap = null, static: staticLayout = false, onNodeMoved = null } = {}) {
+  mount(container, { nodes = [], edges = [], accent = "#35e0e6", onNodeTap = null, onWeave = null, onBackgroundTap = null, onEdgeTap = null, static: staticLayout = false, onNodeMoved = null, world = null, controls = false } = {}) {
     this.destroy();
-    const W = Math.max(320, container.clientWidth || 640);
-    const H = Math.max(240, container.clientHeight || 460);
+    const CW = Math.max(320, container.clientWidth || 640);
+    const CH = Math.max(240, container.clientHeight || 460);
+    // ── LE MONDE N'EST PLUS LE CADRE ──
+    // Le layout tenait dans le cadre visible, et les nœuds y étaient bornés :
+    // au-delà d'une vingtaine de personnages, tout se tassait contre les bords
+    // et aucun zoom n'y changeait rien, puisqu'il n'y avait rien de plus à
+    // montrer. L'appelant peut maintenant demander un monde plus grand que le
+    // cadre — l'appelant seul sait combien de monde il a à placer. La vue
+    // s'ouvre dessus en entier (le viewBox le réduit), et on zoome pour lire.
+    // Sans `world`, le monde EST le cadre : les graphes existants ne bougent pas.
+    const W = world && world.w > CW ? Math.round(world.w) : CW;
+    const H = world && world.h > CH ? Math.round(world.h) : CH;
     // Sous-titre/casting repliés sous petite largeur (mobile) : pas assez de
     // place pour lire ces lignes sans zoomer, le titre seul reste lisible.
-    const showExtra = W >= 480;
+    // Se lit sur le CADRE, jamais sur le monde : un grand monde sur un petit
+    // écran reste un petit écran.
+    const showExtra = CW >= 480;
 
     // Positions initiales : couronne + jitter (déterminisme non requis ici,
     // le layout converge ; MapGen/TopologyGen sont les leaves déterministes).
@@ -344,7 +356,7 @@ export const GraphEngine = {
     svg.appendChild(weaveLine);
 
     const state = {
-      container, svg, W, H, N, E, idx, accent, onNodeTap, onWeave, onBackgroundTap, onEdgeTap,
+      container, svg, W, H, CW, CH, N, E, idx, accent, onNodeTap, onWeave, onBackgroundTap, onEdgeTap,
       staticLayout, onNodeMoved, // mode auteur : pas de simulation ; persiste au lâcher
       raf: 0, alpha: 1, drag: null, weave: false, weaving: null, weaveLine,
       selectedId: null, selectedEdgeId: null, bg: null, edgeTap: null,
@@ -354,6 +366,8 @@ export const GraphEngine = {
     };
     this._state = state;
     container.appendChild(svg);
+    if (controls) this._monterCommandes(state);
+    this.resetView(); // s'ouvrir sur ce qu'il y a à voir, pas sur le monde
     this._wire(state);
     this._loop(state);
   },
@@ -723,6 +737,15 @@ export const GraphEngine = {
   _applyView(s) {
     const v = s.view;
     s.svg.setAttribute("viewBox", `${v.x} ${v.y} ${v.w} ${v.h}`);
+    // Les mots portés par les arêtes se replient quand ils se gêneraient.
+    // Ce qui les gêne n'est pas la taille du graphe mais leur NOMBRE : huit
+    // conclusions dans l'atelier se lisent à n'importe quelle échelle, cent
+    // trente natures de liens se chevauchent dès qu'on prend du recul. Sous
+    // le seuil de densité, on ne replie donc jamais ; au-dessus, on replie
+    // dès que l'étendue visible dépasse la largeur réelle du cadre — soit
+    // tout ce qui est en deçà du 1:1 à l'écran.
+    const DENSE = 40;
+    s.svg.classList.toggle("loin", s.E.length > DENSE && v.w > s.CW);
   },
   _clampView(s) {
     const v = s.view;
@@ -750,8 +773,13 @@ export const GraphEngine = {
   /** Zoome de `factor` (>1 = rapprocher) en gardant fixe le point écran cx,cy. */
   _zoomAt(s, factor, cx, cy) {
     const v = s.view;
-    const ZMAX = 5;                       // rapprochement maximum
-    const minW = s.W / ZMAX, maxW = s.W;  // 1× = cadre entier (tout visible)
+    // Le rapprochement se mesure en PIXELS D'ÉCRAN, pas en fraction du monde :
+    // un monde deux fois plus large demanderait sinon deux fois plus de zoom
+    // pour lire le même nom. On borne donc l'étendue visible à la moitié de la
+    // largeur du cadre — soit un grossissement 2× à l'écran, quel que soit le
+    // monde — et jamais sous 240 unités, pour ne pas se perdre dans le vide.
+    const minW = Math.max(240, Math.min(s.W, s.CW * 0.5));
+    const maxW = s.W;                     // pleine étendue = tout est visible
     const p = this._clientToSvg(s, cx, cy);
     const nw = Math.max(minW, Math.min(maxW, v.w / factor));
     const nh = nw * (s.H / s.W);          // ratio verrouillé sur le cadre de base
@@ -790,11 +818,33 @@ export const GraphEngine = {
     const r = s.svg.getBoundingClientRect();
     this._zoomAt(s, factor, r.left + r.width / 2, r.top + r.height / 2);
   },
-  /** Réinitialise la vue au cadre entier (1×). */
+  /** Le rectangle qu'occupent réellement les nœuds, marge comprise.
+      Un monde n'est pas rempli : l'atelier range ses scènes par trame, et
+      celles d'une trame donnée peuvent tenir dans un coin d'un monde bien
+      plus grand. Cadrer sur le monde ouvrait alors sur du vide. */
+  _contenu(s) {
+    if (!s.N.length) return { x: 0, y: 0, w: s.W, h: s.H };
+    let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
+    for (const n of s.N) {
+      x0 = Math.min(x0, n.x); y0 = Math.min(y0, n.y);
+      x1 = Math.max(x1, n.x); y1 = Math.max(y1, n.y);
+    }
+    // Marge large : un nœud est dessiné AUTOUR de son centre, et une carte
+    // fait 168 × 84. Sans elle, les bords du contenu seraient coupés.
+    const m = 130;
+    return { x: x0 - m, y: y0 - m, w: x1 - x0 + 2 * m, h: y1 - y0 + 2 * m };
+  },
+
+  /** « Tout voir » : cadre sur le contenu, en gardant les proportions du
+      monde — sinon le viewBox déformerait le dessin. */
   resetView() {
     const s = this._state;
     if (!s) return;
-    s.view = { x: 0, y: 0, w: s.W, h: s.H };
+    const b = this._contenu(s);
+    const ratio = s.H / s.W;
+    const w = Math.max(b.w, b.h / ratio);
+    const h = w * ratio;
+    s.view = { x: b.x + b.w / 2 - w / 2, y: b.y + b.h / 2 - h / 2, w, h };
     this._applyView(s);
   },
 
@@ -966,11 +1016,36 @@ export const GraphEngine = {
     return s.N.map((n) => ({ id: n.id, x: n.x, y: n.y }));
   },
 
+  /** Trois commandes posées dans le coin du canvas. La molette et le
+      pincement zooment depuis toujours, mais rien ne le disait : un geste
+      qu'on ne devine pas n'existe pas. Elles vivent DANS le conteneur du
+      graphe, pas dans la barre de l'écran, pour que les deux graphes de
+      l'outil les portent au même endroit sans se copier du balisage. */
+  _monterCommandes(s) {
+    const box = document.createElement("div");
+    box.className = "graph-vue";
+    const bouton = (txt, titre, faire) => {
+      const b = document.createElement("button");
+      b.type = "button";
+      b.textContent = txt;
+      b.title = titre;
+      b.setAttribute("aria-label", titre);
+      b.addEventListener("click", faire);
+      box.appendChild(b);
+    };
+    bouton("–", "Éloigner", () => this.zoomBy(1 / 1.35));
+    bouton("+", "Rapprocher", () => this.zoomBy(1.35));
+    bouton("\u2922", "Tout voir", () => this.resetView());
+    s.container.appendChild(box);
+    s.commandes = box;
+  },
+
   destroy() {
     const s = this._state;
     if (!s) return;
     if (s.raf) cancelAnimationFrame(s.raf);
     if (s.svg && s.svg.parentNode) s.svg.parentNode.removeChild(s.svg);
+    if (s.commandes && s.commandes.parentNode) s.commandes.parentNode.removeChild(s.commandes);
     this._state = null;
   },
 };

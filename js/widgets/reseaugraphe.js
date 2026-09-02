@@ -55,6 +55,14 @@ const EPAISSEUR = { primaire: 3.4, secondaire: 2, confort: 1.1 };
     chargé qui donne la couleur — une tension compte plus qu'un calme. */
 const CHARGE = { negatif: 3, complique: 2, positif: 1, neutre: 0 };
 
+/* Espacement de la disposition, en unités du monde. `ÉCART_MEMBRE` est la
+   distance de centre à centre entre deux voisins d'une même couronne ;
+   `ÉCART_GROUPES` le blanc laissé entre deux couronnes ; `MARGE_MONDE` la
+   bordure autour du tout. Un nœud fait 32 unités de large. */
+const ECART_MEMBRE = 68;
+const ECART_GROUPES = 110;
+const MARGE_MONDE = 90;
+
 const ACCENT = "#1d4e7a";
 const ROUGE = "#9e2b25";
 
@@ -124,32 +132,74 @@ export const ReseauGraphe = {
 
   /* ================= arrangement ================= */
 
-  /** Place ceux qui n'ont pas de position : les groupes sur un cercle,
-      leurs membres en petite couronne autour de leur groupe. Rend la
-      structure sociale lisible avant tout glissement. */
-  arranger({ tout = false } = {}) {
+  /** ── LA DISPOSITION SE CALCULE, ELLE N'EST PLUS EN DUR ──
+      L'ancien arrangement posait les groupes sur un cercle de rayon 210
+      autour du point (460, 300), et les membres sur une couronne plafonnée
+      à 105. Ces trois nombres tenaient pour sept personnages ; à quarante,
+      les couronnes se recouvraient et le cadre les tassait contre ses bords.
+
+      Tout part maintenant du contenu : la couronne d'un groupe est assez
+      large pour que ses membres ne se touchent pas, le cercle des groupes
+      assez large pour que les couronnes ne se touchent pas, et le monde
+      assez grand pour contenir le tout. Un GN de sept retrouve à peu près
+      ses anciennes valeurs ; un GN de quarante-six s'étale au lieu de se
+      tasser. */
+  _disposition() {
     const persos = this._store.personnages();
-    if (!persos.length) return;
     const groupes = [...this._store.groupes(), { id: null, nom: "Sans groupe" }].filter((g) =>
       persos.some((p) => p.groupeId === g.id),
     );
-    const cx = 460;
-    const cy = 300;
-    const R = groupes.length > 1 ? 210 : 0;
-
-    groupes.forEach((g, gi) => {
+    const cercles = groupes.map((g) => {
       const membres = persos.filter((p) => p.groupeId === g.id);
-      const a = (gi / groupes.length) * Math.PI * 2 - Math.PI / 2;
-      const gx = cx + Math.cos(a) * R;
-      const gy = cy + Math.sin(a) * R;
-      const r = Math.min(105, 34 + membres.length * 16);
-      membres.forEach((p, i) => {
+      // Rayon d'une couronne de n membres espacés de ÉCART_MEMBRE.
+      const r = membres.length < 2 ? 0 : Math.max(56, (ECART_MEMBRE * membres.length) / (2 * Math.PI));
+      return { membres, r };
+    });
+    // Le cercle des groupes doit avoir de quoi loger toutes les couronnes
+    // bout à bout, plus un blanc entre chacune.
+    const besoin = cercles.reduce((n, c) => n + 2 * c.r + ECART_GROUPES, 0);
+    const R = cercles.length > 1 ? Math.max(230, besoin / (2 * Math.PI)) : 0;
+    // Ellipse plutôt que cercle : un cadre de graphe est plus large que haut,
+    // et un monde carré s'y afficherait avec deux bandes vides sur les côtés.
+    const rx = R * 1.22, ry = R * 0.78;
+    const rmax = cercles.reduce((n, c) => Math.max(n, c.r), 0);
+    return {
+      cercles, rx, ry,
+      cx: rx + rmax + MARGE_MONDE,
+      cy: ry + rmax + MARGE_MONDE,
+      w: Math.round((rx + rmax + MARGE_MONDE) * 2),
+      h: Math.round((ry + rmax + MARGE_MONDE) * 2),
+    };
+  },
+
+  /** Les dimensions du monde à demander au moteur. */
+  _monde() {
+    const d = this._disposition();
+    return { w: d.w, h: d.h };
+  },
+
+  /** Place ceux qui n'ont pas de position : les groupes sur une ellipse,
+      leurs membres en couronne autour de leur groupe. Rend la structure
+      sociale lisible avant tout glissement. */
+  arranger({ tout = false } = {}) {
+    const persos = this._store.personnages();
+    if (!persos.length) return;
+    const d = this._disposition();
+
+    d.cercles.forEach((c, gi) => {
+      const a = (gi / d.cercles.length) * Math.PI * 2 - Math.PI / 2;
+      const gx = d.cx + Math.cos(a) * d.rx;
+      const gy = d.cy + Math.sin(a) * d.ry;
+      c.membres.forEach((p, i) => {
         if (!tout && Number.isFinite(p.x) && Number.isFinite(p.y)) return;
-        const b = (i / Math.max(1, membres.length)) * Math.PI * 2;
+        // La couronne démarre du côté opposé au centre : le groupe se lit
+        // de l'extérieur vers l'intérieur, et les noms ne tombent pas tous
+        // du même côté d'un groupe à l'autre.
+        const b = a + (i / Math.max(1, c.membres.length)) * Math.PI * 2;
         this._store.poserPersonnage(
           p.id,
-          Math.round(gx + Math.cos(b) * (membres.length === 1 ? 0 : r)),
-          Math.round(gy + Math.sin(b) * (membres.length === 1 ? 0 : r)),
+          Math.round(gx + Math.cos(b) * c.r),
+          Math.round(gy + Math.sin(b) * c.r),
         );
       });
     });
@@ -259,6 +309,8 @@ export const ReseauGraphe = {
       edges: this._aretes(),
       accent: ACCENT,
       static: true,
+      world: this._monde(),
+      controls: true,
       onNodeMoved: (id, x, y) => this._store.poserPersonnage(id, Math.round(x), Math.round(y)),
       onNodeTap: (id) => {
         if (this._mode) {

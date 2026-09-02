@@ -191,11 +191,26 @@ export const Atelier = {
         dir: "forward",
       }));
 
+    // ── LE MONDE SUIT LES SITUATIONS ──
+    // Les cartes sont posées sur une grille de 240 × 150 qui déborde vite le
+    // cadre : une trame de douze scènes en réclame plus du double en hauteur.
+    // Le moteur bornait tout au cadre, donc les dernières s'empilaient contre
+    // le bord. On lui donne un monde à la taille de ce qu'il y a à montrer ;
+    // en dessous du cadre, il garde le cadre et rien ne change.
+    const MARGE = 150;
+    const xs = nodes.map((n) => n.x).filter(Number.isFinite);
+    const ys = nodes.map((n) => n.y).filter(Number.isFinite);
+    const world = xs.length
+      ? { w: Math.max(...xs) + MARGE, h: Math.max(...ys) + MARGE }
+      : null;
+
     GraphEngine.mount(hote, {
       nodes,
       edges,
       accent: ACCENT,
       static: true,
+      world,
+      controls: true,
       onNodeMoved: (id, x, y) => {
         this._trames.poserSituation(id, x, y);
         // Position écrite en silence : on remet la signature à jour
