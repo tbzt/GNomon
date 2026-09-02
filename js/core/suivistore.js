@@ -103,6 +103,14 @@ export const SuiviStore = {
     return { total: cles.length, faits, assignes };
   },
 
+  /** Combien de besoins portent une trace de suivi. Comme
+      `Derogations.compte()`, et pour la même raison : savoir si ce
+      store a quelque chose à dire sans avoir à énumérer les clés
+      depuis l'extérieur. */
+  compte() {
+    return Object.keys(this._d()).length;
+  },
+
   /** Les personnes déjà nommées, pour proposer plutôt que faire retaper. */
   responsables() {
     return [...new Set(Object.values(this._d()).map((e) => e.responsable).filter(Boolean))].sort();

@@ -863,21 +863,18 @@ export const App = {
     });
 
     document.getElementById("act-seed").addEventListener("click", () => {
+      // Même garde que « Vider », et pour une raison plus grave : ce
+      // bouton EFFACE les neuf stores avant de charger Valmorel. Tant
+      // qu'il ne comptait que les personnages, un projet où l'on avait
+      // écrit le monde sans encore créer personne se faisait remplacer
+      // SANS confirmation. Et la question parlait « du réseau et des
+      // trames » alors que tout y passe.
       if (
-        ReseauStore.personnages().length &&
-        !confirm("Remplacer le réseau et les trames par le jeu d'essai « Valmorel » ?")
+        !this._projetVide() &&
+        !confirm("Remplacer ce projet par le jeu d'essai « Valmorel » ? Tout ce qui y est écrit sera perdu.")
       )
         return;
-      this._quitter();
-      ReseauStore.vider();
-      TrameStore.vider();
-      InformationStore.vider();
-      Derogations.vider();
-      CastingStore.vider();
-      RunStore.vider();
-      MondeStore.vider();
-      SuiviStore.vider();
-      LiensStore.vider();
+      this._viderTout();
       const n = chargerValmorel(ReseauStore, TrameStore, InformationStore, CastingStore, MondeStore);
       this.ouvrirReseau();
       this._statut(
@@ -889,21 +886,68 @@ export const App = {
     });
 
     document.getElementById("act-vider").addEventListener("click", () => {
-      if (!ReseauStore.personnages().length && !TrameStore.situations().length) return;
+      // Un projet déjà vide n'a rien à vider : lui poser la question
+      // « cette action n'est pas annulable » serait une alarme pour rien.
+      if (this._projetVide()) return this._statut("Il n'y a rien à vider.");
       if (!confirm("Tout vider ? Cette action n'est pas annulable.")) return;
-      this._quitter();
-      ReseauStore.vider();
-      TrameStore.vider();
-      InformationStore.vider();
-      Derogations.vider();
-      CastingStore.vider();
-      RunStore.vider();
-      MondeStore.vider();
-      SuiviStore.vider();
-      LiensStore.vider();
+      this._viderTout();
       this.ouvrirReseau();
       this._statut("Tout est vidé.");
     });
+  },
+
+  /** Les neuf stores que « Vider » et « Jeu d'essai » remettent à zéro.
+      La liste vivait en double, à deux boutons de distance : en ajouter
+      un dixième demandait de penser aux deux endroits, et on ne l'aurait
+      su qu'en retrouvant des restes du projet précédent. */
+  _viderTout() {
+    this._quitter();
+    ReseauStore.vider();
+    TrameStore.vider();
+    InformationStore.vider();
+    Derogations.vider();
+    CastingStore.vider();
+    RunStore.vider();
+    MondeStore.vider();
+    SuiviStore.vider();
+    LiensStore.vider();
+  },
+
+  /** Ce projet est-il ENTIÈREMENT vide ?
+
+      ── LA GARDE DOIT COUVRIR CE QUE LE BOUTON EFFACE ──
+      « Vider » ne partait que si le réseau ou les trames avaient
+      quelque chose : deux stores sur les neuf qu'il remet à zéro. Un
+      projet où l'on avait écrit le monde, importé un casting, posé des
+      liens ou tenu un journal de run, mais pas encore créé de
+      personnage, ne pouvait donc plus être vidé du tout — le bouton ne
+      faisait rien, sans confirmation, sans message, sans rien dans la
+      console. Un bouton muet passe pour cassé, et il l'était.
+
+      La règle est simple et se vérifie : une garde qui protège d'une
+      action doit interroger tout ce que cette action touche. D'où la
+      même liste que `_viderTout`, dans le même ordre.
+
+      Le silence disparaît aussi : sur un projet réellement vide, on dit
+      qu'il n'y a rien à vider plutôt que de ne rien répondre. */
+  _projetVide() {
+    return (
+      !ReseauStore.personnages().length &&
+      !ReseauStore.groupes().length &&
+      !TrameStore.trames().length &&
+      !TrameStore.situations().length &&
+      !TrameStore.conclusions().length &&
+      !InformationStore.informations().length &&
+      !Derogations.compte() &&
+      !CastingStore.candidatures().length &&
+      !Object.keys(CastingStore.affectation()).length &&
+      !RunStore.run() &&
+      !RunStore.journal().length &&
+      !Object.keys(RunStore.fils()).length &&
+      !MondeStore.amorce() &&
+      !SuiviStore.compte() &&
+      !LiensStore.tous().length
+    );
   },
 
   _statut(txt) {
