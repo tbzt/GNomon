@@ -69,6 +69,30 @@ const CHAMPS = {
   references: "",
 };
 
+/** Ce monde porte-t-il une trace d'écriture ?
+
+    ── LES ONZE CHAMPS, PAS QUATRE ──
+    Un seul appelant pose la question — `Accueil.estVierge` — et il la
+    pose pour savoir s'il doit afficher « Rien n'est encore écrit ».
+    N'en regarder que quatre le faisait mentir : l'auteur qui avait
+    rempli la thématique, l'intention, les avertissements ou posé ses
+    lieux cliquait « Le réseau » et retombait sur la page d'accueil,
+    qui démentait son propre travail et n'offrait même pas de créer un
+    personnage. Un écran qui dit « rien » à quelqu'un qui vient
+    d'écrire est pire qu'un écran vide.
+
+    Les mécaniques de sécurité n'en font pas partie : elles sont toutes
+    actives par défaut, donc leur présence ne prouve aucune écriture.
+    `securiteNote`, elle, se saisit — elle compte comme les autres.
+
+    Pure et exportée pour être testée sur des objets nus, sans toucher
+    au `localStorage` (cf. le harnais). */
+export function amorce(d) {
+  if (!d) return false;
+  if (Object.keys(CHAMPS).some((k) => String(d[k] || "").trim())) return true;
+  return Array.isArray(d.lieux) && d.lieux.length > 0;
+}
+
 /** Les mécaniques de sécurité d'usage courant. La liste est fermée et
     pré-écrite : demander à chaque équipe de les reformuler produirait
     quarante variantes approximatives d'outils qui ne valent que s'ils
@@ -170,8 +194,7 @@ export const MondeStore = {
   /** Renseigné ou non : sert à savoir s'il faut proposer de commencer
       par là plutôt que de laisser l'auteur devant un réseau nu. */
   amorce() {
-    const d = this._d();
-    return !!(d.titre || d.premisse || d.propos || d.contexte);
+    return amorce(this._d());
   },
 
   /* ================= Sécurité =================

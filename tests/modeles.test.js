@@ -2,7 +2,7 @@
 
 /* ============================================================
    Les calculs qui portent le modèle : couverture, défection,
-   temps, besoins.
+   temps, besoins, et la question « ce monde est-il vierge ? ».
    ============================================================ */
 import { suite, test, eq, ok, pasOk, contient } from "./harnais.js";
 import { fauxReseau, fauxTrames, fauxInfos, fauxMonde, fauxSuivi } from "./faux.js";
@@ -10,6 +10,7 @@ import { couverture, scoreCouverture } from "../js/core/couverture.js";
 import { defection, classementFragilite } from "../js/core/defection.js";
 import { frise, heure, pic } from "../js/core/temps.js";
 import { besoins, besoinsMarkdown } from "../js/core/besoins.js";
+import { amorce } from "../js/core/mondestore.js";
 
 const trouve = (c, cle) => c.find((x) => x.cle === cle);
 
@@ -274,5 +275,47 @@ suite("Besoins — dérivés, jamais stockés", () => {
     const md = besoinsMarkdown(s, fauxSuivi({ [cle]: { fait: true, responsable: "Claire" } }));
     contient(md, "- [x] Un registre");
     contient(md, "(Claire)");
+  });
+});
+
+/* L'accueil ne s'affiche que sur un projet ENTIÈREMENT vierge. C'est
+   `amorce` qui tranche pour le monde, et il a longtemps tranché sur
+   quatre champs de onze : l'auteur qui écrivait ailleurs se voyait
+   répondre « Rien n'est encore écrit » en ouvrant le réseau. */
+suite("Amorce du monde — ce qui compte comme écrit", () => {
+  test("un monde nu n'est pas amorcé", () => {
+    pasOk(amorce({}));
+    pasOk(amorce({ lieux: [] }));
+    pasOk(amorce(null), "un monde absent non plus");
+  });
+
+  test("les quatre champs d'entrée l'amorcent", () => {
+    for (const k of ["titre", "premisse", "propos", "contexte"])
+      ok(amorce({ [k]: "x" }), k);
+  });
+
+  test("les sept autres aussi", () => {
+    for (const k of [
+      "thematique",
+      "intention",
+      "avertissements",
+      "securiteNote",
+      "pratique",
+      "costume",
+      "references",
+    ])
+      ok(amorce({ [k]: "x" }), k);
+  });
+
+  test("un lieu posé compte, même sans un mot de texte", () => {
+    ok(amorce({ lieux: [{ id: "l1", nom: "La salle" }] }));
+  });
+
+  test("des blancs ne sont pas de l'écriture", () => {
+    pasOk(amorce({ premisse: "   \n  " }));
+  });
+
+  test("les mécaniques de sécurité ne comptent pas", () => {
+    pasOk(amorce({ securite: ["lignesVoiles", "referent"] }), "elles sont actives par défaut");
   });
 });
