@@ -18,7 +18,7 @@
    liste que l'espace partagé synchronise, un document à la fois, avec
    une révision par document.
 
-       reseau  { personnages:[…], liens:[…], groupes:[…] }
+       reseau  { personnages:[…], liens:[…], groupes:[…], sieges:[…] }
           ↕
        personnages/p1a · personnages/p2b · liens/l7c · groupes/g1…
 
@@ -54,8 +54,8 @@
     · `nu`     — le bloc EST un tableau d'objets à `id` (le hub) ;
     · le reste des champs, s'il y en a, part dans le document `_`. */
 const PLAN = Object.freeze({
-  monde: { listes: ["lieux"], reste: true },
-  reseau: { listes: ["personnages", "liens", "groupes"] },
+  monde: { listes: ["lieux", "epoques"], reste: true },
+  reseau: { listes: ["personnages", "liens", "groupes", "sieges"] },
   trames: { listes: ["trames", "situations", "conclusions"] },
   informations: { listes: ["informations"] },
   casting: { listes: ["candidatures"], reste: true },

@@ -21,6 +21,7 @@ import {
   depuisChemin,
   RESTE,
 } from "../js/core/objets.js";
+import { fusionnerBloc } from "../js/core/archive.js";
 
 /* Un GN minuscule mais complet : une clé de chaque forme. */
 const GN = () => ({
@@ -33,6 +34,10 @@ const GN = () => ({
       { id: "x1", nom: "Le dispensaire", note: "" },
       { id: "x2", nom: "La scierie", note: "fermée" },
     ],
+    epoques: [
+      { id: "e1", nom: "1912", ordre: 0 },
+      { id: "e2", nom: "1932", ordre: 1 },
+    ],
   },
   reseau: {
     personnages: [
@@ -41,6 +46,7 @@ const GN = () => ({
     ],
     liens: [{ id: "l1", de: "p1", vers: "p2", tonalite: "positif", importance: "primaire", miroir: true }],
     groupes: [{ id: "g1", nom: "Le dispensaire" }],
+    sieges: [{ id: "S1", nom: "Siège 1", personnageIds: ["p1"] }],
   },
   trames: {
     trames: [{ id: "t1", titre: "L'incendie", porteurId: null, notes: "" }],
@@ -113,6 +119,8 @@ suite("Objets — découper un GN, et le recoudre", () => {
     eqProfond(reste.d.securite, ["coupez", "referent"]);
     pasOk("lieux" in reste.d, "les lieux en sont sortis : ils ont un id");
     eq(docs.filter((d) => d.collection === "monde.lieux").length, 2);
+    pasOk("epoques" in reste.d, "les époques aussi : deux auteurs peuvent en écrire deux");
+    eq(docs.filter((d) => d.collection === "monde.epoques").length, 2);
   });
 
   test("l'affectation voyage entière, jamais par candidature", () => {
@@ -131,9 +139,98 @@ suite("Objets — découper un GN, et le recoudre", () => {
   });
 
   test("un bloc vide ne produit aucun document", () => {
-    eq(decouper("reseau", { personnages: [], liens: [], groupes: [] }).length, 0);
+    eq(decouper("reseau", { personnages: [], liens: [], groupes: [], sieges: [] }).length, 0);
     eq(decouper("monde", {}).length, 0, "un reste vide n'est pas un document");
     eq(decouper("reseau", null).length, 0);
+  });
+});
+
+/* ============================================================
+   L'import en mode « fusionner » : l'archive COMPLÈTE, elle n'écrase
+   pas. Les blocs sont ceux du stockage — les mêmes que `decouper`
+   reçoit — et rien n'est écrit : `fusionnerBloc` est pure, là où
+   `Archive.appliquer` passe par le vrai `Storage`.
+
+   La régression que ces tests ferment : un champ à `id` absent de la
+   table des listes fusionnées était remplacé par la version locale en
+   entier. Les sièges, lieux et époques d'une archive disparaissaient dès
+   que le projet avait déjà un bloc `reseau` ou `monde`.
+   ============================================================ */
+suite("Archive — fusionner complète, n'écrase pas", () => {
+  test("les sièges de l'archive s'ajoutent sans toucher aux locaux", () => {
+    const local = GN().reseau;
+    const entrant = {
+      ...GN().reseau,
+      sieges: [
+        { id: "S1", nom: "Renommé ailleurs", personnageIds: ["p1", "p2"] },
+        { id: "S2", nom: "Siège 2", personnageIds: ["p2"] },
+      ],
+    };
+    const { bloc, ajoutes } = fusionnerBloc("reseau", local, entrant);
+    eq(ajoutes, 1, "un seul siège manquait");
+    eq(bloc.sieges.length, 2);
+    eqDonnees(bloc.sieges[0], local.sieges[0], "le siège local n'est pas touché");
+    eq(bloc.sieges[1].id, "S2", "le siège nouveau est ajouté à la suite");
+    eqDonnees(bloc.personnages, local.personnages, "les autres listes non plus");
+  });
+
+  test("les lieux de l'archive s'ajoutent sans toucher aux locaux", () => {
+    const local = GN().monde;
+    const entrant = {
+      ...GN().monde,
+      titre: "Un autre titre",
+      lieux: [
+        { id: "x2", nom: "La scierie", note: "rouverte" },
+        { id: "x3", nom: "Le tunnel", note: "" },
+      ],
+    };
+    const { bloc, ajoutes } = fusionnerBloc("monde", local, entrant);
+    eq(ajoutes, 1);
+    eq(bloc.titre, "Les Cendres de Valmorel", "ce qui n'a pas d'id garde la version locale");
+    eq(bloc.lieux.length, 3);
+    eq(bloc.lieux[1].note, "fermée", "la scierie locale n'est pas touchée");
+    eq(bloc.lieux[2].id, "x3");
+  });
+
+  test("les époques de l'archive s'ajoutent APRÈS les locales, dans leur ordre", () => {
+    const local = GN().monde;
+    const entrant = {
+      ...GN().monde,
+      epoques: [
+        { id: "e9", nom: "1965", ordre: 1 },
+        { id: "e1", nom: "1912 renommée", ordre: 0 },
+        { id: "e8", nom: "1945", ordre: 0 },
+      ],
+    };
+    const { bloc, ajoutes } = fusionnerBloc("monde", local, entrant);
+    eq(ajoutes, 2, "e1 existait déjà");
+    eqDonnees(
+      bloc.epoques.map((e) => [e.id, e.ordre]),
+      [["e1", 0], ["e2", 1], ["e8", 2], ["e9", 3]],
+      "les nouvelles suivent les locales, 1945 avant 1965 comme dans l'archive",
+    );
+    eq(bloc.epoques[0].nom, "1912", "l'époque locale garde son nom");
+  });
+
+  test("un projet sans époque ni siège reçoit ceux de l'archive", () => {
+    // Un GN écrit avant ces champs n'a pas les clés : elles doivent
+    // apparaître, pas être considérées comme « déjà là et vides ».
+    const { titre, premisse, fil, securite, lieux } = GN().monde;
+    const monde = fusionnerBloc("monde", { titre, premisse, fil, securite, lieux }, GN().monde);
+    eqDonnees(monde.bloc.epoques, GN().monde.epoques);
+    eq(monde.ajoutes, 2);
+    const { personnages, liens, groupes } = GN().reseau;
+    const reseau = fusionnerBloc("reseau", { personnages, liens, groupes }, GN().reseau);
+    eqDonnees(reseau.bloc.sieges, GN().reseau.sieges);
+    eq(reseau.ajoutes, 1);
+  });
+
+  test("fusionner deux fois n'ajoute rien la seconde", () => {
+    const une = fusionnerBloc("monde", GN().monde, { ...GN().monde, epoques: [{ id: "e3", nom: "1950", ordre: 0 }] });
+    const deux = fusionnerBloc("monde", une.bloc, { ...GN().monde, epoques: [{ id: "e3", nom: "1950", ordre: 0 }] });
+    eq(une.ajoutes, 1);
+    eq(deux.ajoutes, 0);
+    eqDonnees(deux.bloc, une.bloc);
   });
 });
 

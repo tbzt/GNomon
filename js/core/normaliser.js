@@ -214,6 +214,10 @@ const REGLES = {
 
   "monde.lieux": (o) => ({ ...o, nom: txt(o.nom), note: txt(o.note) }),
 
+  // L'ordre est de la donnée : une époque sans `ordre` lisible passe en
+  // tête plutôt que de casser le tri de `MondeStore.epoques()`.
+  "monde.epoques": (o) => ({ ...o, nom: txt(o.nom), ordre: nombre(o.ordre) ?? 0 }),
+
   "run.journal": (o) => ({
     ...o,
     ts: nombre(o.ts) ?? 0,

@@ -145,7 +145,7 @@ suite("Normaliser — un document venu d'ailleurs", () => {
 suite("Normaliser — un bloc entier", () => {
   test("une liste qui n'en est pas une devient vide", () => {
     const r = normaliserBloc("reseau", { personnages: "pas un tableau", liens: null, groupes: 3 });
-    eqDonnees(r.bloc, { personnages: [], liens: [], groupes: [] });
+    eqDonnees(r.bloc, { personnages: [], liens: [], groupes: [], sieges: [] });
   });
 
   test("l'ordre des listes est CONSERVÉ", () => {

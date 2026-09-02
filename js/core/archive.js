@@ -61,14 +61,30 @@ export const AVERTISSEMENT =
 export const CLES = CLES_PROJET;
 
 /** Les clés dont le contenu est une liste d'objets à `id` — les seules
-    que « fusionner » sait réconcilier finement. */
+    que « fusionner » sait réconcilier finement.
+
+    ── UNE LISTE ABSENTE D'ICI EST PERDUE EN FUSION ──
+    `fusionnerBloc` fait gagner le bloc local en entier, puis ne recompose
+    que les champs nommés ici. Un champ à `id` qui manquerait dans cette
+    table serait donc silencieusement écrasé par la version locale : les
+    sièges, les lieux et les époques d'une archive disparaissaient ainsi
+    dès que le projet avait déjà un bloc `reseau` ou `monde`. La table
+    doit suivre le PLAN d'`objets.js` : ce que l'espace partagé découpe
+    par document, l'import doit le réconcilier par identifiant. */
 const LISTES = {
-  reseau: ["personnages", "liens", "groupes"],
+  monde: ["lieux", "epoques"],
+  reseau: ["personnages", "liens", "groupes", "sieges"],
   trames: ["trames", "situations", "conclusions"],
   informations: ["informations"],
   casting: ["candidatures"],
   run: ["journal"],
 };
+
+/** Les listes dont l'ORDRE est de la donnée, porté par un champ `ordre`.
+    Un élément ajouté en fusion prend sa place APRÈS les existants : le
+    rang qu'il avait dans l'archive n'a de sens que dans l'archive, et le
+    garder ferait cohabiter deux « première époque ». */
+const ORDONNEES = { monde: ["epoques"] };
 
 /** `liens` est une liste NUE (pas un objet à champs), donc sa fusion
     se fait à part : on ajoute ce qui manque, par id. */
@@ -187,17 +203,8 @@ export const Archive = {
         continue;
       }
 
-      let ajoutes = 0;
-      const fusionne = { ...entrant, ...local };
-      for (const champ of LISTES[cle]) {
-        const a = Array.isArray(local[champ]) ? local[champ] : [];
-        const b = Array.isArray(entrant[champ]) ? entrant[champ] : [];
-        const vus = new Set(a.map((x) => x && x.id));
-        const neufs = b.filter((x) => x && x.id && !vus.has(x.id));
-        ajoutes += neufs.length;
-        fusionne[champ] = [...a, ...neufs];
-      }
-      Storage.set(cle, fusionne);
+      const { bloc, ajoutes } = fusionnerBloc(cle, local, entrant);
+      Storage.set(cle, bloc);
       bilan[cle] = `${ajoutes} ajouté${ajoutes > 1 ? "s" : ""}`;
     }
     return { ok: true, bilan, anomalies, reparations: resumeAnomalies(anomalies) };
@@ -215,6 +222,43 @@ export const Archive = {
     return `${t || "gnomon"}-${new Date().toISOString().slice(0, 10)}.json`;
   },
 };
+
+/**
+ * Fusionne un bloc entrant dans un bloc local, sans rien écrire.
+ *
+ * Le local gagne sur tout ce qui n'est pas une liste à `id` — le titre,
+ * la prémisse, le fil : « ce qui existe déjà n'est pas touché ». Dans
+ * chaque liste de `LISTES[cle]`, ce qui manque localement est ajouté à
+ * la suite, par identifiant ; un objet présent des deux côtés garde sa
+ * version locale.
+ *
+ * Renvoie `{ bloc, ajoutes }`. Pure : c'est ce qui permet de la
+ * vérifier sans `Storage`, là où `appliquer()` écrit pour de vrai.
+ */
+export function fusionnerBloc(cle, local, entrant) {
+  const fusionne = { ...entrant, ...local };
+  let ajoutes = 0;
+  for (const champ of LISTES[cle] || []) {
+    const a = Array.isArray(local[champ]) ? local[champ] : [];
+    const b = Array.isArray(entrant[champ]) ? entrant[champ] : [];
+    const vus = new Set(a.map((x) => x && x.id));
+    let neufs = b.filter((x) => x && x.id && !vus.has(x.id));
+    if ((ORDONNEES[cle] || []).includes(champ)) neufs = apresLesExistants(a, neufs);
+    ajoutes += neufs.length;
+    fusionne[champ] = [...a, ...neufs];
+  }
+  return { bloc: fusionne, ajoutes };
+}
+
+/** Renumérote `neufs` à la suite d'`existants`. Entre eux, les nouveaux
+    gardent l'ordre qu'ils avaient dans l'archive : 1965 reste avant 1985. */
+function apresLesExistants(existants, neufs) {
+  const ordreDe = (x) => (x && typeof x.ordre === "number" ? x.ordre : -1);
+  const suite = existants.reduce((m, x) => Math.max(m, ordreDe(x)), -1) + 1;
+  return [...neufs]
+    .sort((x, y) => ordreDe(x) - ordreDe(y))
+    .map((x, i) => ({ ...x, ordre: suite + i }));
+}
 
 /** Déclenche le téléchargement d'un contenu texte. Un seul endroit :
     trois écrans exportent, aucun ne doit réinventer l'ancre. */
