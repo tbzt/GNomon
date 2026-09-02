@@ -339,7 +339,10 @@ export const MondeStore = {
   },
 
   vider() {
-    this._data = { ...CHAMPS, lieux: [], securite: Object.keys(MECANIQUES) };
+    // `epoques` doit repartir vide, pas absent : `epoques()` l'itère, et
+    // « Jeu d'essai » passe par ici avant de recharger — l'écran du monde
+    // restait blanc sur une TypeError.
+    this._data = { ...CHAMPS, lieux: [], securite: Object.keys(MECANIQUES), epoques: [] };
     this.save();
     this._emit({ type: "monde:vider" });
   },
