@@ -115,7 +115,10 @@ for (const m of MODES) for (const e of m.ecrans) MODE_DE[e.cle] = m.cle;
 const friseEtat = () => calculerFrise(ReseauStore, TrameStore);
 
 export const App = {
-  _ecran: "reseau",
+  // Aucun écran n'est monté avant `demarrer()`. Y mettre « reseau » par
+  // défaut mentait sur l'état réel, et la garde anti-remontage
+  // d'`ouvrirReseau` aurait cru l'écran déjà en place au démarrage.
+  _ecran: null,
 
   init() {
     // AVANT tout le reste : une écriture qui échoue pendant une
@@ -197,6 +200,7 @@ export const App = {
     if (/^#\/monde/.test(h)) return this.ouvrirMonde({ silencieux: true });
     if (/^#\/livrets/.test(h)) return this.ouvrirLivrets({ silencieux: true });
     if (/^#\/besoins/.test(h)) return this.ouvrirBesoins({ silencieux: true });
+    if (/^#\/reseau/.test(h)) return this.ouvrirReseau({ silencieux: true });
     if (/^#\/diagnostic/.test(h)) return this.ouvrirCockpit({ silencieux: true });
     if (/^#\/espace/.test(h)) return this.ouvrirEspace({ silencieux: true });
     // Sans hash : un projet vierge garde l'accueil (porté par l'écran
@@ -331,11 +335,29 @@ export const App = {
     if (routes[ecran]) routes[ecran]();
   },
 
+  /** Le réseau était le seul écran SANS adresse : il vidait le hash au
+      lieu d'en poser un. Le `hashchange` qui suivait rappelait
+      `_lireHash`, qui ne trouvait plus rien à router et retombait sur la
+      règle du bas — « projet non vierge → le diagnostic ». Cliquer « Le
+      réseau » depuis n'importe quel écran adressé renvoyait donc au
+      cockpit, et l'écran demandé n'apparaissait jamais.
+
+      Un hash vide est ambigu : il veut dire « accueil » pour un projet
+      vierge et « diagnostic » pour les autres. Il ne pouvait pas vouloir
+      dire « réseau » en plus. L'écran prend donc son adresse comme les
+      onze autres — ce qui rend aussi le retour arrière du navigateur
+      juste, là où il ramenait au diagnostic. */
   ouvrirReseau({ silencieux = false } = {}) {
+    // Même garde que la fiche et l'atelier : le `hashchange` rappelle
+    // ici, et remonter le graphe remettrait la vue de l'auteur à zéro.
+    if (this._ecran === "reseau") {
+      if (!silencieux && location.hash !== "#/reseau") location.hash = "#/reseau";
+      return;
+    }
     this._quitter();
     this._basculer("reseau", "Le réseau");
     Reseau.rendre();
-    if (!silencieux && location.hash) location.hash = "";
+    if (!silencieux) location.hash = "#/reseau";
   },
 
   /** Le cockpit — la porte d'entrée d'un projet non vierge, hors des
