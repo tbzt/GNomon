@@ -240,17 +240,30 @@ export function consigne(personnageId, { reseau, monde, infos, trames }) {
   const { sait, croit } = infos.parPersonnage(p.id);
 
   /* L'ADDITION : les fausses croyances des AUTRES, avec la vérité.
-     C'est ce qui manque à toute fiche de PNJ écrite à la main. */
+     C'est ce qui manque à toute fiche de PNJ écrite à la main.
+
+     ── BORNÉE À CEUX QU'IL CROISE ──
+     Sur un GN à trente informations, l'addition brute fait soixante-dix
+     lignes, et un PNJ qui paraît deux fois ne lit plus rien. Ce qu'il
+     doit savoir, c'est ce que croient les gens PRÉSENTS DANS SES
+     SCÈNES — ceux à qui il risque de contredire une croyance en une
+     phrase. Le reste va en annexe : présent, pas devant. Un PNJ sans
+     scène horodatée voit tout devant, faute de pouvoir trier. */
+  const presents = new Set();
+  for (const s of trames.situations())
+    if ((s.castIds || []).includes(p.id)) for (const x of s.castIds || []) presents.add(x);
   const croyancesAutour = [];
+  const croyancesAilleurs = [];
   for (const i of infos.informations())
     for (const autreId of infos.divergents(i.id)) {
       const q = reseau.personnage(autreId);
       if (!q || autreId === p.id) continue;
-      croyancesAutour.push({
+      const ligne = {
         qui: q.nom,
         croit: infos.croyance(i.id, autreId) || "— non écrit —",
         verite: i.contenu || "— sans contenu —",
-      });
+      };
+      (scenes.length && !presents.has(autreId) ? croyancesAilleurs : croyancesAutour).push(ligne);
     }
 
   const contacts = reseau
@@ -291,6 +304,7 @@ export function consigne(personnageId, { reseau, monde, infos, trames }) {
       croyance: infos.croyance(i.id, p.id) || "— non écrit —",
     })),
     croyancesAutour,
+    croyancesAilleurs,
     // L'addition : les deux notes du lieu, la publique et celle d'équipe.
     lieux: monde.lieux().map((x) => ({ nom: x.nom, note: x.note || "", prive: x.prive || "" })),
     style: (p.style || "").trim(),
@@ -521,16 +535,19 @@ export function consigneHtml(k) {
         .join("")
     : "";
 
-  const autour = k.croyancesAutour.length
-    ? `<table><thead><tr><th>Qui</th><th>Croit</th><th>Alors qu'en fait</th></tr></thead><tbody>` +
-      k.croyancesAutour
-        .map(
-          (x) =>
-            `<tr><td>${esc(x.qui)}</td><td>${esc(x.croit)}</td><td>${esc(x.verite)}</td></tr>`,
-        )
-        .join("") +
-      "</tbody></table>"
-    : "";
+  const tableCroyances = (lignes) =>
+    lignes.length
+      ? `<table><thead><tr><th>Qui</th><th>Croit</th><th>Alors qu'en fait</th></tr></thead><tbody>` +
+        lignes
+          .map(
+            (x) =>
+              `<tr><td>${esc(x.qui)}</td><td>${esc(x.croit)}</td><td>${esc(x.verite)}</td></tr>`,
+          )
+          .join("") +
+        "</tbody></table>"
+      : "";
+  const autour = tableCroyances(k.croyancesAutour);
+  const ailleurs = tableCroyances(k.croyancesAilleurs || []);
 
   return enveloppe(
     `Consigne — ${k.identite.nom}`,
@@ -553,7 +570,8 @@ ${bloc(
     ? liste(k.croit.map((x) => `Vous croyez : ${x.croyance} — en fait : ${x.verite}`))
     : "",
 )}
-${bloc("Ce que les autres croient de faux", autour)}
+${bloc("Ce que croient de faux ceux que vous croiserez", autour)}
+${ailleurs ? bloc("En annexe — ce que croient ceux que vous ne croiserez pas", ailleurs) : ""}
 ${bloc(
   "Qui vous connaissez",
   k.contacts.length

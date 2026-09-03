@@ -345,3 +345,38 @@ suite("Le livret à plusieurs époques — les contacts suivent le rôle", () =>
   });
 });
 
+suite("La consigne PNJ — les fausses croyances devant sont celles des gens qu'il croise", () => {
+  const reseau = fauxReseau({
+    personnages: [
+      { id: "pnj", nom: "Le notaire", pj: false },
+      { id: "a", nom: "Alice" },
+      { id: "b", nom: "Bernard" },
+    ],
+  });
+  const infos = fauxInfos([
+    { id: "i1", contenu: "V1", etats: { a: "croit" }, croyances: { a: "Alice croit F1" } },
+    { id: "i2", contenu: "V2", etats: { b: "croit" }, croyances: { b: "Bernard croit F2" } },
+  ]);
+  const monde = fauxMonde({ contexte: "x" });
+
+  test("ce que croit une personne présente dans ses scènes est devant, le reste en annexe", () => {
+    const trames = fauxTrames({
+      trames: [{ id: "t", titre: "T" }],
+      situations: [{ id: "s", trameId: "t", titre: "Signature", castIds: ["pnj", "a"], debut: 10, fin: 11 }],
+    });
+    const k = consigne("pnj", { reseau, monde, infos, trames });
+    eq(k.croyancesAutour.map((x) => x.qui).join(","), "Alice");
+    eq(k.croyancesAilleurs.map((x) => x.qui).join(","), "Bernard");
+    const html = consigneHtml(k);
+    contient(html, "ceux que vous croiserez");
+    contient(html, "En annexe");
+  });
+
+  test("un PNJ sans scène voit tout devant : rien ne peut être trié", () => {
+    const k = consigne("pnj", { reseau, monde, infos, trames: fauxTrames() });
+    eq(k.croyancesAutour.length, 2);
+    eq(k.croyancesAilleurs.length, 0);
+    neContientPas(consigneHtml(k), "En annexe");
+  });
+});
+
