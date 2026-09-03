@@ -45,6 +45,7 @@
    ============================================================ */
 import { TONALITES, IMPORTANCES } from "./reseaustore.js";
 import { pic } from "./temps.js";
+import { roleDe, incarnationA, liensA } from "./epoques.js";
 
 const TRAITS_PUBLIABLES = [
   { cle: "moral", label: "Ce en quoi je crois" },
@@ -84,6 +85,48 @@ function enonceDe(i) {
   return (i.enonce || "").trim() || i.contenu || "";
 }
 
+/** Les contacts d'un livret : les liens du RÔLE, projetés sur l'époque
+    du personnage. Un lien appartient à la personne, pas à la
+    personne-en-1985 (cf. `epoques.js`) : Ange-65 a donc les contacts
+    écrits sur Ange-85, ramenés à leurs incarnations de 1965 — et un
+    contact qui n'existe pas à cette époque disparaît : Régis, mort en
+    65, n'est pas dans le livret du mariage ; Nadia, née en 61, n'est
+    pas dans celui de la planque. Sans époque, on lit les liens tels
+    quels : un GN mono-époque ne change pas. */
+function contactsDe(reseau, p) {
+  const contact = (l, autre) => ({
+    nom: autre.nom,
+    role: autre.role || "",
+    nature: (l.nature || "").trim(),
+    cle: l.tonalite,
+  });
+  // Ni `importance` ni `miroir` : ce sont des outils d'auteur.
+  if (!p.epoqueId) {
+    return reseau
+      .liensDe(p.id)
+      .map((l) => {
+        const autre = reseau.personnage(l.vers);
+        return autre ? contact(l, autre) : null;
+      })
+      .filter(Boolean);
+  }
+  const rid = roleDe(reseau, p.id);
+  const out = [];
+  const vus = new Set();
+  for (const l of liensA(reseau, p.epoqueId)) {
+    if (roleDe(reseau, l.de) !== rid) continue;
+    const autre = incarnationA(reseau, l.vers, p.epoqueId);
+    if (!autre || autre.id === p.id) continue;
+    // Deux incarnations du même rôle peuvent porter la même arête ; on
+    // ne l'imprime qu'une fois.
+    const cle = `${autre.id}|${(l.nature || "").trim()}`;
+    if (vus.has(cle)) continue;
+    vus.add(cle);
+    out.push(contact(l, autre));
+  }
+  return out;
+}
+
 /* ================= LE LIVRET ================= */
 
 export function livret(personnageId, { reseau, monde, infos, casting = null }) {
@@ -97,20 +140,7 @@ export function livret(personnageId, { reseau, monde, infos, casting = null }) {
     valeur: (p[t.cle] || "").trim(),
   })).filter((t) => t.valeur);
 
-  const contacts = reseau
-    .liensDe(p.id)
-    .map((l) => {
-      const autre = reseau.personnage(l.vers);
-      if (!autre) return null;
-      // Ni `importance` ni `miroir` : ce sont des outils d'auteur.
-      return {
-        nom: autre.nom,
-        role: autre.role || "",
-        nature: (l.nature || "").trim(),
-        cle: l.tonalite,
-      };
-    })
-    .filter(Boolean);
+  const contacts = contactsDe(reseau, p);
 
   const { sait, croit } = infos.parPersonnage(p.id);
 
