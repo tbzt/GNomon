@@ -6163,6 +6163,90 @@ main[data-actif="monde"] {
   white-space: nowrap;
 }
 
+/* Le background des autres époques, sous celui qu'on écrit : des volets
+   repliés, un par époque, en lecture. Le volet vide (pas d'incarnation)
+   se distingue : un mort n'a pas de suite, et ça se voit. */
+.autres-epoques {
+  margin-top: 14px;
+}
+.bg-epoque {
+  border: 1px solid var(--rule);
+  border-radius: 2px;
+  background: var(--surface);
+  margin-bottom: 6px;
+}
+.bg-epoque > summary {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  padding: 8px 12px;
+  cursor: pointer;
+  list-style: none;
+}
+.bg-epoque > summary::-webkit-details-marker {
+  display: none;
+}
+.bg-epoque > summary::before {
+  content: "▸";
+  color: var(--ink-faint);
+  font-size: 11px;
+}
+.bg-epoque[open] > summary::before {
+  content: "▾";
+}
+.bg-quand {
+  font-family: var(--mono);
+  font-size: 10.5px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--ink-soft);
+  white-space: nowrap;
+}
+.bg-qui {
+  font-size: 14.5px;
+  color: var(--ink);
+}
+.bg-vide .bg-qui {
+  color: var(--ink-faint);
+  font-style: italic;
+}
+.bg-ouvrir {
+  margin-left: auto;
+  font-size: 12.5px;
+  white-space: nowrap;
+}
+.bg-epoque > .bg-texte,
+.bg-epoque > .sq-note,
+.bg-epoque > .bg-sous,
+.bg-epoque > .bg-objectifs,
+.bg-epoque > .bg-style {
+  margin-left: 12px;
+  margin-right: 12px;
+}
+.bg-epoque > .bg-texte {
+  margin-top: 0;
+  border-top: 1px solid var(--rule);
+  padding-top: 10px;
+}
+.bg-sous {
+  font-family: var(--mono);
+  font-size: 10.5px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--ink-faint);
+  margin: 12px 12px 4px;
+}
+.bg-objectifs {
+  margin: 0 12px 10px;
+  padding-left: 18px;
+  font-size: 14.5px;
+}
+.bg-style {
+  font-size: 14.5px;
+  color: var(--ink-soft);
+  margin: 0 12px 12px;
+}
+
 .role-bloc {
   margin-top: 18px;
 }

@@ -50,7 +50,7 @@ import { heure } from "../core/temps.js";
 import { Mentions } from "./journal/mentions.js";
 import { LienEditeur } from "./lienediteur.js";
 import { degatsHtml } from "./degats.js";
-import { epoques as epoquesDe, epoque as epoqueDe, incarnations, roleDe } from "../core/epoques.js";
+import { epoques as epoquesDe, epoque as epoqueDe, incarnations, roleDe, roleParEpoque } from "../core/epoques.js";
 import { Utils } from "../core/utils.js";
 
 /** Réduit une image avant de l'embarquer en `data:` — une photo de
@@ -194,7 +194,7 @@ export const Fiche = {
       `<article class="fiche${p.pj ? "" : " pnj"}">` +
       this._entete(p) +
       '<div class="fiche-corps">' +
-      `<div class="fiche-gauche">${this._background(p)}${this._carnet(p)}${this._extras(p)}` +
+      `<div class="fiche-gauche">${this._background(p)}<div id="fiche-autres">${this._autresEpoques(p)}</div>${this._carnet(p)}${this._extras(p)}` +
       `<div id="fiche-liens">${this._liens(p)}</div></div>` +
       `<aside class="fiche-droite"><div id="fiche-jauge">${this._jauge(p)}</div>` +
       `<div id="fiche-role">${this._role(p)}</div>` +
@@ -214,7 +214,15 @@ export const Fiche = {
     const q = this._hote.querySelector("#fiche-squelette");
     const v = this._hote.querySelector("#fiche-vecu");
     const r = this._hote.querySelector("#fiche-role");
+    const a = this._hote.querySelector("#fiche-autres");
     if (j) j.innerHTML = this._jauge(p);
+    // Le background des autres époques n'est jamais édité ici : on peut
+    // le reconstruire sans crainte pour un curseur. On garde seulement
+    // les volets ouverts tels que l'auteur les a laissés.
+    if (a) {
+      const ouverts = new Set([...a.querySelectorAll("details[open]")].map((d) => d.dataset.inc));
+      a.innerHTML = this._autresEpoques(p, ouverts);
+    }
     if (r) {
       r.innerHTML = this._role(p);
       this._brancherRole();
@@ -649,6 +657,54 @@ export const Fiche = {
       '<div id="proposition" hidden></div>' +
       '<p class="carnet-titre">Aperçu</p>' +
       `<div class="carnet-apercu" id="apercu">${Mentions.renderText(p.background || "", this._store)}</div>` +
+      "</section>"
+    );
+  },
+
+  /* ================= le même rôle, aux autres époques =================
+     ── UN BACKGROUND PAR ÉPOQUE, LISIBLE SANS CHANGER D'ÉCRAN ──
+     Ange-85 se lit avec Ange-65 sous les yeux : ce qu'il a fait cette
+     nuit-là est la matière de ce qu'il tait vingt ans plus tard, et
+     l'auteur ne doit pas naviguer entre deux fiches pour tenir les deux.
+     Le texte des autres incarnations est montré EN LECTURE, avec ses
+     objectifs et son style ; on l'édite sur sa propre fiche, par la
+     porte. Une époque sans incarnation le dit : un mort n'a pas de
+     suite, et c'est une information. */
+
+  _autresEpoques(p, ouverts = new Set()) {
+    const l = roleParEpoque(this._store, this._monde, p.id).filter((x) => !x.courant);
+    if (!l.length) return "";
+    const blocs = l
+      .map(({ epoque, personnage: x }) => {
+        const nomE = Utils.escHtml(epoque.nom || "sans nom");
+        if (!x)
+          return (
+            `<details class="bg-epoque bg-vide" data-inc=""><summary><span class="bg-quand">${nomE}</span>` +
+            `<span class="bg-qui">pas d'incarnation à cette époque</span></summary>` +
+            '<p class="sq-note">Ce rôle n\'existe pas à cette époque — il n\'est pas encore né, ou il n\'est plus là. ' +
+            'Pour l\'y faire exister, créez le personnage et rattachez-le depuis « Le même rôle, aux autres époques ».</p></details>'
+          );
+        const objectifs = (x.objectifs || []).filter(Boolean);
+        return (
+          `<details class="bg-epoque" data-inc="${Utils.escHtml(x.id)}"${ouverts.has(x.id) ? " open" : ""}>` +
+          `<summary><span class="bg-quand">${nomE}</span><span class="bg-qui">${Utils.escHtml(x.nom || "sans nom")}` +
+          (x.role ? ` · ${Utils.escHtml(x.role)}` : "") +
+          `</span><a class="fiche-lien bg-ouvrir" href="#/fiche/${encodeURIComponent(x.id)}">ouvrir la fiche</a></summary>` +
+          (x.background
+            ? `<div class="carnet-apercu bg-texte">${Mentions.renderText(x.background, this._store)}</div>`
+            : '<p class="sq-note">Pas de background à cette époque : il s\'écrit sur sa fiche.</p>') +
+          (objectifs.length
+            ? `<p class="bg-sous">Ce qu'il cherche</p><ul class="bg-objectifs">${objectifs.map((o) => `<li>${Utils.escHtml(o)}</li>`).join("")}</ul>`
+            : "") +
+          (x.style ? `<p class="bg-sous">Comment le jouer</p><p class="bg-style">${Utils.escHtml(x.style)}</p>` : "") +
+          "</details>"
+        );
+      })
+      .join("");
+    return (
+      '<section class="autres-epoques">' +
+      '<p class="carnet-titre">Le même rôle, aux autres époques <span class="carnet-aide">en lecture · ce qu\'il a été, ou sera</span></p>' +
+      blocs +
       "</section>"
     );
   },

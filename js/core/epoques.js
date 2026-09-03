@@ -93,6 +93,22 @@ export function roles(reseauStore, mondeStore = null) {
   return out;
 }
 
+/** Le rôle d'un personnage, époque par époque : une entrée par époque
+    déclarée, dans l'ordre, avec l'incarnation qui s'y trouve ou `null`
+    quand le rôle n'y existe pas — un mort de 1965 n'a pas de 1985.
+    C'est ce que la fiche montre sous le background : le même homme, à
+    chaque moment du GN, lisible sans changer d'écran. Sans époque
+    déclarée, la liste est vide : un GN mono-époque ne voit rien. */
+export function roleParEpoque(reseauStore, mondeStore, personnageId) {
+  const rid = roleDe(reseauStore, personnageId);
+  if (!rid) return [];
+  const gens = incarnations(reseauStore, rid);
+  return epoques(mondeStore).map((e) => {
+    const p = gens.find((x) => x.epoqueId === e.id) || null;
+    return { epoque: e, personnage: p, courant: !!p && p.id === personnageId };
+  });
+}
+
 /* ================= Sièges — déclarés ================= */
 
 export function sieges(reseauStore) {

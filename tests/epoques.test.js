@@ -11,7 +11,7 @@ import { fauxReseau, fauxMonde } from "./faux.js";
 import {
   epoques, rang, roles, roleDe, incarnations,
   siegeDe, continu, comptes, anomalies, liensA, personnagesA,
-  incarnationA, projeter, grapheA,
+  incarnationA, projeter, grapheA, roleParEpoque,
 } from "../js/core/epoques.js";
 
 const MONDE = fauxMonde({
@@ -73,6 +73,28 @@ suite("Rôles — dérivés, jamais stockés", () => {
 
   test("les incarnations d'un rôle sont ordonnées par époque", () => {
     eq(incarnations(GN, "r01", MONDE).map((p) => p.nom).join(" → "), "Ange 65 → Ange 85");
+  });
+});
+
+suite("Le rôle, époque par époque — ce que la fiche lit", () => {
+  test("une entrée par époque déclarée, dans l'ordre, avec l'incarnation ou rien", () => {
+    const l = roleParEpoque(GN, MONDE, "p01");
+    eq(l.map((x) => x.epoque.nom).join(","), "1965,1985", "toutes les époques, triées");
+    eq(l[0].personnage.id, "p50", "Ange en 1965");
+    eq(l[1].personnage.id, "p01", "Ange en 1985");
+    pasOk(l[0].courant, "1965 n'est pas la fiche ouverte");
+    ok(l[1].courant, "1985 est la fiche ouverte");
+  });
+
+  test("un rôle qui n'existe qu'à une époque a une entrée vide à l'autre", () => {
+    const l = roleParEpoque(GN, MONDE, "p17");
+    eq(l.length, 2);
+    eq(l[0].personnage.id, "p17");
+    eq(l[1].personnage, null, "Antoine n'a pas de 1985");
+  });
+
+  test("sans époque déclarée, la liste est vide : un GN mono-époque ne voit rien", () => {
+    eq(roleParEpoque(GN, fauxMonde(), "p01").length, 0);
   });
 });
 
