@@ -50,6 +50,7 @@ import { heure } from "../core/temps.js";
 import { Mentions } from "./journal/mentions.js";
 import { LienEditeur } from "./lienediteur.js";
 import { degatsHtml } from "./degats.js";
+import { epoques as epoquesDe, epoque as epoqueDe, incarnations, roleDe } from "../core/epoques.js";
 import { Utils } from "../core/utils.js";
 
 /** Réduit une image avant de l'embarquer en `data:` — une photo de
@@ -134,7 +135,7 @@ export const Fiche = {
   _tCarnet: null,
   _lienOuvert: null,
 
-  monter(hote, store, personnageId, { onOuvrir = null, infos = null, trames = null } = {}) {
+  monter(hote, store, personnageId, { onOuvrir = null, infos = null, trames = null, monde = null } = {}) {
     // On quitte peut-être une fiche en cours d'écriture : la sauvegarde
     // est débouncée, donc les dernières frappes ne sont pas encore au
     // store. Les écrire AVANT de changer de personnage.
@@ -143,6 +144,9 @@ export const Fiche = {
     this._store = store;
     this._infos = infos;
     this._trames = trames;
+    // Facultatif : sans le monde, la fiche ne parle pas d'époques — et
+    // un GN à un seul moment n'en parle pas non plus.
+    this._monde = monde;
     this._id = personnageId;
     this._onOuvrir = onOuvrir;
     // L'éditeur ouvert appartenait au lien d'un AUTRE personnage.
@@ -193,6 +197,7 @@ export const Fiche = {
       `<div class="fiche-gauche">${this._background(p)}${this._carnet(p)}${this._extras(p)}` +
       `<div id="fiche-liens">${this._liens(p)}</div></div>` +
       `<aside class="fiche-droite"><div id="fiche-jauge">${this._jauge(p)}</div>` +
+      `<div id="fiche-role">${this._role(p)}</div>` +
       `<div id="fiche-squelette">${this._squelette(p)}</div>` +
       `<div id="fiche-vecu">${this._vecu(p)}</div>${this._champs(p)}</aside>` +
       "</div></article>";
@@ -208,7 +213,14 @@ export const Fiche = {
     const l = this._hote.querySelector("#fiche-liens");
     const q = this._hote.querySelector("#fiche-squelette");
     const v = this._hote.querySelector("#fiche-vecu");
+    const r = this._hote.querySelector("#fiche-role");
     if (j) j.innerHTML = this._jauge(p);
+    if (r) {
+      r.innerHTML = this._role(p);
+      this._brancherRole();
+    }
+    const se = this._hote.querySelector(".fiche-epoque");
+    if (se && document.activeElement !== se) se.value = p.epoqueId || "";
     if (q) q.innerHTML = this._squelette(p);
     if (v) {
       v.innerHTML = this._vecu(p);
@@ -246,10 +258,152 @@ export const Fiche = {
       '<div class="fiche-meta">' +
       `<input class="fiche-role" value="${Utils.escHtml(p.role)}" placeholder="Métier ou fonction…" aria-label="Métier ou fonction" />` +
       `<select class="fiche-fonction" aria-label="Fonction narrative"><option value="">— fonction narrative —</option>${opts}</select>` +
+      this._selectEpoque(p) +
       `<label class="bascule"><input type="checkbox" class="fiche-pj"${p.pj ? " checked" : ""} /> PJ</label>` +
       `<label class="bascule"><input type="checkbox" class="fiche-surprise"${p.surprise ? " checked" : ""} /> Surprise en réserve</label>` +
       "</div></div></div></header>"
     );
+  },
+
+  /* ================= l'époque et le rôle =================
+     Un GN à un seul moment ne déclare aucune époque, et la fiche n'en
+     montre rien : ni sélecteur, ni bloc. Dès que le monde en déclare,
+     chaque fiche dit QUAND elle se situe, et QUI elle est à travers le
+     temps — les autres incarnations du même rôle, avec la porte pour
+     déclarer « c'est la même personne » sans passer par le casting.
+     Le siège, lui, reste au casting : c'est une décision de distribution,
+     pas d'écriture. */
+
+  _epoques() {
+    return this._monde ? epoquesDe(this._monde) : [];
+  },
+
+  /** Le sélecteur d'époque, ou rien. Une époque inconnue du monde reste
+      proposée telle quelle : la retirer en silence changerait la fiche
+      sous les yeux de l'auteur. */
+  _selectEpoque(p) {
+    const l = this._epoques();
+    if (!l.length) return "";
+    const connue = l.some((e) => e.id === p.epoqueId);
+    return (
+      '<select class="fiche-epoque" aria-label="Époque">' +
+      '<option value="">— toutes les époques —</option>' +
+      l
+        .map(
+          (e) =>
+            `<option value="${Utils.escHtml(e.id)}"${p.epoqueId === e.id ? " selected" : ""}>${Utils.escHtml(e.nom || "sans nom")}</option>`,
+        )
+        .join("") +
+      (p.epoqueId && !connue
+        ? `<option value="${Utils.escHtml(p.epoqueId)}" selected>époque inconnue (${Utils.escHtml(p.epoqueId)})</option>`
+        : "") +
+      "</select>"
+    );
+  },
+
+  _nomEpoque(id) {
+    if (!id) return "";
+    const e = epoqueDe(this._monde, id);
+    return e ? e.nom || "sans nom" : "époque inconnue";
+  },
+
+  /** Le rôle à travers les époques : les autres incarnations, et la
+      porte pour en rattacher une. Dérivé de `roleId`, jamais d'une table. */
+  _role(p) {
+    if (!this._epoques().length) return "";
+    const rid = roleDe(this._store, p.id);
+    const autres = incarnations(this._store, rid, this._monde).filter((x) => x.id !== p.id);
+    // Un rôle n'a qu'une incarnation par époque : on ne propose donc que
+    // les gens d'une AUTRE époque, ou sans époque. La liste reste
+    // lisible, et on ne peut pas déclarer une impossibilité.
+    const candidats = this._store
+      .personnages()
+      .filter(
+        (x) =>
+          x.id !== p.id &&
+          roleDe(this._store, x.id) !== rid &&
+          !(p.epoqueId && x.epoqueId && x.epoqueId === p.epoqueId),
+      )
+      .sort((a, b) => a.nom.localeCompare(b.nom, "fr"));
+
+    const lignes = autres
+      .map(
+        (x) =>
+          `<li><a class="fiche-lien" href="#/fiche/${encodeURIComponent(x.id)}">${Utils.escHtml(x.nom || "sans nom")}</a>` +
+          `<span class="inc-epoque">${Utils.escHtml(this._nomEpoque(x.epoqueId) || "toutes les époques")}</span>` +
+          `<button type="button" data-separer="${Utils.escHtml(x.id)}" title="Ce n'est pas la même personne">✕</button></li>`,
+      )
+      .join("");
+
+    return (
+      '<div class="role-bloc">' +
+      `<p class="jauge-titre"><span>Le même rôle, aux autres époques</span><span class="jauge-score">${autres.length}</span></p>` +
+      (autres.length
+        ? `<ul class="incarnations">${lignes}</ul>`
+        : '<p class="sq-note">Personne d\'autre : ce personnage n\'existe qu\'à son époque, ou ses autres incarnations ne sont pas encore rattachées.</p>') +
+      // Un JSON importé porte souvent la même personne deux fois, sous le
+      // même nom, une par époque. On propose ces homonymes d'un clic
+      // plutôt que de les faire chercher dans une liste de soixante.
+      this._homonymes(p, candidats) +
+      (candidats.length
+        ? '<label class="role-meme"><span>C\'est la même personne que</span>' +
+          '<select data-meme aria-label="Rattacher à un rôle"><option value="">— choisir —</option>' +
+          candidats
+            .map(
+              (x) =>
+                `<option value="${Utils.escHtml(x.id)}">${Utils.escHtml(x.nom || "sans nom")}` +
+                (x.epoqueId ? ` (${Utils.escHtml(this._nomEpoque(x.epoqueId))})` : "") +
+                "</option>",
+            )
+            .join("") +
+          "</select></label>"
+        : "") +
+      "</div>"
+    );
+  },
+
+  _homonymes(p, candidats) {
+    const cle = (n) => Utils.searchNorm(n).trim();
+    const memes = candidats.filter((x) => cle(x.nom) && cle(x.nom) === cle(p.nom));
+    if (!memes.length) return "";
+    return (
+      '<div class="role-homonymes">' +
+      memes
+        .map(
+          (x) =>
+            `<button type="button" data-meme-que="${Utils.escHtml(x.id)}">` +
+            `Même personne que ${Utils.escHtml(x.nom)}` +
+            (x.epoqueId ? ` (${Utils.escHtml(this._nomEpoque(x.epoqueId))})` : "") +
+            "</button>",
+        )
+        .join("") +
+      "</div>"
+    );
+  },
+
+  _brancherRole() {
+    const bloc = this._hote.querySelector("#fiche-role");
+    if (!bloc) return;
+    for (const b of bloc.querySelectorAll("[data-meme-que]"))
+      b.addEventListener("click", () => this._store.fusionnerRoles(b.dataset.memeQue, this._id));
+    const sel = bloc.querySelector("[data-meme]");
+    if (sel)
+      sel.addEventListener("change", () => {
+        if (!sel.value) return;
+        // L'autre est la référence : on rattache CETTE fiche à une
+        // identité déjà écrite, jamais l'inverse (cf. `fusionnerRoles`).
+        this._store.fusionnerRoles(sel.value, this._id);
+      });
+    for (const b of bloc.querySelectorAll("[data-separer]"))
+      b.addEventListener("click", () => {
+        // Celui des deux qui n'est pas la référence du rôle s'en détache :
+        // la référence garde son identité pour tous les autres.
+        const moi = this._store.personnage(this._id);
+        const autre = this._store.personnage(b.dataset.separer);
+        if (!moi || !autre) return;
+        const qui = moi.roleId && moi.roleId !== moi.id ? moi.id : autre.id;
+        this._store.majPersonnage(qui, { roleId: null });
+      });
   },
 
   _jauge(p) {
@@ -572,14 +726,48 @@ export const Fiche = {
 
   _liens(p) {
     const liens = this._store.liensDe(p.id);
-    if (!liens.length)
-      return '<p class="liens-vide">Aucun contact déclaré. Mentionnez quelqu\'un dans le carnet.</p>';
+    const sortants = !liens.length
+      ? '<p class="liens-vide">Aucun contact déclaré. Mentionnez quelqu\'un dans le carnet.</p>'
+      : '<p class="carnet-titre">Ses contacts' +
+        `<span class="carnet-aide">ce que ${Utils.escHtml(p.nom)} déclare — le lien est orienté · le nom ouvre la fiche</span></p>` +
+        '<ul class="liens">' +
+        liens.map((l) => this._ligneLien(l)).join("") +
+        "</ul>";
+    return sortants + this._declarants(p);
+  },
+
+  /** Ceux qui le déclarent — les liens ENTRANTS. Ils ne s'éditent pas
+      ici (le lien appartient à qui le déclare), mais ils se lisent et
+      s'ouvrent : on passe de fiche en fiche sans repasser par le réseau. */
+  _declarants(p) {
+    const entrants = this._store.liensTouchant(p.id).filter((l) => l.vers === p.id);
+    if (!entrants.length) return "";
     return (
-      '<p class="carnet-titre">Ses contacts' +
-      `<span class="carnet-aide">ce que ${Utils.escHtml(p.nom)} déclare — le lien est orienté</span></p>` +
-      '<ul class="liens">' +
-      liens.map((l) => this._ligneLien(l)).join("") +
+      '<p class="carnet-titre" style="margin-top:14px">Ceux qui le déclarent' +
+      "<span class=\"carnet-aide\">ce que les autres disent de lui — se règle sur leur fiche</span></p>" +
+      '<ul class="declarants">' +
+      entrants
+        .map((l) => {
+          const de = this._store.personnage(l.de);
+          return (
+            `<li class="t-${l.tonalite}">` +
+            (de ? this._nomLie(de) : "<b>?</b>") +
+            `<span class="nature">${Utils.escHtml(l.nature) || "—"}</span>` +
+            `<span class="tags">${TONALITES[l.tonalite]} · ${IMPORTANCES[l.importance]}</span></li>`
+          );
+        })
+        .join("") +
       "</ul>"
+    );
+  },
+
+  /** Le nom d'un personnage lié, cliquable, avec son époque si le GN en
+      a plusieurs — un contact d'une autre époque se voit tout de suite. */
+  _nomLie(x) {
+    const ep = this._epoques().length && x.epoqueId ? this._nomEpoque(x.epoqueId) : "";
+    return (
+      `<a class="fiche-lien" href="#/fiche/${encodeURIComponent(x.id)}"><b>${Utils.escHtml(x.nom || "sans nom")}</b></a>` +
+      (ep ? `<span class="lien-epoque">${Utils.escHtml(ep)}</span>` : "")
     );
   },
 
@@ -591,7 +779,7 @@ export const Fiche = {
     return (
       `<li class="lien t-${l.tonalite} i-${l.importance}${ouvert ? " ouvert" : ""}">` +
       `<span class="fleche" title="${sym ? "réciproque à l'identique" : retour ? "réciproque, mais différent" : "aucun lien de retour"}">${sym ? "⇄" : retour ? "⇄̸" : "→"}</span>` +
-      `<span class="lien-qui"><b>${Utils.escHtml(cible ? cible.nom : "?")}</b>` +
+      `<span class="lien-qui">${cible ? this._nomLie(cible) : "<b>?</b>"}` +
       (l.miroir ? ' <span class="miroir" title="contact-miroir">◎</span>' : "") +
       "</span>" +
       `<span class="nature">${Utils.escHtml(l.nature) || "—"}</span>` +
@@ -693,6 +881,9 @@ export const Fiche = {
       maj({ fonction: e.target.value || null }),
     );
     q(".fiche-pj").addEventListener("change", (e) => maj({ pj: e.target.checked }));
+    const se = q(".fiche-epoque");
+    if (se) se.addEventListener("change", (e) => maj({ epoqueId: e.target.value || null }));
+    this._brancherRole();
     q(".fiche-surprise").addEventListener("change", (e) => maj({ surprise: e.target.checked }));
 
     for (const ta of this._hote.querySelectorAll("[data-champ]"))

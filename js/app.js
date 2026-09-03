@@ -439,6 +439,8 @@ export const App = {
       // Pour « ce qu'il vit » : les scènes qu'il porte, ce qu'il peut y
       // apprendre, et ce que son absence coûterait.
       trames: TrameStore,
+      // Pour l'époque et le rôle — muets tant que le monde n'en déclare pas.
+      monde: MondeStore,
     });
     if (!silencieux) location.hash = `#/fiche/${id}`;
   },

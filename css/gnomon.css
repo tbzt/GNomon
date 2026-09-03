@@ -6088,3 +6088,142 @@ main[data-actif="monde"] {
 .siege-gens {
   color: var(--douce, #56646d);
 }
+
+
+/* ── La fiche à travers les époques ──
+   Le sélecteur et le bloc du rôle n'existent que si le monde déclare
+   des époques : un GN à un seul moment ne voit rien de tout ceci. */
+.fiche-epoque {
+  font-family: var(--mono);
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--ink-soft);
+  background: var(--surface);
+  border: 1px solid var(--rule);
+  border-radius: 2px;
+  padding: 5px 8px;
+}
+
+/* Le nom d'un personnage lié ouvre sa fiche : on navigue de fiche en
+   fiche sans repasser par le réseau. Souligné seulement au survol, pour
+   que la liste des contacts reste lisible comme une liste. */
+.fiche-lien {
+  color: inherit;
+  text-decoration: none;
+  border-bottom: 1px dotted var(--ink-faint);
+}
+.fiche-lien:hover,
+.fiche-lien:focus-visible {
+  color: var(--accent);
+  border-bottom-color: var(--accent);
+  outline: none;
+}
+
+.lien-epoque,
+.inc-epoque {
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  color: var(--ink-faint);
+  margin-left: 6px;
+  white-space: nowrap;
+}
+
+.declarants {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 1px;
+  background: var(--rule);
+  border: 1px solid var(--rule);
+  border-radius: 2px;
+}
+.declarants li {
+  display: grid;
+  grid-template-columns: minmax(130px, auto) 1fr auto;
+  gap: 10px;
+  align-items: baseline;
+  background: var(--surface);
+  padding: 7px 11px;
+  font-size: 15px;
+}
+.declarants .nature {
+  color: var(--ink-soft);
+  font-size: 14.5px;
+}
+.declarants .tags {
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  color: var(--ink-faint);
+  white-space: nowrap;
+}
+
+.role-bloc {
+  margin-top: 18px;
+}
+.incarnations {
+  list-style: none;
+  margin: 0 0 10px;
+  padding: 0;
+  display: grid;
+  gap: 4px;
+}
+.incarnations li {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  padding: 5px 0;
+  border-bottom: 1px solid var(--rule);
+  font-size: 14.5px;
+}
+.incarnations li button {
+  margin-left: auto;
+  font-size: 9.5px;
+  padding: 3px 7px;
+}
+.role-meme {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  margin-top: 8px;
+}
+.role-meme span {
+  font-family: var(--mono);
+  font-size: 10.5px;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  color: var(--ink-faint);
+}
+.role-meme select {
+  font: inherit;
+  font-size: 13.5px;
+  padding: 4px 6px;
+  border: 1px solid var(--rule);
+  border-radius: 2px;
+  background: var(--surface);
+  color: var(--ink);
+}
+.role-homonymes {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 8px;
+}
+.role-homonymes button {
+  font-size: 12px;
+  padding: 4px 9px;
+  border: 1px solid var(--accent);
+  color: var(--accent);
+  background: transparent;
+  border-radius: 2px;
+  cursor: pointer;
+}
+.role-homonymes button:hover {
+  background: var(--accent);
+  color: var(--surface);
+}
