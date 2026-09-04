@@ -123,6 +123,10 @@ export const Monde = {
   _liens: null,
   _reseau: null,
   _tSave: null,
+  /* L'époque dont on montre les puces sous un interrupteur. `null` :
+     pas encore choisie — on prend la dernière déclarée, parce que c'est
+     à ceux du lendemain qu'on dit la valeur jouée. `""` : toutes. */
+  _epoqueInter: null,
 
   /** `reseau` ne sert qu'aux interrupteurs : nommer qui est touché.
       Sans lui, la section se rend avec des identifiants — jamais vide. */
@@ -218,22 +222,45 @@ export const Monde = {
     return p ? p.nom : id;
   },
 
+  _epoqueInterCourante() {
+    const ep = this._store.epoques ? this._store.epoques() : [];
+    if (!ep.length) return "";
+    if (this._epoqueInter === null) return ep[ep.length - 1].id;
+    return ep.some((e) => e.id === this._epoqueInter) ? this._epoqueInter : "";
+  },
+
   _interrupteurs() {
     const l = this._store.interrupteurs ? this._store.interrupteurs() : [];
     if (!l.length)
       return '<p class="liens-vide">Aucun interrupteur. Un GN joué en une seule session n\'en a pas besoin.</p>';
     const gens = this._reseau && this._reseau.personnages ? this._reseau.personnages() : [];
+    const ep = this._store.epoques ? this._store.epoques() : [];
+    const nomEpoque = (id) => (ep.find((e) => e.id === id) || {}).nom || "";
+    const filtre = this._epoqueInterCourante();
+    // Le filtre : un GN à deux époques a deux fois chaque rôle, et les
+    // puces des deux ne se distinguent pas par le prénom. On montre une
+    // époque à la fois — ceux déjà cochés restent visibles quoi qu'il
+    // arrive, sinon on ne pourrait plus les décocher.
+    const choix = ep.length
+      ? '<p class="inter-filtre"><label>Puces de l\'époque ' +
+        `<select data-inter-epoque><option value=""${filtre === "" ? " selected" : ""}>toutes</option>` +
+        ep.map((e) => `<option value="${e.id}"${filtre === e.id ? " selected" : ""}>${Utils.escHtml(e.nom || "sans nom")}</option>`).join("") +
+        "</select></label></p>"
+      : "";
     return (
+      choix +
       '<ul class="lieux interrupteurs">' +
       l
         .map((x) => {
           const dedans = new Set(x.toucheIds || []);
+          const visibles = gens.filter((p) => !filtre || !p.epoqueId || p.epoqueId === filtre || dedans.has(p.id));
           const puces = gens.length
-            ? gens
+            ? visibles
                 .map(
                   (p) =>
-                    `<button type="button" class="cast-puce${dedans.has(p.id) ? " dedans" : ""}" data-inter-touche="${x.id}" data-p="${p.id}" title="${Utils.escHtml(p.nom)}">` +
-                    `${Utils.escHtml(p.nom.split(" ")[0])}</button>`,
+                    `<button type="button" class="cast-puce${dedans.has(p.id) ? " dedans" : ""}" data-inter-touche="${x.id}" data-p="${p.id}" ` +
+                    `title="${Utils.escHtml(p.nom + (p.epoqueId ? " · " + nomEpoque(p.epoqueId) : ""))}">` +
+                    `${Utils.escHtml(p.nom.split(" ")[0])}${!filtre && p.epoqueId ? `<small> ${Utils.escHtml(nomEpoque(p.epoqueId))}</small>` : ""}</button>`,
                 )
                 .join("")
             : (x.toucheIds || []).map((id) => `<span class="cast-puce dedans">${Utils.escHtml(this._nomDe(id))}</span>`).join("");
@@ -268,6 +295,12 @@ export const Monde = {
     champ("q", "question");
     champ("d", "defaut");
     champ("n", "note");
+    const sel = this._hote.querySelector("[data-inter-epoque]");
+    if (sel)
+      sel.addEventListener("change", () => {
+        this._epoqueInter = sel.value;
+        rendre();
+      });
     for (const b of this._hote.querySelectorAll("[data-inter-touche]"))
       b.addEventListener("click", () => {
         this._store.basculerTouche(b.dataset.interTouche, b.dataset.p);
@@ -513,7 +546,12 @@ export const Monde = {
         const m = this._store.monde();
         telecharger(
           "feuille-de-2h.md",
-          feuilleDe2h({ titre: m.titre, interrupteurs: this._store.interrupteurs(), reseau: this._reseau }),
+          feuilleDe2h({
+            titre: m.titre,
+            interrupteurs: this._store.interrupteurs(),
+            reseau: this._reseau,
+            epoques: this._store.epoques ? this._store.epoques() : [],
+          }),
           "text/markdown",
         );
       });

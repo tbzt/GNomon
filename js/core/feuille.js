@@ -16,10 +16,16 @@
    interrupteurs et un lecteur de noms entrent, un texte sort.
    ============================================================ */
 
-export function feuilleDe2h({ titre = "", interrupteurs = [], reseau = null } = {}) {
+export function feuilleDe2h({ titre = "", interrupteurs = [], reseau = null, epoques = [] } = {}) {
+  // Un rôle qui traverse deux époques a deux noms identiques : on dit à
+  // laquelle on parle, sinon « Marcel Vidal » ne désigne pas la bonne
+  // personne le samedi matin.
+  const epoqueDe = (id) => (epoques.find((e) => e && e.id === id) || {}).nom || "";
   const nomDe = (id) => {
     const p = reseau && reseau.personnage ? reseau.personnage(id) : null;
-    return p ? p.nom : "personnage supprimé";
+    if (!p) return "personnage supprimé";
+    const e = p.epoqueId ? epoqueDe(p.epoqueId) : "";
+    return e ? `${p.nom} (${e})` : p.nom;
   };
   const out = [`# Feuille de 2 h${titre ? " — " + titre : ""}`, ""];
   out.push(

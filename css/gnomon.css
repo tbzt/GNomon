@@ -4009,6 +4009,21 @@ main[data-actif="monde"] {
   font-size: 9.5px;
   padding: 3px 7px;
 }
+.interrupteurs .inter-touche .cast-puce small {
+  font-size: 8px;
+  opacity: 0.7;
+}
+.inter-filtre {
+  font-family: var(--mono);
+  font-size: 10.5px;
+  letter-spacing: 0.04em;
+  color: var(--ink-faint);
+  margin: 0 0 8px;
+}
+.inter-filtre select {
+  font-size: 11px;
+  margin-left: 4px;
+}
 
 .lieux input.lieu-prive {
   border-style: dashed;

@@ -232,6 +232,22 @@ suite("Jouabilité — conclusions et interrupteurs", () => {
     contient(md, "Valeur jouée");
   });
 
+  test("la feuille dit à quelle époque elle parle", () => {
+    const reseau = fauxReseau({
+      personnages: [
+        { id: "m65", nom: "Marcel Vidal", epoqueId: "e65" },
+        { id: "m85", nom: "Marcel Vidal", epoqueId: "e85" },
+      ],
+    });
+    const md = feuilleDe2h({
+      interrupteurs: [{ id: "k1", question: "Q ?", defaut: "", note: "", toucheIds: ["m85"] }],
+      reseau,
+      epoques: [{ id: "e65", nom: "1965", ordre: 0 }, { id: "e85", nom: "1985", ordre: 1 }],
+    });
+    contient(md, "Marcel Vidal (1985)");
+    neContientPas(md, "Marcel Vidal (1965)");
+  });
+
   test("sans interrupteur, la feuille le dit", () => {
     contient(feuilleDe2h({ interrupteurs: [] }), "Aucun interrupteur");
   });
