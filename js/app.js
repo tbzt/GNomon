@@ -314,8 +314,21 @@ export const App = {
         ? `<span class="fil-ariane"><button type="button" data-ecran="reseau">Le réseau</button>` +
           `<span class="fil-sep">›</span>${Utils.escHtml(this._titre || "")}</span>`
         : "";
-    sous.innerHTML = onglets + fil;
-    sous.hidden = !mode || (mode.ecrans.length < 2 && !fil);
+    // ── L'ÉPOQUE, UNE FOIS POUR TOUS LES ÉCRANS ──
+    // Un GN à plusieurs époques se regarde à un moment : la liste, le
+    // graphe, la matrice, la conscience, la frise lisent le store à
+    // cette époque. Le sélecteur est ici, et nulle part deux fois.
+    const epoques = MondeStore.epoques();
+    const courante = ReseauStore.epoqueCourante();
+    const selEpoque = epoques.length
+      ? '<label class="epoque-globale">Époque <select id="epoque-globale" aria-label="Époque regardée">' +
+        epoques
+          .map((e) => `<option value="${Utils.escHtml(e.id)}"${e.id === courante ? " selected" : ""}>${Utils.escHtml(e.nom || "sans nom")}</option>`)
+          .join("") +
+        "</select></label>"
+      : "";
+    sous.innerHTML = onglets + fil + selEpoque;
+    sous.hidden = !mode || (mode.ecrans.length < 2 && !fil && !selEpoque);
 
     // Le balayage reste borné aux deux conteneurs qu'on vient de
     // réécrire : leurs boutons sont neufs, donc sans écouteur. Un
@@ -328,6 +341,14 @@ export const App = {
       });
     for (const b of sous.querySelectorAll("[data-ecran]"))
       b.addEventListener("click", () => this._aller(b.dataset.ecran));
+    const se = sous.querySelector("#epoque-globale");
+    if (se)
+      se.addEventListener("change", () => {
+        ReseauStore.reglerEpoque(se.value || null);
+        // La fiche change de facette : elle se relit entière. Les
+        // autres écrans se re-projettent sur l'événement du store.
+        if (this._ecran === "fiche") Fiche.rendre();
+      });
   },
 
   _aller(ecran) {
@@ -478,7 +499,7 @@ export const App = {
     }
     this._quitter();
     this._basculer("matrice", "Qui sait quoi");
-    Matrice.monter(this._hotes.matrice, InformationStore, ReseauStore, TrameStore);
+    Matrice.monter(this._hotes.matrice, InformationStore, ReseauStore, TrameStore, MondeStore);
     if (!silencieux) location.hash = "#/informations";
   },
 
@@ -606,6 +627,13 @@ export const App = {
   /* ---------------- réactions ---------------- */
 
   _surChangement() {
+    // L'époque a pu changer depuis une fiche ou une carte : le
+    // sélecteur global dit toujours celle que lit le store.
+    const se = document.getElementById("epoque-globale");
+    if (se) {
+      const courante = ReseauStore.epoqueCourante() || "";
+      if (se.value !== courante) se.value = courante;
+    }
     if (this._ecran === "fiche") {
       Fiche.rafraichirDerives();
       const p = ReseauStore.personnage(Fiche.personnageId());

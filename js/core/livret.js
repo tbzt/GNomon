@@ -57,6 +57,7 @@
    ============================================================ */
 import { TONALITES, IMPORTANCES } from "./reseaustore.js";
 import { pic } from "./temps.js";
+import { epoque as epoqueDe } from "./epoques.js";
 
 
 const TRAITS_PUBLIABLES = [
@@ -135,6 +136,8 @@ export function livret(personnageId, { reseau, monde, infos, casting = null }, e
   if (!p) return null;
 
   const groupe = p.groupeId ? reseau.groupe(p.groupeId) : null;
+  const ep = p.epoqueId || null;
+  const nomEpoque = ep ? (epoqueDe(monde, ep) || {}).nom || "" : "";
 
   const traits = TRAITS_PUBLIABLES.map((t) => ({
     label: t.label,
@@ -143,10 +146,11 @@ export function livret(personnageId, { reseau, monde, infos, casting = null }, e
 
   const contacts = contactsDe(reseau, p);
 
-  const { sait, croit } = infos.parPersonnage(p.id);
+  // Ce qu'il sait À CETTE ÉPOQUE : les exceptions datées comptent.
+  const { sait, croit } = infos.parPersonnage(p.id, ep);
 
   /* ── LE POINT CRITIQUE ── une croyance sort SEULE. */
-  const croyances = croit.map((i) => (infos.croyance(i.id, p.id) || "").trim());
+  const croyances = croit.map((i) => (infos.croyance(i.id, p.id, ep) || "").trim());
 
   const avertissements = [];
   if (!(p.background || "").trim())
@@ -159,7 +163,7 @@ export function livret(personnageId, { reseau, monde, infos, casting = null }, e
       );
   });
   croit.forEach((i) => {
-    if (!(infos.croyance(i.id, p.id) || "").trim())
+    if (!(infos.croyance(i.id, p.id, ep) || "").trim())
       avertissements.push(
         `« ${i.contenu || "une information"} » : le personnage croit autre chose, mais ce qu'il ` +
           "croit n'est pas écrit — il arriverait sans le savoir.",
@@ -183,6 +187,10 @@ export function livret(personnageId, { reseau, monde, infos, casting = null }, e
       nom: p.nom,
       role: p.role || "",
       groupe: groupe ? groupe.nom : "",
+      // L'époque du livret, nommée : un rôle qui traverse le GN a un
+      // livret par époque, et le joueur doit savoir lequel il tient.
+      epoque: nomEpoque,
+      epoqueId: ep,
       portrait: p.portrait || "",
       joueur: casting ? etiquetteJoueur(casting, p.id) : "",
     },
@@ -331,12 +339,23 @@ function etiquetteJoueur(casting, personnageId) {
   return c ? c.label : "";
 }
 
-export function tousLesLivrets(stores) {
-  return stores.reseau.pj().map((p) => livret(p.id, stores)).filter(Boolean);
+/** Les gens de l'époque regardée : un rôle absent d'une époque n'y a
+    pas de livret à tenir. Sans époque, tout le monde. */
+function presents(reseau, gens, epoqueId) {
+  const ep = epoqueId === undefined ? (reseau.epoqueCourante ? reseau.epoqueCourante() : null) : epoqueId;
+  return ep && reseau.existeA ? gens.filter((p) => reseau.existeA(p.id, ep)) : gens;
 }
 
-export function toutesLesConsignes(stores) {
-  return stores.reseau.pnj().map((p) => consigne(p.id, stores)).filter(Boolean);
+export function tousLesLivrets(stores, epoqueId = undefined) {
+  return presents(stores.reseau, stores.reseau.pj(epoqueId), epoqueId)
+    .map((p) => livret(p.id, stores, epoqueId))
+    .filter(Boolean);
+}
+
+export function toutesLesConsignes(stores, epoqueId = undefined) {
+  return presents(stores.reseau, stores.reseau.pnj(epoqueId), epoqueId)
+    .map((p) => consigne(p.id, stores, epoqueId))
+    .filter(Boolean);
 }
 
 /* ================= Rendus ================= */
@@ -491,7 +510,7 @@ export function livretHtml(l) {
   <div>
   ${c.titre ? `<p class="sur">${esc(c.titre)}</p>` : ""}
   <h1>${esc(l.identite.nom)}</h1>
-  <p class="role">${[l.identite.role, l.identite.groupe].filter(Boolean).map(esc).join(" · ")}</p>
+  <p class="role">${[l.identite.epoque, l.identite.role, l.identite.groupe].filter(Boolean).map(esc).join(" · ")}</p>
   </div>
 </header>
 ${cadreHtml(c)}
@@ -713,7 +732,7 @@ export function livretMarkdown(l) {
   const c = l.cadre;
   if (c.titre) out.push(`# ${c.titre}`);
   out.push(`## ${l.identite.nom}`);
-  const sous = [l.identite.role, l.identite.groupe].filter(Boolean).join(" · ");
+  const sous = [l.identite.epoque, l.identite.role, l.identite.groupe].filter(Boolean).join(" · ");
   if (sous) out.push(`*${sous}*`);
   const sect = (t, corps) => {
     if (corps && corps.length) out.push("", `### ${t}`, "", ...[].concat(corps));

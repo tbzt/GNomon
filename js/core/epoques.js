@@ -106,6 +106,31 @@ export function personnagesA(reseauStore, epoqueId) {
   return epoqueId ? gens.filter((p) => existe(reseauStore, p.id, epoqueId)) : gens;
 }
 
+/** L'époque d'une scène : la sienne, sinon celle de sa trame. Un faux
+    store sans `epoqueDe` lit le champ. */
+export function epoqueDeScene(tramesStore, s) {
+  if (typeof tramesStore.epoqueDe === "function") return tramesStore.epoqueDe(s.id);
+  return s.epoqueId || null;
+}
+
+/** Les scènes qui se jouent à une époque : celles qui la portent, et
+    celles qui n'en portent aucune. Sans époque demandée, toutes. */
+export function situationsA(tramesStore, epoqueId) {
+  const toutes = tramesStore.situations();
+  if (!epoqueId) return toutes;
+  return toutes.filter((s) => {
+    const e = epoqueDeScene(tramesStore, s);
+    return !e || e === epoqueId;
+  });
+}
+
+/** L'époque à laquelle un calcul se fait : celle qu'on donne, sinon la
+    courante du store, sinon aucune. */
+export function epoqueDeCalcul(reseauStore, epoqueId) {
+  if (epoqueId !== undefined) return epoqueId || null;
+  return typeof reseauStore.epoqueCourante === "function" ? reseauStore.epoqueCourante() || null : null;
+}
+
 /* ================= Sièges — déclarés ================= */
 
 export function sieges(reseauStore) {

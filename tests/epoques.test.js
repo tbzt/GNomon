@@ -7,11 +7,13 @@
    sans jamais devenir deux personnages.
    ============================================================ */
 import { suite, test, eq, ok, pasOk, contient } from "./harnais.js";
-import { fauxReseau, fauxMonde } from "./faux.js";
+import { fauxReseau, fauxMonde, fauxTrames, fauxInfos } from "./faux.js";
+import { conscience } from "../js/core/conscience.js";
+import { pointDeVue } from "../js/core/pointdevue.js";
 import {
   epoques, rang, ordre, roles, roleDe, incarnations,
   siegeDe, continu, comptes, anomalies, liensA, personnagesA,
-  incarnationA, projeter, grapheA, roleParEpoque, epoquesDe,
+  incarnationA, projeter, grapheA, roleParEpoque, epoquesDe, situationsA,
 } from "../js/core/epoques.js";
 
 const MONDE = fauxMonde({
@@ -244,5 +246,58 @@ suite("Un GN mono-époque ne voit rien changer", () => {
 
   test("tous les liens restent visibles", () => {
     eq(liensA(simple, "peu importe").length, 1);
+  });
+});
+
+suite("Les calculs à une époque", () => {
+  const trames = fauxTrames({
+    trames: [
+      { id: "t65", titre: "1965", epoqueId: "e65" },
+      { id: "t85", titre: "1985", epoqueId: "e85" },
+    ],
+    situations: [
+      { id: "s65", trameId: "t65", titre: "La planque", pointDeVueId: "p01", castIds: ["p01", "p17"] },
+      { id: "s85", trameId: "t85", titre: "La file", pointDeVueId: "p13", castIds: ["p01", "p13"] },
+      { id: "sx", trameId: null, titre: "Sans époque", pointDeVueId: "p01", castIds: ["p01"] },
+    ],
+  });
+  const infos = fauxInfos([
+    { id: "i1", contenu: "le sac", etats: { p01: "sait" }, etatsParEpoque: { e65: { p01: "croit" } }, croyancesParEpoque: { e65: { p01: "parti" } } },
+  ]);
+
+  test("les scènes d'une époque : les siennes, et celles sans époque", () => {
+    eq(situationsA(trames, "e65").map((s) => s.id).join(), "s65,sx");
+    eq(situationsA(trames, "e85").map((s) => s.id).join(), "s85,sx");
+    eq(situationsA(trames, null).length, 3);
+  });
+
+  test("la conscience ne juge que les gens de l'époque, sur les scènes de l'époque", () => {
+    const r65 = conscience(GN, trames, infos, "e65");
+    const heros65 = r65.find((r) => r.cle === "heros").alertes.map((a) => a.nom);
+    pasOk(heros65.includes("Daniel"), "Daniel n'existe pas en 1965 : on ne lui reproche rien");
+    ok(heros65.includes("Antoine"), "Antoine ne porte aucune scène de 1965");
+    const r85 = conscience(GN, trames, infos, "e85");
+    const heros85 = r85.find((r) => r.cle === "heros").alertes.map((a) => a.nom);
+    pasOk(heros85.includes("Daniel"), "Daniel porte « La file » en 1985");
+    pasOk(heros85.includes("Antoine"), "Antoine n'est pas de 1985");
+  });
+
+  test("« personne n'est seul » lit les liens de l'époque", () => {
+    const seuls65 = conscience(GN, trames, infos, "e65").find((r) => r.cle === "seul").alertes.map((a) => a.nom);
+    ok(seuls65.includes("Ange Sarti"), "en 1965 personne ne déclare Ange primaire");
+  });
+
+  test("le point de vue lit les scènes et le savoir de l'époque", () => {
+    const v65 = pointDeVue("p01", { reseau: GN, trames, infos }, "e65");
+    eq(v65.situations.map((s) => s.id).join(), "s65,sx");
+    eq(v65.croit.length, 1, "en 1965 Ange croit que le sac est parti");
+    const v85 = pointDeVue("p01", { reseau: GN, trames, infos }, "e85");
+    eq(v85.situations.map((s) => s.id).join(), "s85,sx");
+    eq(v85.sait.length, 1, "en 1985 il sait");
+  });
+
+  test("sans époque, tout le GN, comme avant", () => {
+    const v = pointDeVue("p01", { reseau: GN, trames, infos });
+    eq(v.situations.length, 3);
   });
 });

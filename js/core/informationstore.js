@@ -152,27 +152,36 @@ export const InformationStore = {
     return !!(i && epoqueId && i.etatsParEpoque && i.etatsParEpoque[epoqueId] && i.etatsParEpoque[epoqueId][personnageId]);
   },
 
+  /** Les personnes qui ont un état sur cette information, exceptions
+      datées comprises quand on demande une époque. */
+  _porteurs(i, epoqueId) {
+    const ids = new Set(Object.keys(i.etats));
+    if (epoqueId && i.etatsParEpoque && i.etatsParEpoque[epoqueId])
+      for (const p of Object.keys(i.etatsParEpoque[epoqueId])) ids.add(p);
+    return [...ids];
+  },
+
   /** Ceux qui la savent vraiment. */
-  detenteurs(infoId) {
+  detenteurs(infoId, epoqueId = null) {
     const i = this.information(infoId);
     if (!i) return [];
-    return Object.keys(i.etats).filter((p) => i.etats[p] === "sait");
+    return this._porteurs(i, epoqueId).filter((p) => this.etat(infoId, p, epoqueId) === "sait");
   },
 
   /** Ceux qui croient autre chose — la matière des malentendus. */
-  divergents(infoId) {
+  divergents(infoId, epoqueId = null) {
     const i = this.information(infoId);
     if (!i) return [];
-    return Object.keys(i.etats).filter((p) => i.etats[p] === "croit");
+    return this._porteurs(i, epoqueId).filter((p) => this.etat(infoId, p, epoqueId) === "croit");
   },
 
   /** Tout ce qu'un personnage porte, trié. Sert au squelette de fiche :
       c'est ce qu'il faut avoir écrit dans sa fiche avant le jeu. */
-  parPersonnage(personnageId) {
+  parPersonnage(personnageId, epoqueId = null) {
     const sait = [];
     const croit = [];
     for (const i of this._d().informations) {
-      const e = i.etats[personnageId];
+      const e = this.etat(i.id, personnageId, epoqueId);
       if (e === "sait") sait.push(i);
       else if (e === "croit") croit.push(i);
     }
@@ -270,10 +279,11 @@ export const InformationStore = {
   },
 
   /** Fait tourner l'état : ignore → sait → croit → ignore. C'est le
-      geste de la matrice — une cellule se règle au clic, pas au menu. */
-  cycler(infoId, personnageId) {
+      geste de la matrice — une cellule se règle au clic, pas au menu.
+      Avec une époque, c'est l'exception datée qui tourne. */
+  cycler(infoId, personnageId, epoqueId = null) {
     const suite = { ignore: "sait", sait: "croit", croit: "ignore" };
-    return this.poser(infoId, personnageId, suite[this.etat(infoId, personnageId)]);
+    return this.poser(infoId, personnageId, suite[this.etat(infoId, personnageId, epoqueId)], "", epoqueId);
   },
 
   /* ================= Remise à zéro ================= */

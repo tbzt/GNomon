@@ -76,6 +76,7 @@
    DOM.
    ============================================================ */
 import { conscience } from "./conscience.js";
+import { situationsA, epoqueDeCalcul } from "./epoques.js";
 import { frise, heure } from "./temps.js";
 import { classementFragilite } from "./defection.js";
 
@@ -164,9 +165,9 @@ function ciblesConscience(regleCle, a, reseau) {
 
 /** Les treize règles, traduites. Un diagnostic par alerte, sans rien
     recalculer : `conscience()` fait tout le travail. */
-function depuisConscience(reseau, trames, infos) {
+function depuisConscience(reseau, trames, infos, epoqueId) {
   const out = [];
-  for (const r of conscience(reseau, trames, infos))
+  for (const r of conscience(reseau, trames, infos, epoqueId))
     for (const a of r.alertes)
       out.push({
         cle: r.cle,
@@ -306,10 +307,12 @@ function depuisInformationsSansPorteur(trames, infos) {
     « héros » sans déclencher celui-ci. Le tri est fait par l'appelant
     (`diagnostics()`) pour ne jamais montrer les deux sur la même
     personne — le second ne dirait rien de plus que le premier en pire. */
-function depuisPriseAbsente(reseau, trames) {
-  const situations = trames.situations();
+function depuisPriseAbsente(reseau, trames, epoqueId) {
+  const situations = situationsA(trames, epoqueId);
+  const existe = (p) => !epoqueId || !reseau.existeA || reseau.existeA(p.id, epoqueId);
   return reseau
     .pj()
+    .filter(existe)
     .filter((p) => !situations.some((s) => s.pointDeVueId === p.id || (s.castIds || []).includes(p.id)))
     .map((p) => ({
       cle: "prise:absente",
@@ -528,14 +531,15 @@ function depuisReferencesOrphelines(reseau, trames) {
  * `stores` porte au moins `{ reseau, trames, infos }` — le même paquet
  * que celui que `App._stores()` construit déjà.
  */
-export function diagnostics(stores) {
+export function diagnostics(stores, epoqueId = undefined) {
+  const ep = epoqueDeCalcul(stores.reseau, epoqueId);
   const { reseau, trames, infos } = stores;
-  const prise = depuisPriseAbsente(reseau, trames);
+  const prise = depuisPriseAbsente(reseau, trames, ep);
   // « héros » dirait moins, en pire, de la même personne : on ne garde
   // que le signal le plus sévère plutôt que d'afficher deux fois le
   // même constat sous deux noms différents.
   const sansPrise = new Set(prise.map((d) => d.cible));
-  const conscienceSansDoublon = depuisConscience(reseau, trames, infos).filter(
+  const conscienceSansDoublon = depuisConscience(reseau, trames, infos, ep).filter(
     (d) => !(d.cle === "heros" && sansPrise.has(d.cible)),
   );
   const tous = [

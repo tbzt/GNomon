@@ -48,7 +48,11 @@ export const Livrets = {
   },
 
   rendre() {
-    const gens = this._pnj() ? this._stores.reseau.pnj() : this._stores.reseau.pj();
+    // Les gens de l'époque regardée : un rôle absent d'une époque n'y a
+    // pas de livret à tenir.
+    const R = this._stores.reseau;
+    const ep = R.epoqueCourante ? R.epoqueCourante() : null;
+    const gens = (this._pnj() ? R.pnj() : R.pj()).filter((p) => !ep || !R.existeA || R.existeA(p.id, ep));
     const onglets =
       '<div class="lv-onglets">' +
       `<button type="button" class="lv-onglet${this._onglet === "livrets" ? " actif" : ""}" data-onglet="livrets">Livrets joueurs</button>` +
@@ -258,7 +262,7 @@ export const Livrets = {
   },
 
   _nom(l) {
-    return (l.identite.nom || "livret")
+    return ((l.identite.nom || "livret") + (l.identite.epoque ? "-" + l.identite.epoque : ""))
       .toLowerCase()
       .normalize("NFD")
       .replace(/[̀-ͯ]/g, "")

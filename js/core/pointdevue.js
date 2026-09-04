@@ -54,6 +54,7 @@
 export const TROU_MIN = 1.5;
 
 import { ciblesDe, objectifsVisant } from "./objectifs.js";
+import { situationsA, personnagesA, epoqueDeCalcul } from "./epoques.js";
 
 /**
  * Le GN vu depuis un personnage.
@@ -62,12 +63,14 @@ import { ciblesDe, objectifsVisant } from "./objectifs.js";
  *     sansHoraire[], peutApprendre[], peutProvoquer[], trous[],
  *     aQuelqueChoseAVivre }
  */
-export function pointDeVue(personnageId, { reseau, trames, infos }) {
-  const p = reseau.personnage(personnageId);
+export function pointDeVue(personnageId, { reseau, trames, infos }, epoqueId = undefined) {
+  // À une époque : la courante du store si l'on n'en donne pas.
+  const ep = epoqueDeCalcul(reseau, epoqueId);
+  const p = reseau.personnage(personnageId, ep === null ? undefined : ep);
   if (!p) return null;
 
-  const { sait, croit } = infos.parPersonnage(personnageId);
-  const persos = reseau.personnages();
+  const { sait, croit } = infos.parPersonnage(personnageId, ep);
+  const persos = personnagesA(reseau, ep);
 
   // Ce qu'il peut demander : ses objectifs, et à qui chacun s'adresse
   // d'après la phrase. Une cible vide n'est pas retirée : c'est ce que
@@ -84,7 +87,7 @@ export function pointDeVue(personnageId, { reseau, trames, infos }) {
     texte,
   }));
 
-  const contacts = reseau.liensDe(personnageId).map((l) => {
+  const contacts = reseau.liensDe(personnageId, ep).map((l) => {
     const q = reseau.personnage(l.vers);
     const retour = reseau.reciproque(l);
     return {
@@ -100,9 +103,9 @@ export function pointDeVue(personnageId, { reseau, trames, infos }) {
     };
   });
 
-  const siennes = trames
-    .situations()
-    .filter((s) => s.pointDeVueId === personnageId || (s.castIds || []).includes(personnageId));
+  const siennes = situationsA(trames, ep).filter(
+    (s) => s.pointDeVueId === personnageId || (s.castIds || []).includes(personnageId),
+  );
 
   const situations = siennes.map((s) => ({
     id: s.id,

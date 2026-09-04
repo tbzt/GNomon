@@ -181,14 +181,16 @@ export function fauxInfos(informations = []) {
     ...i,
   }));
   const trouve = (id) => I.find((x) => x.id === id) || null;
+  const etatDe = (i, p, ep) => {
+    if (ep && i.etatsParEpoque[ep] && i.etatsParEpoque[ep][p]) return i.etatsParEpoque[ep][p];
+    return i.etats[p] || "ignore";
+  };
   return {
     informations: () => I,
     information: trouve,
     etat: (id, p, ep = null) => {
       const i = trouve(id);
-      if (!i) return "ignore";
-      if (ep && i.etatsParEpoque[ep] && i.etatsParEpoque[ep][p]) return i.etatsParEpoque[ep][p];
-      return i.etats[p] || "ignore";
+      return i ? etatDe(i, p, ep) : "ignore";
     },
     croyance: (id, p, ep = null) => {
       const i = trouve(id);
@@ -196,17 +198,21 @@ export function fauxInfos(informations = []) {
       if (ep && i.croyancesParEpoque[ep] && i.croyancesParEpoque[ep][p] != null) return i.croyancesParEpoque[ep][p];
       return i.croyances[p] || "";
     },
-    detenteurs: (id) => {
+    detenteurs: (id, ep = null) => {
       const i = trouve(id);
-      return i ? Object.keys(i.etats).filter((p) => i.etats[p] === "sait") : [];
+      if (!i) return [];
+      const ids = new Set([...Object.keys(i.etats), ...Object.keys((ep && i.etatsParEpoque[ep]) || {})]);
+      return [...ids].filter((p) => etatDe(i, p, ep) === "sait");
     },
-    divergents: (id) => {
+    divergents: (id, ep = null) => {
       const i = trouve(id);
-      return i ? Object.keys(i.etats).filter((p) => i.etats[p] === "croit") : [];
+      if (!i) return [];
+      const ids = new Set([...Object.keys(i.etats), ...Object.keys((ep && i.etatsParEpoque[ep]) || {})]);
+      return [...ids].filter((p) => etatDe(i, p, ep) === "croit");
     },
-    parPersonnage: (p) => ({
-      sait: I.filter((i) => i.etats[p] === "sait"),
-      croit: I.filter((i) => i.etats[p] === "croit"),
+    parPersonnage: (p, ep = null) => ({
+      sait: I.filter((i) => etatDe(i, p, ep) === "sait"),
+      croit: I.filter((i) => etatDe(i, p, ep) === "croit"),
     }),
   };
 }

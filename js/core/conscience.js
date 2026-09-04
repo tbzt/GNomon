@@ -27,6 +27,7 @@
    ============================================================ */
 
 import { ciblesDe } from "./objectifs.js";
+import { situationsA, personnagesA, epoqueDeCalcul } from "./epoques.js";
 
 const DENSITE_MIN = 3;
 const DENSITE_MAX = 7;
@@ -47,10 +48,16 @@ function seChevauchent(a, b) {
  * `cible` est l'id de l'objet fautif — c'est lui qui sert de clé de
  * dérogation, pour qu'une justification écrite survive au renommage.
  */
-export function conscience(reseau, trames, infos) {
-  const pjs = reseau.pj();
-  const persos = reseau.personnages();
-  const situations = trames.situations();
+export function conscience(reseau, trames, infos, epoqueId = undefined) {
+  /* ── À UNE ÉPOQUE ──
+     Les règles se calculent à un moment du GN : les gens qui y
+     existent, les scènes qui s'y jouent, ce qu'on y sait. Sans époque
+     donnée, la courante du store ; sans époque du tout, tout le GN,
+     comme avant. « Personne n'est seul en 1965 » devient une phrase. */
+  const ep = epoqueDeCalcul(reseau, epoqueId);
+  const persos = personnagesA(reseau, ep);
+  const pjs = persos.filter((p) => p.pj);
+  const situations = situationsA(trames, ep);
   const nomDe = (id) => {
     const p = reseau.personnage(id);
     return p ? p.nom : "personnage supprimé";
@@ -59,7 +66,7 @@ export function conscience(reseau, trames, infos) {
 
   /* ---- 1. Personne n'est seul ---- */
   const seuls = pjs
-    .filter((p) => !reseau.liensVers(p.id).some((l) => l.importance === "primaire"))
+    .filter((p) => !reseau.liensVers(p.id, ep).some((l) => l.importance === "primaire"))
     .map((p) => ({ cible: p.id, nom: p.nom, detail: "personne ne le compte comme contact primaire" }));
 
   /* ---- 2. Héros de sa propre histoire ---- */
@@ -73,13 +80,13 @@ export function conscience(reseau, trames, infos) {
 
   /* ---- 3. Pas que du noir ---- */
   const sansPositif = pjs
-    .filter((p) => !reseau.liensDe(p.id).some((l) => l.tonalite === "positif"))
+    .filter((p) => !reseau.liensDe(p.id, ep).some((l) => l.tonalite === "positif"))
     .map((p) => ({ cible: p.id, nom: p.nom, detail: "aucun de ses contacts n'est positif" }));
 
   /* ---- 4. Miroir disponible ---- */
   const miroirsPris = [];
   for (const p of pjs) {
-    const mir = reseau.miroirDe(p.id);
+    const mir = reseau.miroirDe(p.id, ep);
     if (!mir) continue;
     const m = mir.vers;
     for (const s of situations.filter((x) => x.pointDeVueId === p.id)) {
@@ -105,7 +112,7 @@ export function conscience(reseau, trames, infos) {
     for (const idInfo of trames.requiert(s.id)) {
       const info = infos.information(idInfo);
       if (!info) continue;
-      const porteur = (s.castIds || []).some((c) => infos.etat(idInfo, c) === "sait");
+      const porteur = (s.castIds || []).some((c) => infos.etat(idInfo, c, ep) === "sait");
       if (!porteur)
         desarmees.push({
           cible: s.id,
@@ -153,7 +160,7 @@ export function conscience(reseau, trames, infos) {
   const densites = pjs
     .map((p) => {
       const n = new Set(
-        reseau.liensTouchant(p.id).map((l) => (l.de === p.id ? l.vers : l.de)),
+        reseau.liensTouchant(p.id, ep).map((l) => (l.de === p.id ? l.vers : l.de)),
       ).size;
       return { p, n };
     })
@@ -175,7 +182,7 @@ export function conscience(reseau, trames, infos) {
       (g) =>
         reseau.membresDe(g.id).length &&
         !reseau
-          .liens()
+          .liens(ep)
           .some(
             (l) =>
               groupeDe(l.de) !== groupeDe(l.vers) &&

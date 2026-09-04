@@ -36,11 +36,12 @@ export const Matrice = {
   // l'atelier : un booléen se désynchroniserait de la sélection.
   _crashPour: null,
 
-  monter(hote, infos, reseau, trames) {
+  monter(hote, infos, reseau, trames, monde = null) {
     this._hote = hote;
     this._infos = infos;
     this._reseau = reseau;
     this._trames = trames;
+    this._monde = monde;
     this.rendre();
   },
 
@@ -61,6 +62,9 @@ export const Matrice = {
     return [
       this._infos.informations().map((i) => i.id).join(","),
       this._reseau.personnages().map((p) => `${p.id}:${p.nom}:${p.pj ? 1 : 0}`).join(","),
+      // L'époque change les colonnes et ce que lisent les cases.
+      this._epoque() || "-",
+      this._portee,
       this._selId || "-",
       this._crashPour || "-",
     ].join("|");
@@ -72,13 +76,15 @@ export const Matrice = {
 
     // Les cases, en place. Aucun nœud remplacé, donc aucun écouteur
     // reposé et aucun défilement perdu.
+    const ep = this._epoque();
     for (const td of this._hote.querySelectorAll("td.cell")) {
-      const e = this._infos.etat(td.dataset.i, td.dataset.p);
-      const cr = e === "croit" ? this._infos.croyance(td.dataset.i, td.dataset.p) : "";
-      td.className = `cell k-${e}`;
-      td.textContent = SIGNE[e];
+      const e = this._infos.etat(td.dataset.i, td.dataset.p, ep);
+      const cr = e === "croit" ? this._infos.croyance(td.dataset.i, td.dataset.p, ep) : "";
+      const exc = !!(ep && this._infos.exceptionA && this._infos.exceptionA(td.dataset.i, td.dataset.p, ep));
+      td.className = `cell k-${e}${exc ? " k-exc" : ""}`;
+      td.textContent = SIGNE[e] + (exc ? "°" : "");
       const p = this._reseau.personnage(td.dataset.p);
-      td.title = `${p ? p.nom : "?"} — ${ETATS[e]}${cr ? " : " + cr : ""}`;
+      td.title = `${p ? p.nom : "?"} — ${ETATS[e]}${cr ? " : " + cr : ""}${exc ? " (exception à cette époque)" : ""}`;
     }
     // Le libellé d'une information et son « branchée nulle part »
     // dépendent des trames, qui ont pu bouger sans changer la structure.
@@ -100,16 +106,47 @@ export const Matrice = {
     if (!panneau || !panneau.contains(a)) this._rendrePanneau();
   },
 
+  /* ── LA MATRICE À UNE ÉPOQUE ──
+     Les colonnes sont les gens de l'époque courante, et une case lit ce
+     que la personne sait À CE MOMENT : son état de toutes les époques,
+     ou l'exception datée s'il y en a une (marquée). Le clic écrit pour
+     toutes les époques par défaut — c'est le cas de presque tout — ou
+     pour l'époque seule, si l'on a basculé la portée. */
+  _portee: "toutes",
+
+  _epoque() {
+    return this._reseau.epoqueCourante ? this._reseau.epoqueCourante() : null;
+  },
+
+  _epoqueEcriture() {
+    const ep = this._epoque();
+    return ep && this._portee === "epoque" ? ep : null;
+  },
+
   rendre() {
     // AVANT le remplacement de l'hôte : après, le champ focalisé n'est
     // plus dans le document et la frappe en cours serait perdue.
     this._vif = this._capturerSaisie();
-    const persos = this._reseau.personnages();
+    const ep = this._epoque();
+    const persos = this._reseau
+      .personnages()
+      .filter((p) => !ep || !this._reseau.existeA || this._reseau.existeA(p.id, ep));
     const infos = this._infos.informations();
+    const nomEp = ep
+      ? ((this._monde ? this._monde.epoques().find((e) => e.id === ep) : null) || {}).nom || ep
+      : "";
+    const portee = ep
+      ? '<span class="matrice-portee">Le clic écrit pour ' +
+        `<button type="button" class="portee-btn${this._portee === "toutes" ? " actif" : ""}" data-portee="toutes">toutes les époques</button>` +
+        `<button type="button" class="portee-btn${this._portee === "epoque" ? " actif" : ""}" data-portee="epoque">${Utils.escHtml(nomEp)} seulement</button></span>`
+      : "";
 
     this._hote.innerHTML =
       '<div class="matrice-tete">' +
-      '<p class="carnet-titre">Qui sait quoi<span class="carnet-aide">clic sur une case : sait → croit autre chose → ignore</span></p>' +
+      '<p class="carnet-titre">Qui sait quoi<span class="carnet-aide">clic sur une case : sait → croit autre chose → ignore' +
+      (ep ? ` · lu en ${Utils.escHtml(nomEp)} — ° marque une exception datée` : "") +
+      "</span></p>" +
+      portee +
       '<button type="button" id="act-info">+ Information</button>' +
       "</div>" +
       (infos.length && persos.length
@@ -122,6 +159,11 @@ export const Matrice = {
       '<div id="info-panneau"></div>';
 
     this._hote.querySelector("#act-info").addEventListener("click", () => this._nouvelle());
+    for (const b of this._hote.querySelectorAll("[data-portee]"))
+      b.addEventListener("click", () => {
+        this._portee = b.dataset.portee;
+        this.rendre();
+      });
     this._brancherTable();
     this._rendrePanneau();
     this._sig = this._signature();
@@ -135,15 +177,17 @@ export const Matrice = {
       )
       .join("");
 
+    const ep = this._epoque();
     const lignes = infos
       .map((i) => {
         const cells = persos
           .map((p) => {
-            const e = this._infos.etat(i.id, p.id);
-            const cr = e === "croit" ? this._infos.croyance(i.id, p.id) : "";
+            const e = this._infos.etat(i.id, p.id, ep);
+            const cr = e === "croit" ? this._infos.croyance(i.id, p.id, ep) : "";
+            const exc = !!(ep && this._infos.exceptionA && this._infos.exceptionA(i.id, p.id, ep));
             return (
-              `<td class="cell k-${e}" data-i="${i.id}" data-p="${p.id}" role="button" tabindex="0" ` +
-              `title="${Utils.escHtml(p.nom)} — ${ETATS[e]}${cr ? " : " + Utils.escHtml(cr) : ""}">${SIGNE[e]}</td>`
+              `<td class="cell k-${e}${exc ? " k-exc" : ""}" data-i="${i.id}" data-p="${p.id}" role="button" tabindex="0" ` +
+              `title="${Utils.escHtml(p.nom)} — ${ETATS[e]}${cr ? " : " + Utils.escHtml(cr) : ""}${exc ? " (exception à cette époque)" : ""}">${SIGNE[e]}${exc ? "°" : ""}</td>`
             );
           })
           .join("");
@@ -170,10 +214,11 @@ export const Matrice = {
     if (!t) return;
 
     const cycler = (td) => {
-      this._infos.cycler(td.dataset.i, td.dataset.p);
+      const ep = this._epoqueEcriture();
+      this._infos.cycler(td.dataset.i, td.dataset.p, ep);
       // Passer à « croit » sans dire ce qu'on croit ne sert à rien :
       // on ouvre la saisie dans la foulée, une seule fois.
-      if (this._infos.etat(td.dataset.i, td.dataset.p) === "croit") {
+      if (this._infos.etat(td.dataset.i, td.dataset.p, this._epoque()) === "croit") {
         this._selId = td.dataset.i;
         this.rendre();
         const champ = this._hote.querySelector(`[data-croyance="${td.dataset.p}"]`);
@@ -257,7 +302,8 @@ export const Matrice = {
       return;
     }
 
-    const divergents = this._infos.divergents(i.id);
+    const ep = this._epoque();
+    const divergents = this._infos.divergents(i.id, ep);
     const usages = this._trames.situationsAvec(i.id);
     const nom = (id) => {
       const p = this._reseau.personnage(id);
@@ -288,7 +334,7 @@ export const Matrice = {
             .map(
               (p) =>
                 `<label class="croyance"><span>${Utils.escHtml(nom(p))}</span>` +
-                `<input data-croyance="${p}" value="${Utils.escHtml(this._infos.croyance(i.id, p))}" ` +
+                `<input data-croyance="${p}" value="${Utils.escHtml(this._infos.croyance(i.id, p, ep))}" ` +
                 `placeholder="Ce qu'il tient pour vrai…" /></label>`,
             )
             .join("") +
@@ -329,9 +375,12 @@ export const Matrice = {
     for (const b of hote.querySelectorAll("[data-infl]"))
       b.addEventListener("click", () => this._infos.maj(i.id, { influence: b.dataset.infl }));
     for (const c of hote.querySelectorAll("[data-croyance]"))
-      c.addEventListener("change", (e) =>
-        this._infos.poser(i.id, c.dataset.croyance, "croit", e.target.value),
-      );
+      c.addEventListener("change", (e) => {
+        // Une croyance qui est une exception datée se corrige dans
+        // l'exception ; les autres, pour toutes les époques.
+        const exc = ep && this._infos.exceptionA && this._infos.exceptionA(i.id, c.dataset.croyance, ep);
+        this._infos.poser(i.id, c.dataset.croyance, "croit", e.target.value, exc ? ep : null);
+      });
     hote.querySelector(".info-suppr").addEventListener("click", () => {
       if (!confirm("Supprimer cette information ?")) return;
       this._selId = null;

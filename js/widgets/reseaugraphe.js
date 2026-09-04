@@ -74,6 +74,8 @@ export const ReseauGraphe = {
   /* null = toutes les époques confondues. Un GN qui n'en déclare
      aucune ne verra jamais ce filtre. */
   _epoque: null,
+  /* Le graphe suit l'époque globale tant qu'on n'en choisit pas une ici. */
+  _suit: true,
   _selId: null,
   _mode: false, // mode défection
   _absent: null,
@@ -82,6 +84,7 @@ export const ReseauGraphe = {
   _sig: "",
 
   monter(hote, store, stores, { onOuvrir = null } = {}) {
+    if (this._suit && store.epoqueCourante) this._epoque = store.epoqueCourante();
     this._hote = hote;
     this._store = store;
     this._stores = stores;
@@ -109,7 +112,8 @@ export const ReseauGraphe = {
       depuis le flanc sans que le cadrage de l'auteur ne saute, et c'est
       la même discipline que la signature de l'atelier. */
   _signature() {
-    return [
+    const ep = this._epoque || "";
+    return ep + "|" + ([
       this._store
         .personnages()
         .map((p) => `${p.id}:${p.nom}:${p.pj ? 1 : 0}:${p.x},${p.y}:${p.portrait ? 1 : 0}`)
@@ -118,7 +122,7 @@ export const ReseauGraphe = {
         .map((e) => `${e.from}>${e.to}`)
         .join("|"),
       this._store.groupes().map((g) => `${g.id}:${this._store.membresDe(g.id).length}`).join(","),
-    ].join("§");
+    ].join("§"));
   },
 
   /** Re-projette sans remonter, tant que la structure n'a pas bougé.
@@ -126,6 +130,7 @@ export const ReseauGraphe = {
       liens, il y en a — remettait la vue à zéro. */
   rafraichir() {
     if (!this._hote) return;
+    if (this._suit && this._store.epoqueCourante) this._epoque = this._store.epoqueCourante();
     if (this._sig !== this._signature()) {
       this.rendre();
       return;
@@ -557,6 +562,8 @@ export const ReseauGraphe = {
     if (sel)
       sel.addEventListener("change", () => {
         this._epoque = sel.value || null;
+        // Un choix ici vaut jusqu'au prochain changement global.
+        this._suit = this._epoque === (this._store.epoqueCourante ? this._store.epoqueCourante() : null);
         // Changer d'époque change l'ensemble des nœuds : la sélection
         // et le mode défection portaient sur des gens qui n'y sont
         // peut-être plus, et les garder afficherait un flanc fantôme.

@@ -6257,6 +6257,47 @@ main[data-actif="monde"] {
 /* Le background des autres époques, sous celui qu'on écrit : des volets
    repliés, un par époque, en lecture. Le volet vide (pas d'incarnation)
    se distingue : un mort n'a pas de suite, et ça se voit. */
+/* ---------- la matrice à une époque ---------- */
+
+.matrice-portee {
+  font-family: var(--mono);
+  font-size: 10.5px;
+  letter-spacing: 0.06em;
+  color: var(--ink-faint);
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-right: 12px;
+}
+.matrice-portee .portee-btn {
+  font-size: 9.5px;
+  padding: 3px 8px;
+}
+.matrice-portee .portee-btn.actif {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+.matrice td.cell.k-exc {
+  box-shadow: inset 0 0 0 1px var(--accent);
+}
+
+/* ---------- l'époque globale, dans la sous-barre ---------- */
+
+.epoque-globale {
+  margin-left: auto;
+  font-family: var(--mono);
+  font-size: 10.5px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--ink-faint);
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.epoque-globale select {
+  font-size: 11.5px;
+}
+
 /* ---------- la bascule d'époque, et le côte à côte ---------- */
 
 .fiche-epoques {
