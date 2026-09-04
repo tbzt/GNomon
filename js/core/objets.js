@@ -20,7 +20,15 @@
 
        reseau  { personnages:[…], liens:[…], groupes:[…], sieges:[…] }
           ↕
-       personnages/p1a · personnages/p2b · liens/l7c · groupes/g1…
+       personnages/p1a · facettes/p1a@e1965 · facettes/p1a@e1985 ·
+       personnages/p2b · liens/l7c · groupes/g1…
+
+   ── UNE FACETTE EST UN DOCUMENT À ELLE ──
+   Une personne écrite à deux époques porte deux facettes (§5v). Deux
+   auteurs qui écrivent 1965 et 1985 d'Ange n'ont rien à voir l'un avec
+   l'autre : la facette voyage donc seule, sous `personne@époque`, et
+   la personne ne garde que ce qui lui est commun — nom, portrait,
+   position. Recoudre remet les facettes à leur personne.
 
    ── PUR, ET C'EST LE POINT ──
    Des données entrent, des données sortent. Aucun store, aucun réseau,
@@ -52,10 +60,12 @@
     · `carte`  — le bloc EST une carte clé → valeur (dérogations,
       suivi) : un document par entrée, la clé de la carte fait l'id ;
     · `nu`     — le bloc EST un tableau d'objets à `id` (le hub) ;
+    · `facettes` — la liste dont chaque élément porte une carte
+      `facettes` à découper en documents `id@clé` ;
     · le reste des champs, s'il y en a, part dans le document `_`. */
 const PLAN = Object.freeze({
   monde: { listes: ["lieux", "epoques", "interrupteurs"], reste: true },
-  reseau: { listes: ["personnages", "liens", "groupes", "sieges"] },
+  reseau: { listes: ["personnages", "liens", "groupes", "sieges"], facettes: "personnages" },
   trames: { listes: ["trames", "situations", "conclusions"] },
   informations: { listes: ["informations"] },
   casting: { listes: ["candidatures"], reste: true },
@@ -67,6 +77,13 @@ const PLAN = Object.freeze({
 
 /** Le document qui porte ce qui n'a pas d'identité propre. */
 export const RESTE = "_";
+
+/** Le séparateur de l'identifiant d'une facette : `p1a@e1965`. */
+export const SEP_FACETTE = "@";
+
+export function idFacette(personnageId, cle) {
+  return `${personnageId}${SEP_FACETTE}${cle}`;
+}
 
 export function planDe(cle) {
   return PLAN[cle] || null;
@@ -100,8 +117,22 @@ export function decouper(cle, bloc) {
 
   const listes = plan.listes || [];
   for (const champ of listes)
-    for (const o of Array.isArray(bloc[champ]) ? bloc[champ] : [])
-      if (o && o.id) out.push({ collection: `${cle}.${champ}`, id: String(o.id), d: o });
+    for (const o of Array.isArray(bloc[champ]) ? bloc[champ] : []) {
+      if (!o || !o.id) continue;
+      if (plan.facettes === champ) {
+        // La personne part sans ses facettes ; chacune fait un
+        // document qui dit à qui elle est et à quelle époque.
+        const { facettes, ...personne } = o;
+        out.push({ collection: `${cle}.${champ}`, id: String(o.id), d: personne });
+        for (const [k, f] of Object.entries(facettes || {}))
+          if (k && f)
+            out.push({
+              collection: `${cle}.facettes`,
+              id: idFacette(o.id, k),
+              d: { id: idFacette(o.id, k), personnageId: String(o.id), epoqueId: k, ...f },
+            });
+      } else out.push({ collection: `${cle}.${champ}`, id: String(o.id), d: o });
+    }
 
   if (plan.reste) {
     const reste = {};
@@ -159,6 +190,26 @@ export function recoudre(cle, documents) {
       .filter((x) => x.collection === `${cle}.${champ}` && x.d)
       .sort((a, b) => (a.id < b.id ? -1 : 1))
       .map((x) => x.d);
+
+  if (plan.facettes) {
+    // Les facettes retrouvent leur personne. Une facette dont la
+    // personne n'existe plus ne désigne rien et tombe. Une personne
+    // arrivée avec ses facettes dedans — pair d'avant le découpage —
+    // les garde tant qu'aucun document de facette ne les remplace.
+    const parPersonne = new Map();
+    for (const x of miens
+      .filter((x) => x.collection === `${cle}.facettes` && x.d)
+      .sort((a, b) => (a.id < b.id ? -1 : 1))) {
+      const { id, personnageId, epoqueId, ...f } = x.d;
+      if (!personnageId || !epoqueId) continue;
+      if (!parPersonne.has(personnageId)) parPersonne.set(personnageId, {});
+      parPersonne.get(personnageId)[epoqueId] = f;
+    }
+    bloc[plan.facettes] = bloc[plan.facettes].map((p) => ({
+      ...p,
+      facettes: parPersonne.get(String(p.id)) || p.facettes || {},
+    }));
+  }
 
   if (plan.reste) {
     const r = miens.find((x) => x.id === RESTE && x.collection === cle);

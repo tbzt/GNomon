@@ -111,6 +111,52 @@ suite("Objets — découper un GN, et le recoudre", () => {
     );
   });
 
+  test("une facette fait un document à elle, sous personne@époque", () => {
+    // Deux auteurs sur 1965 et 1985 d'Ange n'ont rien à voir l'un avec
+    // l'autre : ils ne doivent pas toucher le même document.
+    const reseau = {
+      personnages: [
+        { id: "p1", nom: "Ange", pj: true, facettes: { e1965: { moral: "M65" }, e1985: { moral: "M85" } } },
+      ],
+      liens: [],
+      groupes: [],
+      sieges: [],
+    };
+    const docs = decouper("reseau", reseau);
+    const perso = docs.find((d) => d.collection === "reseau.personnages");
+    eq(perso.d.facettes, undefined, "la personne part sans ses facettes");
+    eq(perso.d.nom, "Ange");
+    const facettes = docs.filter((d) => d.collection === "reseau.facettes");
+    eqDonnees(facettes.map((d) => d.id).sort(), ["p1@e1965", "p1@e1985"]);
+    const f65 = facettes.find((d) => d.id === "p1@e1965").d;
+    eq(f65.personnageId, "p1", "la facette dit à qui elle est");
+    eq(f65.epoqueId, "e1965", "et à quelle époque");
+    eq(f65.moral, "M65");
+    eqDonnees(recoudre("reseau", docs), reseau, "et l'on recoud la même personne");
+  });
+
+  test("une facette sans personne tombe ; une personne sans facette reste", () => {
+    const docs = [
+      { collection: "reseau.personnages", id: "p1", d: { id: "p1", nom: "Ange", pj: true } },
+      { collection: "reseau.facettes", id: "p9@e1965", d: { id: "p9@e1965", personnageId: "p9", epoqueId: "e1965", moral: "orpheline" } },
+    ];
+    const bloc = recoudre("reseau", docs);
+    eq(bloc.personnages.length, 1);
+    eqDonnees(bloc.personnages[0].facettes, {}, "aucune facette n'est inventée");
+  });
+
+  test("une personne arrivée avec ses facettes dedans les garde, jusqu'à la première facette qui voyage", () => {
+    // Un pair d'avant le découpage écrit encore la personne entière.
+    const entiere = { id: "p1", nom: "Ange", pj: true, facettes: { "*": { moral: "dedans" } } };
+    const sans = recoudre("reseau", [{ collection: "reseau.personnages", id: "p1", d: entiere }]);
+    eq(sans.personnages[0].facettes["*"].moral, "dedans");
+    const avec = recoudre("reseau", [
+      { collection: "reseau.personnages", id: "p1", d: entiere },
+      { collection: "reseau.facettes", id: "p1@e1985", d: { id: "p1@e1985", personnageId: "p1", epoqueId: "e1985", moral: "à part" } },
+    ]);
+    eqDonnees(Object.keys(avec.personnages[0].facettes), ["e1985"], "le document de facette fait foi");
+  });
+
   test("ce qui n'a pas d'identité tient dans un seul document", () => {
     const docs = decouper("monde", GN().monde);
     const reste = docs.find((d) => d.id === RESTE);

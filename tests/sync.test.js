@@ -134,7 +134,7 @@ suite("Sync — deux pairs convergent", () => {
     const a = pair(base, gn([perso("p1", "Elena"), perso("p2", "Marek")]));
 
     const un = await a.sync();
-    eq(un.pousses, 2);
+    eq(un.pousses, 4, "deux personnes, et la facette de chacune");
     ok(un.ok);
 
     // Rien n'a bougé : le tour suivant doit être muet. Sans empreinte
@@ -142,7 +142,7 @@ suite("Sync — deux pairs convergent", () => {
     const deux = await a.sync();
     eq(deux.pousses, 0);
     eq(deux.tires, 0);
-    eq(deux.actes.rien, 2);
+    eq(deux.actes.rien, 4);
   });
 
   test("ce que l'un écrit, l'autre le reçoit", async () => {
@@ -152,9 +152,10 @@ suite("Sync — deux pairs convergent", () => {
 
     await a.sync();
     const r = await b.sync();
-    eq(r.tires, 1);
+    eq(r.tires, 2, "la personne, et sa facette");
     eq(b.persos().length, 1);
     eq(b.persos()[0].nom, "Elena");
+    eq(b.persos()[0].facettes["*"].moral, "", "recousue avec sa facette");
   });
 
   test("deux auteurs, deux personnages différents : AUCUN conflit", async () => {
@@ -178,6 +179,38 @@ suite("Sync — deux pairs convergent", () => {
     const noms = (p) => p.persos().map((x) => x.nom).sort();
     eqDonnees(noms(a), ["Elena Fabre", "Marek Solt"]);
     eqDonnees(noms(b), ["Elena Fabre", "Marek Solt"]);
+  });
+
+  test("deux auteurs, deux époques du même personnage : AUCUN conflit", async () => {
+    // La facette est le document (§5v) : écrire Ange en 1965 pendant
+    // qu'un autre l'écrit en 1985, c'est écrire deux documents.
+    const ange = (m65, m85) => ({
+      ...perso("p1", "Ange"),
+      facettes: { e1965: perso("p1", "Ange").facettes["*"], e1985: perso("p1", "Ange").facettes["*"] },
+    });
+    const avec = (p, ep, moral) => ({ ...p, facettes: { ...p.facettes, [ep]: { ...p.facettes[ep], moral } } });
+    const base = fauxDistant();
+    const a = pair(base, gn([ange()]));
+    const b = pair(base, gn([ange()]));
+    await a.sync();
+    await b.sync();
+
+    a.ecrire([avec(ange(), "e1965", "écrit en 65")]);
+    b.ecrire([avec(ange(), "e1985", "écrit en 85")]);
+
+    const ra = await a.sync();
+    const rb = await b.sync();
+    eq(ra.conflits.length, 0);
+    eq(rb.conflits.length, 0);
+
+    await a.sync();
+    for (const x of [a, b]) {
+      eq(x.persos().length, 1, "une seule personne");
+      eq(x.persos()[0].facettes.e1965.moral, "écrit en 65");
+      eq(x.persos()[0].facettes.e1985.moral, "écrit en 85");
+    }
+    ok(base._branche()["reseau~facettes/p1%40e1965"], "la facette a son chemin à elle");
+    eq(base._branche()["reseau~personnages/p1"].d.facettes, undefined, "la personne voyage sans ses facettes");
   });
 
   test("une suppression ne ressuscite pas au tour suivant", async () => {
@@ -217,8 +250,12 @@ suite("Sync — deux pairs convergent", () => {
 
     eq(rb.conflits.length, 1);
     eq(rb.conflits[0].cause, "modifié des deux côtés");
-    eq(rb.conflits[0].local.facettes["*"].moral, "écrit par B", "la version écartée est rendue entière");
-    eq(rb.conflits[0].distant.facettes["*"].moral, "écrit par A");
+    // Le conflit porte sur la facette — c'est elle qui a été écrite
+    // deux fois —, et elle est rendue entière, avec qui elle est.
+    eq(rb.conflits[0].chemin, "reseau~facettes/p1%40*");
+    eq(rb.conflits[0].local.moral, "écrit par B", "la version écartée est rendue entière");
+    eq(rb.conflits[0].local.personnageId, "p1");
+    eq(rb.conflits[0].distant.moral, "écrit par A");
     eq(b.persos()[0].facettes["*"].moral, "écrit par A", "on converge sur le distant");
   });
 

@@ -1255,13 +1255,39 @@ la même personne que ». Un siège **continu** est une personne écrite à plus
 **change de rôle** quand il tient plusieurs personnes. Le normaliseur fait entrer un personnage
 plat — ancien stockage, pair ancien — dans une facette, à son époque ou à « * ».
 
-### Ce qui reste à faire, et c'est la seconde moitié du refacto
+### L'époque regardée, une fois pour tous les écrans
 
-Les modules purs ne prennent pas encore d'époque en paramètre : ils lisent la courante. La
-matrice n'affiche pas les exceptions datées. Le graphe, la frise et le casting n'ont pas de
-sélecteur d'époque à eux — ils suivent la fiche. L'espace partagé synchronise une personne
-entière : deux auteurs sur les deux époques d'Ange entrent en conflit, là où une facette par
-document les séparerait.
+Le sélecteur d'époque est dans la sous-barre, et nulle part deux fois : la liste, le graphe,
+la matrice, la conscience, les livrets lisent le store à cette époque. Les onglets de la fiche
+et les puces d'une carte changent la même époque ; `App._surChangement` remet le sélecteur
+d'accord avec le store, parce qu'une fiche peut l'avoir changée sans passer par lui.
+
+Les modules purs prennent maintenant une époque en paramètre — `conscience(reseau, trames,
+infos, epoqueId)`, `pointDeVue(id, stores, epoqueId)`, `diagnostics(stores, epoqueId)`,
+`livret(id, stores, epoqueId)` — et, sans elle, lisent la courante. « Personne n'est seul »
+se compte donc en 1965 et en 1985 séparément : sur le GN de l'audit, 50 alertes en 1965 et 93
+en 1985, là où un compte unique mélangeait les deux. `epoques.js` porte les projections :
+`situationsA(trames, ep)` (une scène a l'époque de sa trame), `personnagesA`, `liensA`,
+`grapheA`. Un écran à signature (`matrice.js`) met l'époque **dans** sa signature : sans ça,
+changer d'époque ne rafraîchissait que les cases, jamais les colonnes.
+
+La matrice lit ce qu'une personne sait **à ce moment** : son état de toutes les époques, ou
+l'exception datée s'il y en a une, marquée « ° ». Le clic écrit pour toutes les époques par
+défaut — c'est le cas de presque tout — ou pour l'époque seule, si l'on a basculé la portée.
+
+### La facette est le document de l'espace partagé
+
+`objets.js` découpe une personne en **un document par facette**, `personnages/p1a` pour ce
+qui est commun (nom, portrait, position) et `facettes/p1a@e1965`, `facettes/p1a@e1985` pour
+chaque époque ; chaque facette dit à qui elle est et à quelle époque, et `recoudre` la remet
+à sa personne. Deux auteurs sur les deux époques d'Ange écrivent deux documents : aucun
+conflit, et c'est vérifié (`sync.test.js`). Une personne arrivée entière — pair d'avant le
+découpage — garde ses facettes tant qu'aucun document de facette ne les remplace.
+
+Le normaliseur a dû apprendre la différence : dans un **bloc**, une personne sans facette en
+reçoit une à « * » (elle doit exister quelque part) ; par **document**, non — ses facettes
+arrivent à part, et lui en inventer une aurait changé son empreinte à chaque tour, donc fait
+repousser tout le GN.
 
 ---
 

@@ -122,15 +122,18 @@ const REGLES = {
   // Une personne à facettes. Un objet PLAT — ancien modèle, ou pair
   // ancien — entre dans une seule facette : celle de son époque, ou
   // « * ». Ses champs plats sont retirés de la surface : deux sources
-  // pour une même chose finiraient par diverger.
+  // pour une même chose finiraient par diverger. Une personne NUE —
+  // ni facettes, ni champ plat — est un document de l'espace partagé,
+  // dont les facettes voyagent à part (cf. objets.js) : on ne lui en
+  // invente pas, sinon son empreinte mentirait à chaque tour.
   "reseau.personnages": (o, note) => {
     const facettes = {};
+    const plate = CHAMPS_FACETTE.some((k) => k in o) || "epoqueId" in o || "roleId" in o;
     if (o.facettes && typeof o.facettes === "object" && !Array.isArray(o.facettes)) {
       for (const [k, f] of Object.entries(o.facettes)) if (k) facettes[k] = facette(f, note);
-    } else {
+    } else if (plate) {
       facettes[o.epoqueId || TOUTES] = facette(o, note);
     }
-    if (!Object.keys(facettes).length) facettes[TOUTES] = facetteVide();
     const p = {
       ...o,
       nom: txt(o.nom),
@@ -138,10 +141,20 @@ const REGLES = {
       portrait: garder(srcSure(o.portrait), o.portrait, note, "portrait à source refusée"),
       x: nombre(o.x),
       y: nombre(o.y),
-      facettes,
     };
+    if (plate || o.facettes !== undefined) p.facettes = facettes;
     for (const k of [...CHAMPS_FACETTE, "roleId", "epoqueId"]) delete p[k];
     return p;
+  },
+
+  // Une facette qui voyage seule (§ objets.js) : elle dit à qui elle
+  // est et à quelle époque, sinon personne ne peut la remettre.
+  "reseau.facettes": (o, note) => {
+    if (!o.personnageId || !o.epoqueId) {
+      note("facette sans personne ni époque");
+      return null;
+    }
+    return { id: txt(o.id), personnageId: txt(o.personnageId), epoqueId: txt(o.epoqueId), ...facette(o, note) };
   },
 
   // Un lien dont les bouts manquent ne désigne rien. Les énumérations
@@ -459,6 +472,12 @@ export function normaliserBloc(cle, brut) {
   const source = carte(brut);
   const bloc = {};
   for (const champ of plan.listes || []) bloc[champ] = filtrer(`${cle}.${champ}`, source[champ]);
+  // Dans un bloc, une personne sans aucune facette n'existe à aucune
+  // époque : elle en reçoit une, à « * ». (Par document, non : ses
+  // facettes arrivent à part.)
+  if (plan.facettes)
+    for (const p of bloc[plan.facettes])
+      if (!p.facettes || !Object.keys(p.facettes).length) p.facettes = { [TOUTES]: facetteVide() };
 
   if (plan.reste) {
     const reste = {};

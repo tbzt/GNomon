@@ -198,6 +198,10 @@ facette par époque. La liste montre une carte par personne avec une puce par é
 a son onglet d'époque, et un mode côte à côte met les époques en colonnes pour écrire le
 background de 1965 en regard de celui de 1985. Les liens et les scènes portent l'époque ; une
 archive écrite avec l'ancien modèle, à une incarnation par époque, se convertit à l'import.
+L'époque regardée se règle une fois, dans la sous-barre, pour tous les écrans : la liste, le
+graphe, la matrice, la conscience et les livrets se lisent à ce moment-là, et la matrice marque
+d'un « ° » ce qu'un personnage sait autrement à une époque. Dans l'espace partagé, chaque
+facette est un document : deux personnes qui écrivent 1965 et 1985 du même rôle ne se gênent pas.
 
 Le **background** remis est distinct du **carnet de l'auteur**, qui ne sort jamais : sans cette
 séparation, un « à révéler plus tard » griffonné en écrivant partait au joueur. Le background

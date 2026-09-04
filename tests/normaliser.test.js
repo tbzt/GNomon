@@ -106,7 +106,9 @@ suite("Normaliser — un document venu d'ailleurs", () => {
     const r = normaliserDocument("reseau.personnages", { id: "p1", nom: "Ana" }, "p1");
     eq(r.anomalies.length, 0);
     eq(r.d.portrait, "");
-    eqDonnees(r.d.facettes["*"].objectifs, []);
+    const b = normaliserBloc("reseau", { personnages: [{ id: "p1", nom: "Ana" }] });
+    eq(b.anomalies.length, 0);
+    eqDonnees(b.bloc.personnages[0].facettes["*"].objectifs, []);
   });
 
   /** ── L'INVARIANT QUI REND LA SYNCHRONISATION SAINE ──
@@ -153,7 +155,24 @@ suite("Normaliser — un bloc entier", () => {
     eq(r.d.facettes.e65.moral, "M");
     eq(r.d.moral, undefined, "plus de champ plat en surface");
     eq(r.d.roleId, undefined, "le rôle n'existe plus : la personne est l'unité");
-    eq(normaliserDocument("reseau.personnages", { id: "p3", nom: "X" }, "p3").d.facettes["*"].objectifs.length, 0);
+    const bloc = normaliserBloc("reseau", { personnages: [{ id: "p3", nom: "X" }] }).bloc;
+    eq(bloc.personnages[0].facettes["*"].objectifs.length, 0, "dans un bloc, une personne nue existe à « * »");
+    eq(
+      normaliserDocument("reseau.personnages", { id: "p3", nom: "X" }, "p3").d.facettes,
+      undefined,
+      "par document, non : ses facettes voyagent à part",
+    );
+  });
+
+  test("une facette qui voyage seule est réparée, et dit à qui elle est", () => {
+    const r = normaliserDocument("reseau.facettes", { id: "p1@e65", personnageId: "p1", epoqueId: "e65", moral: "M", objectifs: "x" }, "p1@e65");
+    eq(r.d.personnageId, "p1");
+    eq(r.d.epoqueId, "e65");
+    eq(r.d.moral, "M");
+    eqDonnees(r.d.objectifs, [], "une liste qui n'en est pas une devient vide");
+    eq(r.anomalies.length, 0);
+    const sans = normaliserDocument("reseau.facettes", { id: "x", moral: "M" }, "x");
+    eq(sans.d, null, "sans personne ni époque, elle ne désigne rien");
   });
 
   test("une liste qui n'en est pas une devient vide", () => {

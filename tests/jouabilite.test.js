@@ -103,7 +103,7 @@ suite("Jouabilité — ce qu'il a, ce qui le presse", () => {
   });
 
   test("le normaliseur les fournit vides", () => {
-    const r = normaliserDocument("reseau.personnages", { id: "p9", nom: "X" }, "p9");
+    const r = normaliserDocument("reseau.personnages", { id: "p9", nom: "X", facettes: { "*": {} } }, "p9");
     eq(r.d.facettes["*"].possede.length, 0);
     eq(r.d.facettes["*"].pressions.length, 0);
   });
