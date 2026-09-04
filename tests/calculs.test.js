@@ -94,7 +94,7 @@ suite("Affectation — exacte, pas approchée", () => {
   });
 });
 
-suite("Conscience — les douze règles", () => {
+suite("Conscience — les treize règles", () => {
   const nu = () => ({
     reseau: fauxReseau({
       groupes: [{ id: "g1", nom: "Le groupe" }],
@@ -108,9 +108,9 @@ suite("Conscience — les douze règles", () => {
   });
   const regle = (st, cle) => conscience(st.reseau, st.trames, st.infos).find((r) => r.cle === cle);
 
-  test("il y a bien douze règles, toutes nommées et sourcées", () => {
+  test("il y a bien treize règles, toutes nommées et sourcées", () => {
     const r = conscience(nu().reseau, nu().trames, nu().infos);
-    eq(r.length, 12);
+    eq(r.length, 13);
     for (const x of r) {
       ok(x.nom && x.question && x.source, `« ${x.cle} » doit porter nom, question et source`);
     }

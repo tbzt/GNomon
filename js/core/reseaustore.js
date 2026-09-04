@@ -15,8 +15,25 @@
        Personnage { id, nom, role, pj, groupeId,
                     fonction, moral, desir, besoin, faiblesse,
                     pouvoirs, transformation, archetype, surprise,
-                    notes }
-       Lien       { id, de, vers, nature, tonalite, importance, miroir }
+                    notes, objectifs[], possede[], pressions[] }
+       Lien       { id, de, vers, nature, enonce, tonalite, importance, miroir }
+
+   ── CE QU'IL A, ET CE QUI LE PRESSE ──
+   `objectifs` dit ce qu'il cherche. `possede` dit ce qu'il a sur lui
+   — un objet, un papier, une somme, une clé — et `pressions` ce qui
+   tombe si rien n'est fait avant une heure. Trois listes de phrases,
+   pas des objets : c'est ce que le livret imprime, et c'est ce qui
+   manquait pour qu'un joueur joue une journée plutôt qu'un souvenir.
+   L'audit de jouabilité (septembre 2026) a compté vingt-quatre objets
+   qui faisaient tout le jeu d'un GN et n'avaient de détenteur nulle
+   part.
+
+   ── LE LIEN A DEUX TEXTES, COMME L'INFORMATION ──
+   `nature` est la carte de l'auteur : « Le premier des cinq à qui
+   l'offre est faite ». `enonce` est ce que le joueur lit, à la
+   deuxième personne. Tant qu'il n'y avait qu'un texte, le livret
+   imprimait la nature — et disait au joueur ce que son personnage
+   ignore. Même leçon que `contenu` / `enonce` sur l'information.
        Groupe     { id, nom }
 
    Les huit champs narratifs du personnage sont ceux de la méthode
@@ -182,6 +199,8 @@ export const ReseauStore = {
       background: "",
       style: "",
       objectifs: [],
+      possede: [],
+      pressions: [],
       portrait: "",
       images: [],
       x: null,
@@ -344,6 +363,7 @@ export const ReseauStore = {
     de,
     vers,
     nature = "",
+    enonce = "",
     tonalite = "neutre",
     importance = "secondaire",
     miroir = false,
@@ -363,9 +383,9 @@ export const ReseauStore = {
 
     const d = this._d();
     let l = d.liens.find((x) => x && x.de === de && x.vers === vers);
-    if (l) Object.assign(l, { nature, tonalite, importance, miroir: !!miroir });
+    if (l) Object.assign(l, { nature, enonce, tonalite, importance, miroir: !!miroir });
     else {
-      l = { id: this._uid("l"), de, vers, nature, tonalite, importance, miroir: !!miroir };
+      l = { id: this._uid("l"), de, vers, nature, enonce, tonalite, importance, miroir: !!miroir };
       d.liens.push(l);
     }
 
@@ -391,6 +411,9 @@ export const ReseauStore = {
       nature: aller.nature,
       tonalite: aller.tonalite,
       importance: aller.importance,
+      // L'énoncé est à la deuxième personne : celui de l'aller ne peut
+      // pas servir au retour. Il se réécrit, ou reste vide.
+      enonce: "",
       miroir: false,
       ...retour,
     });

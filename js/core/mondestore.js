@@ -19,7 +19,22 @@
 
        Monde { titre, premisse, propos, thematique, contexte,
                intention, avertissements, securite[], securiteNote,
-               pratique, costume, references, fil, lieux[] }
+               pratique, costume, references, fil, lieux[],
+               epoques[], interrupteurs[] }
+
+   ── L'INTERRUPTEUR : CE QUE LE JEU DÉCIDE ──
+   Le fil marquait en prose ce qu'une première session laisse ouvert
+   et que la suite du GN se joue dessus : « quelqu'un est-il allé chez
+   la doctoresse ? ». L'orga le notait sur une feuille à 2 h du matin,
+   et cherchait dans le Markdown à qui le dire le lendemain. L'objet
+   est maintenant tenu ici :
+
+       Interrupteur { id, question, defaut, toucheIds[], note }
+
+   `defaut` est la valeur des livrets si rien n'a été joué de net ;
+   `toucheIds` dit à qui la valeur jouée se dit le matin ; `note` est
+   la phrase à leur dire. La feuille de 2 h se génère depuis cette
+   liste (`feuille.js`), elle ne s'écrit plus à la main.
 
    ── LA PRÉMISSE A UNE FORME, ET ON LA RAPPELLE ──
    eXpérience la donne littéralement : *[le héros] + va à + [action
@@ -171,12 +186,16 @@ export const MondeStore = {
       lieux: Array.isArray(raw?.lieux) ? raw.lieux : [],
       securite: Array.isArray(raw?.securite) ? raw.securite : Object.keys(MECANIQUES),
       epoques: Array.isArray(raw?.epoques) ? raw.epoques : [],
+      interrupteurs: Array.isArray(raw?.interrupteurs) ? raw.interrupteurs : [],
     };
     return this._data;
   },
 
   save() {
-    Storage.set(this._key, this._data || { ...CHAMPS, lieux: [], securite: [], epoques: [] });
+    Storage.set(
+      this._key,
+      this._data || { ...CHAMPS, lieux: [], securite: [], epoques: [], interrupteurs: [] },
+    );
   },
 
   _d() {
@@ -209,6 +228,7 @@ export const MondeStore = {
     const d = this._d();
     delete patch.lieux; // les lieux ont leur porte
     delete patch.securite; // les mécaniques aussi
+    delete patch.interrupteurs; // et les interrupteurs
     for (const k of Object.keys(patch)) if (!(k in CHAMPS)) delete patch[k];
     Object.assign(d, patch);
     this.save();
@@ -270,6 +290,57 @@ export const MondeStore = {
     this.save();
     this._emit({ type: "monde:epoques" });
     return true;
+  },
+
+  /* ================= Interrupteurs =================
+     Une question binaire que le jeu décide, sa valeur par défaut, et
+     ceux à qui l'on dit la valeur jouée le lendemain matin. */
+
+  interrupteurs() {
+    return this._d().interrupteurs;
+  },
+
+  creerInterrupteur({ question = "", defaut = "", note = "", toucheIds = [] } = {}) {
+    const x = {
+      id: "k" + Date.now().toString(36) + Math.random().toString(36).slice(2, 6),
+      question,
+      defaut,
+      note,
+      toucheIds: [...toucheIds],
+    };
+    this._d().interrupteurs.push(x);
+    this.save();
+    this._emit({ type: "monde:interrupteurs" });
+    return x;
+  },
+
+  majInterrupteur(id, patch = {}) {
+    const x = this._d().interrupteurs.find((k) => k && k.id === id);
+    if (!x) return null;
+    Object.assign(x, patch, { id: x.id });
+    if (!Array.isArray(x.toucheIds)) x.toucheIds = [];
+    this.save();
+    this._emit({ type: "monde:interrupteurs" });
+    return x;
+  },
+
+  /** Ajoute ou retire un personnage de ceux que l'interrupteur touche. */
+  basculerTouche(id, personnageId) {
+    const x = this._d().interrupteurs.find((k) => k && k.id === id);
+    if (!x || !personnageId) return null;
+    x.toucheIds = x.toucheIds.includes(personnageId)
+      ? x.toucheIds.filter((p) => p !== personnageId)
+      : [...x.toucheIds, personnageId];
+    this.save();
+    this._emit({ type: "monde:interrupteurs" });
+    return x;
+  },
+
+  supprimerInterrupteur(id) {
+    const d = this._d();
+    d.interrupteurs = d.interrupteurs.filter((k) => k && k.id !== id);
+    this.save();
+    this._emit({ type: "monde:interrupteurs" });
   },
 
   securite() {
@@ -342,7 +413,7 @@ export const MondeStore = {
     // `epoques` doit repartir vide, pas absent : `epoques()` l'itère, et
     // « Jeu d'essai » passe par ici avant de recharger — l'écran du monde
     // restait blanc sur une TypeError.
-    this._data = { ...CHAMPS, lieux: [], securite: Object.keys(MECANIQUES), epoques: [] };
+    this._data = { ...CHAMPS, lieux: [], securite: Object.keys(MECANIQUES), epoques: [], interrupteurs: [] };
     this.save();
     this._emit({ type: "monde:vider" });
   },

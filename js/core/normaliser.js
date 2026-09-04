@@ -110,6 +110,8 @@ const REGLES = {
     background: txt(o.background),
     style: txt(o.style),
     objectifs: liste(o.objectifs).map(txt),
+    possede: liste(o.possede).map(txt),
+    pressions: liste(o.pressions).map(txt),
     portrait: garder(srcSure(o.portrait), o.portrait, note, "portrait à source refusée"),
     images: liste(o.images)
       .filter((i) => i && i.id)
@@ -131,6 +133,8 @@ const REGLES = {
       /* Pas d'époque = vrai partout. La parenté n'a pas de date. */
       epoqueId: o.epoqueId || null,
       nature: txt(o.nature),
+      // Ce que lit le joueur. Absent = vide, et le livret le dit.
+      enonce: txt(o.enonce),
       tonalite: garder(dans(o.tonalite, TONALITES, null), o.tonalite, note, "tonalité inconnue") || "neutre",
       importance:
         garder(dans(o.importance, IMPORTANCES, null), o.importance, note, "importance inconnue") ||
@@ -234,6 +238,16 @@ const REGLES = {
   // L'ordre est de la donnée : une époque sans `ordre` lisible passe en
   // tête plutôt que de casser le tri de `MondeStore.epoques()`.
   "monde.epoques": (o) => ({ ...o, nom: txt(o.nom), ordre: nombre(o.ordre) ?? 0 }),
+
+  // Un interrupteur est une question que le jeu décide. Sans question,
+  // il ne désigne rien — mais on le garde : l'auteur l'a créé.
+  "monde.interrupteurs": (o) => ({
+    ...o,
+    question: txt(o.question),
+    defaut: txt(o.defaut),
+    note: txt(o.note),
+    toucheIds: liste(o.toucheIds).map(txt).filter(Boolean),
+  }),
 
   "run.journal": (o) => ({
     ...o,

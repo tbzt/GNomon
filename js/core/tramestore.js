@@ -58,12 +58,28 @@
 import { Storage } from "./storage.js";
 import { Debug } from "./debug.js";
 
-/** Type d'une conclusion. L'échappatoire est la sortie de secours que
-    Sly Flourish appelle « escape hatch » : le chemin qui rattrape une
-    trame bloquée. Rendue en pointillé, pour se distinguer au coup d'œil. */
+/** Type d'une conclusion.
+
+    · `normale` — une décision de jeu : ce que les joueurs peuvent
+      faire de la scène.
+    · `echappatoire` — la sortie de secours que Sly Flourish appelle
+      « escape hatch » : le chemin qui rattrape une trame bloquée.
+      Rendue en pointillé.
+    · `narration` — ce que l'orga impose à heure fixe (la police entre,
+      quelqu'un tombe). Ce n'est pas un choix du joueur, et l'atelier
+      ne doit pas le laisser croire : une situation qui porte une
+      narration ET une décision contraire ment à l'équipe.
+    · `interrupteur` — une valeur que le jeu décide et que l'orga note
+      sur la feuille de 2 h ; le reste du GN se joue dessus.
+
+    Les deux derniers viennent de l'audit de jouabilité : le fil de
+    l'histoire faisait cette distinction en prose, et l'archive
+    contenait des branches que le fil interdisait. */
 export const TYPES_CONCLUSION = Object.freeze({
   normale: "Conclusion",
   echappatoire: "Échappatoire",
+  narration: "Narration",
+  interrupteur: "Interrupteur",
 });
 
 const VIDE = { trames: [], situations: [], conclusions: [] };

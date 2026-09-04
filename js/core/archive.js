@@ -72,7 +72,7 @@ export const CLES = CLES_PROJET;
     doit suivre le PLAN d'`objets.js` : ce que l'espace partagé découpe
     par document, l'import doit le réconcilier par identifiant. */
 const LISTES = {
-  monde: ["lieux", "epoques"],
+  monde: ["lieux", "epoques", "interrupteurs"],
   reseau: ["personnages", "liens", "groupes", "sieges"],
   trames: ["trames", "situations", "conclusions"],
   informations: ["informations"],

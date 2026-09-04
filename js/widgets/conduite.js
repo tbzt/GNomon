@@ -166,7 +166,7 @@ export const Conduite = {
       ? f.conclusions
           .map(
             (c) =>
-              `<button type="button" class="cd-suite${c.type === "echappatoire" ? " echap" : ""}${c.vers ? "" : " sans-suite"}" ` +
+              `<button type="button" class="cd-suite${c.type === "echappatoire" ? " echap" : c.type === "narration" ? " narration" : c.type === "interrupteur" ? " interrupteur" : ""}${c.vers ? "" : " sans-suite"}" ` +
               `data-bif="${f.trameId}" data-c="${c.id}">` +
               `${Utils.escHtml(c.texte) || "conclusion sans texte"}` +
               (c.vers ? "" : '<span class="cd-averti">rien d\'écrit après</span>') +

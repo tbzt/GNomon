@@ -503,6 +503,28 @@ export const Fiche = {
         `<li><b>${v.situations.length}</b> ${Utils.plur(v.situations.length, "scène")} — ` +
           `${porte} ${Utils.plur(porte, "portée")}, ${figure} en figuration</li>`,
       );
+    // Ce qu'il peut demander, et à qui : c'est la première mesure du
+    // jeu, avant ce qu'il peut apprendre. Un objectif sans cible lue
+    // est montré tel quel — c'est à l'auteur de le reformuler, ou
+    // d'écarter l'alerte de la conscience.
+    if (v.peutDemander.length) {
+      const sans = v.peutDemander.filter((o) => !o.cibles.length).length;
+      lignes.push(
+        `<li><b>${v.peutDemander.length}</b> ${Utils.plur(v.peutDemander.length, "objectif")}` +
+          (sans
+            ? ` <span class="vc-attente">(${sans} sans personne qui puisse refuser)</span>`
+            : "") +
+          "</li>",
+      );
+    }
+    if (v.onLuiDemandera.length) {
+      const qui = [...new Set(v.onLuiDemandera.map((d) => d.deNom.split(" ")[0]))];
+      lignes.push(
+        `<li><b>${v.onLuiDemandera.length}</b> ${Utils.plur(v.onLuiDemandera.length, "demande")} ` +
+          `qui ${v.onLuiDemandera.length > 1 ? "viendront" : "viendra"} à lui — ` +
+          `${Utils.escHtml(qui.slice(0, 4).join(", "))}${qui.length > 4 ? "…" : ""}</li>`,
+      );
+    }
     if (v.peutApprendre.length)
       lignes.push(
         `<li><b>${v.peutApprendre.length}</b> ${Utils.plur(v.peutApprendre.length, "chose")} ` +
@@ -543,8 +565,9 @@ export const Fiche = {
       (v.aQuelqueChoseAVivre
         ? `<ul class="vc-liste">${lignes.join("")}${trous}</ul>`
         : alarme
-          ? '<p class="vc-alerte">Ce personnage n\'a rien à jouer : aucune scène qu\'il porte, ' +
-            "rien à y apprendre, aucune conséquence à provoquer. Il est présent, mais spectateur.</p>"
+          ? '<p class="vc-alerte">Ce personnage n\'a rien à jouer : rien à demander à personne, ' +
+            "personne qui vienne lui demander quelque chose, aucune scène qu'il porte, rien à y " +
+            "apprendre. Il est présent, mais spectateur.</p>"
           : '<p class="vc-note">Il figure sans rien porter ni rien apprendre. Pour un PNJ, c\'est ' +
             "souvent le rôle attendu — il sert les scènes des autres.</p>") +
       (v.sansHoraire.length
@@ -742,11 +765,42 @@ export const Fiche = {
           .join("")
       : '<li class="vide-obj">Aucune image.</li>';
 
+    // Deux listes de la même forme que les objectifs. Elles partent
+    // dans le livret : ce qu'il a dans la poche, et l'heure qui tombe.
+    const listeEditable = (items, attr, invite, vide) =>
+      (items || []).length
+        ? (items || [])
+            .map(
+              (o, i) =>
+                `<li><input data-${attr}="${i}" value="${Utils.escHtml(o)}" placeholder="${Utils.escHtml(invite)}" aria-label="${Utils.escHtml(invite)}" />` +
+                `<button type="button" data-${attr}-x="${i}" title="Retirer">✕</button></li>`,
+            )
+            .join("")
+        : `<li class="vide-obj">${vide}</li>`;
+    const possede = listeEditable(
+      p.possede,
+      "poss",
+      "Une enveloppe de billets dans la veste",
+      "Rien sur lui. Un objet, un papier, une somme, une clé : ce qui se donne, se montre ou se refuse.",
+    );
+    const pressions = listeEditable(
+      p.pressions,
+      "press",
+      "Onze heures un quart : il arrête tout si personne ne l'a rassuré",
+      "Rien ne le presse. Une heure, et ce qui tombe si rien n'est fait avant.",
+    );
+
     return (
       '<section class="extras">' +
-      '<p class="carnet-titre">Ce qu\'il cherche<span class="carnet-aide">les missions concrètes, distinctes du désir</span></p>' +
+      '<p class="carnet-titre">Ce qu\'il cherche<span class="carnet-aide">les missions concrètes, distinctes du désir — nommez qui peut refuser</span></p>' +
       `<ul class="objectifs">${objectifs}</ul>` +
       '<button type="button" id="ajout-obj">+ Objectif</button>' +
+      '<p class="carnet-titre" style="margin-top:18px">Ce qu\'il a sur lui<span class="carnet-aide">part dans le livret</span></p>' +
+      `<ul class="objectifs">${possede}</ul>` +
+      '<button type="button" id="ajout-poss">+ Objet</button>' +
+      '<p class="carnet-titre" style="margin-top:18px">Ce qui le presse<span class="carnet-aide">une heure, et ce qui tombe — part dans le livret</span></p>' +
+      `<ul class="objectifs">${pressions}</ul>` +
+      '<button type="button" id="ajout-press">+ Échéance</button>' +
       '<p class="carnet-titre" style="margin-top:18px">Comment le jouer<span class="carnet-aide">costume, allure, voix — ce bloc part dans le livret</span></p>' +
       `<textarea id="style-jeu" rows="3" placeholder="Se tient droite, parle peu. Tablier de dispensaire, mains abîmées.">${Utils.escHtml(p.style || "")}</textarea>` +
       '<p class="carnet-titre" style="margin-top:18px">Images<span class="carnet-aide">intégrées au livret</span></p>' +
@@ -1028,6 +1082,28 @@ export const Fiche = {
         o.splice(Number(b.dataset.objX), 1);
         maj({ objectifs: o });
       });
+
+    // Même câblage pour les deux autres listes de phrases.
+    for (const [champ, attr, bouton] of [
+      ["possede", "poss", "#ajout-poss"],
+      ["pressions", "press", "#ajout-press"],
+    ]) {
+      const lire = () => [...(this._store.personnage(this._id)[champ] || [])];
+      const ajout = h.querySelector(bouton);
+      if (ajout) ajout.addEventListener("click", () => maj({ [champ]: [...lire(), ""] }));
+      for (const el of h.querySelectorAll(`[data-${attr}]`))
+        el.addEventListener("change", (e) => {
+          const o = lire();
+          o[Number(el.dataset[attr])] = e.target.value;
+          maj({ [champ]: o });
+        });
+      for (const b of h.querySelectorAll(`[data-${attr}-x]`))
+        b.addEventListener("click", () => {
+          const o = lire();
+          o.splice(Number(b.dataset[attr + "X"]), 1);
+          maj({ [champ]: o });
+        });
+    }
 
     h.querySelector("#ajout-img").addEventListener("click", () =>
       h.querySelector("#fichier-image").click(),

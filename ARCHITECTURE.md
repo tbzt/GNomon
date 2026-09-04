@@ -73,7 +73,7 @@ reviendrait à aplatir la différence qui fait tout le projet.
 | `conduite.js` | `Conduite` | Le tableau de la nuit. **Son propre monde visuel** (cf. §5g), et un battement qui ne touche qu'au temps. |
 | `casting.js` | `Casting` | L'écran des vœux : grille, import à colonne choisie, affectation, bilan. |
 | `frise.js` | `Frise` | L'écran du temps : planning, collisions, charge. Un clic sur un bloc ouvre l'atelier **sur cette situation** (`Atelier.viser`). |
-| `conscience.js` | `Conscience` | L'écran des douze règles. Tient les trois interdits **dans le rendu** autant que dans les stores (cf. §5d). |
+| `conscience.js` | `Conscience` | L'écran des treize règles. Tient les trois interdits **dans le rendu** autant que dans les stores (cf. §5d). |
 | `matrice.js` | `Matrice` | L'écran « Qui sait quoi » : informations × personnages, une cellule se règle au clic. |
 | `atelier.js` | `Atelier` | L'écran des trames : graphe, éditeur de situation, file « et après ? ». Remonte le graphe **sur signature**, pas sur événement (cf. §6). |
 | `graph/graphengine.js` | `GraphEngine` | Moteur de graphe pur — layout de forces ou **layout auteur** (`static` + `onNodeMoved`), formes, motifs de trait, poches, pan/zoom. **Copié tel quel** de ShadowHerds : zéro import, aucune vérité détenue. Seul le pont `window` a sauté. |
@@ -90,7 +90,7 @@ reviendrait à aplatir la différence qui fait tout le projet.
 | `storage.js` | `Storage` | **Unique** dépositaire du `localStorage`. Clés `gnomon_v1_<clé>`. Observation des écritures (`subscribe`), entonnoir d'échec d'écriture, versionnement de schéma + migrations. |
 | `reseaustore.js` | `ReseauStore` | **La vérité racine.** Personnages, liens orientés, groupes. Détient les trois invariants du modèle (cf. §4). |
 | `utils.js` | `Utils` | `escHtml`, `searchNorm` (recherche sans accents), `plur`. Volontairement maigre : la version de ShadowHerds porte la résolution d'édition, dont il n'y a pas ici. |
-| `conscience.js` | `conscience()` | **Les douze règles, calculées.** Module pur : lit trois stores, n'en mute aucun, ne touche pas au DOM — S6 pourra le rejouer après casting. Ne connaît pas les dérogations : le calcul reste rejouable tel quel. |
+| `conscience.js` | `conscience()` | **Les treize règles, calculées.** Module pur : lit trois stores, n'en mute aucun, ne touche pas au DOM — S6 pourra le rejouer après casting. Ne connaît pas les dérogations : le calcul reste rejouable tel quel. |
 | `diagnostic.js` | `diagnostics()`, `parCategorie()` | **La couche d'interprétation.** Traduit `conscience()`, `frise()`, `classementFragilite()` en signaux humains groupés par objet du GN, et ajoute quatre signaux structurels neufs (cf. §5q). Pur, et comme la conscience : ne connaît pas les dérogations. |
 | `crashtest.js` | `crashTestSituation()`, `crashTestInformation()`, `crashTestArriveeTardive()` | « Et si… ? » posé sur autre chose qu'une personne — `defection()` couvre déjà ce cas-là et est réutilisée telle quelle (cf. §5r). Pur, et **en lecture seule** : on veut savoir ce que coûterait la coupe avant de la faire. |
 | `liaison.js` | `contexteSuite()` | Ce qu'il faut avoir sous les yeux pour écrire la suite d'une conclusion : ce que les présents savent déjà, et les fils tendus sans être rattachés. **Propose, ne décide pas** (cf. §5s). Pur. |
@@ -848,7 +848,7 @@ pour reprendre le code.
 
 ### Le problème que ça résout
 
-GNomon savait déjà tout ce qu'il fallait : douze règles de conscience, le coût d'une
+GNomon savait déjà tout ce qu'il fallait : treize règles de conscience, le coût d'une
 absence, les collisions de temps, l'asymétrie de connaissance. Mais **chaque calcul vivait
 dans son écran, avec son vocabulaire** — il fallait visiter quatre écrans, et savoir ce
 qu'est un « miroir désaccordé », pour réunir ce que l'outil savait déjà. Le problème
@@ -1116,6 +1116,67 @@ Il porte des champs de saisie et un tour en cours, et c'est **lui** qui provoque
 écritures qu'on observerait. `_surChangement` l'ignore donc explicitement. En revanche, un
 tour terminé recharge les stores (`onChange`) : sans ça, l'écran suivant montrerait le GN
 d'avant la synchronisation.
+
+---
+
+## 5u. La jouabilité — ce qu'un audit a changé dans le modèle
+
+Un audit de jouabilité mené en septembre 2026 sur un GN réel (« Le Compte n'y est pas »,
+67 fiches, 431 liens, 145 situations) a posé une question que l'outil ne posait pas : **le
+joueur joue-t-il une situation, ou le rôle de quelqu'un qui doit découvrir ce que l'auteur a
+déjà décidé ?** Le GN était plus jouable que ce que l'outil savait en dire — aucun objectif ne
+commençait par « apprendre » ou « découvrir » — et la dérive vers le récit venait du modèle
+avant de venir de la plume. Cinq corrections en sont sorties, toutes petites, toutes dans les
+patrons existants.
+
+### Le lien a deux textes
+
+`Lien.enonce`, à côté de `nature`. Même leçon que `contenu` / `enonce` sur l'information, appliquée
+avec deux ans de retard : la nature est la carte de l'auteur, et `livret.js` l'imprimait telle
+quelle. Reconstitué depuis l'archive, le livret de Marcel disait « Édouard Brun — Le premier des
+cinq à qui l'offre est faite », une information que Marcel ignore. Le livret imprime l'énoncé,
+retombe sur la nature faute de mieux, et **le signale** — une ligne par livret, pas une par
+contact : 434 liens sans énoncé feraient 434 lignes, et un rapport bruyant s'apprend à s'ignorer.
+
+### Ce qu'il a, ce qui le presse
+
+Deux listes de phrases sur le personnage, `possede` et `pressions`, éditées comme les objectifs
+et imprimées dans le livret et la consigne. L'audit avait compté vingt-quatre objets qui
+faisaient tout le jeu — une valise, un registre, une liste, une enveloppe, trois armes — et pas
+un n'avait de détenteur dans le modèle ; et onze échéances dispersées dans des pitches. Ce sont
+des phrases, pas des objets : un modèle d'objet avec détenteur et usage viendra quand on saura
+ce qu'on veut en calculer. Pour l'instant, on veut qu'elles soient dans la poche du joueur.
+
+### L'objectif a une cible, et elle se lit
+
+`objectifs.js` lit dans la phrase d'un objectif les personnages qu'elle nomme — nom entier,
+prénom ou nom de famille unique à la même époque, mention. **C'est une heuristique**, et tout
+ce qui la consomme le dit. Elle sert deux choses : `pointdevue.js` compte désormais **ce qu'il
+peut demander** et **ce qu'on viendra lui demander** avant ce qu'il peut apprendre — le verdict
+« a-t-il quelque chose à vivre » ne mesurait que des révélations ; et une treizième règle de
+conscience, « objectif avec adversaire », signale un PJ dont **aucun** objectif ne nomme quelqu'un
+qui puisse refuser. Pas chaque objectif muet : mesuré sur le GN de l'audit, l'alerte par objectif
+touchait quarante-huit fiches sur soixante-sept, et un compteur pareil s'apprend à ne plus se
+lire. Sa transposition explique ce que la lecture manque (« votre père », deux Édouard) pour
+qu'on reformule au lieu d'écarter.
+
+Ce qu'on va demander à un personnage **ne sort pas dans son livret** : ce sont les objectifs des
+autres, donc leurs secrets. La proposition initiale de l'audit l'imprimait ; elle a été corrigée
+en l'écrivant. C'est un dérivé pour l'auteur, sur la fiche.
+
+### Quatre types de conclusion
+
+`narration` et `interrupteur` rejoignent `normale` et `echappatoire`. Le fil de l'histoire tenait
+cette distinction en prose — « tenu par narration, jamais par un pari sur un joueur » — et
+l'archive contenait des branches que le fil interdisait (« Jeannot refuse », alors que la rue est
+donnée avant que le jeu commence). Le type ne calcule rien encore ; il dit à l'atelier et à la
+conduite ce qui est un choix et ce qui n'en est pas.
+
+### L'interrupteur et la feuille de 2 h
+
+`Monde.interrupteurs[]` — question, défaut, personnages touchés, phrase à dire le matin — et
+`feuille.js`, pur, qui en tire le Markdown que l'orga imprime. La feuille existait, à la main,
+dans le fil ; à 2 h du matin personne ne relit soixante mille signes.
 
 ---
 

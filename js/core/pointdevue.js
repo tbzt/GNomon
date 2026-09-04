@@ -19,6 +19,18 @@
                               situations
    · ce qu'il peut apprendre → ce que ses situations `produit`ent et
                               qu'il ne sait pas encore
+   · ce qu'il peut demander → ses objectifs, avec qui chacun vise
+   · ce qu'on lui demandera → les objectifs des autres qui le visent
+   · ce qu'il a, ce qui le presse → les deux listes de sa fiche
+
+   ── LE VERDICT A CHANGÉ DE MESURE ──
+   « A-t-il quelque chose à vivre » se lisait : porte-t-il une scène,
+   peut-il apprendre, une conclusion est-elle écrite pour lui. Rien de
+   cela n'est une action du joueur. L'audit de jouabilité (2026) l'a
+   montré sur un GN réel : un personnage qui n'a que des objectifs
+   « faire signer » et aucune scène qui « produise » était compté
+   spectateur. Le verdict compte désormais d'abord ce qu'il peut
+   demander et ce qu'on viendra lui demander.
 
    ── LE SEUL CALCUL NEUF : LES TROUS ──
    Un intervalle sans aucune scène programmée, entre sa première et sa
@@ -41,6 +53,8 @@
     de reprocher une heure de flottement — un GN a besoin de respirer. */
 export const TROU_MIN = 1.5;
 
+import { ciblesDe, objectifsVisant } from "./objectifs.js";
+
 /**
  * Le GN vu depuis un personnage.
  *
@@ -53,6 +67,22 @@ export function pointDeVue(personnageId, { reseau, trames, infos }) {
   if (!p) return null;
 
   const { sait, croit } = infos.parPersonnage(personnageId);
+  const persos = reseau.personnages();
+
+  // Ce qu'il peut demander : ses objectifs, et à qui chacun s'adresse
+  // d'après la phrase. Une cible vide n'est pas retirée : c'est ce que
+  // la conscience signale, et la fiche doit le montrer.
+  const peutDemander = (p.objectifs || [])
+    .map((t) => String(t))
+    .filter((t) => t.trim())
+    .map((texte) => ({ texte, cibles: ciblesDe(texte, persos, p.id) }));
+
+  // Ce qu'on lui demandera : les objectifs des autres qui le nomment.
+  const onLuiDemandera = objectifsVisant(persos, p.id).map(({ de, texte }) => ({
+    de,
+    deNom: (reseau.personnage(de) || {}).nom || "personnage supprimé",
+    texte,
+  }));
 
   const contacts = reseau.liensDe(personnageId).map((l) => {
     const q = reseau.personnage(l.vers);
@@ -130,12 +160,21 @@ export function pointDeVue(personnageId, { reseau, trames, infos }) {
     sansHoraire,
     peutApprendre,
     peutProvoquer,
+    peutDemander,
+    onLuiDemandera,
+    possede: (p.possede || []).map(String).filter((t) => t.trim()),
+    pressions: (p.pressions || []).map(String).filter((t) => t.trim()),
     trous: trous(situations),
     // La réponse en un booléen à la question du module. Volontairement
-    // exigeante sur UN point : figurer au casting sans jamais rien
-    // porter ni rien apprendre, c'est être décor.
+    // exigeante sur UN point : figurer au casting sans rien demander à
+    // personne, sans que personne ne lui demande rien, sans rien porter
+    // ni rien apprendre, c'est être décor.
     aQuelqueChoseAVivre:
-      situations.some((s) => s.porteur) || peutApprendre.length > 0 || peutProvoquer.length > 0,
+      situations.some((s) => s.porteur) ||
+      peutDemander.length > 0 ||
+      onLuiDemandera.length > 0 ||
+      peutApprendre.length > 0 ||
+      peutProvoquer.length > 0,
   };
 }
 

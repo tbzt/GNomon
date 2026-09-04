@@ -34,6 +34,18 @@
      parle comme l'orga est une fuite, et elle doit se voir.
    · **La note privée d'un lieu** (`prive`). Le lieu a une note pour le
      joueur et une pour l'équipe ; seule la première sort ici.
+   · **La nature d'un lien**, quand le lien a un énoncé. La nature est
+     la carte de l'auteur (« Le premier des cinq à qui l'offre est
+     faite ») ; l'énoncé est ce que le joueur lit. Sans énoncé, la
+     nature sort faute de mieux, et le livret le signale — même règle
+     que l'information.
+
+   ── CE QUE LE LIVRET AJOUTE, DEPUIS L'AUDIT DE JOUABILITÉ ──
+   Deux listes que la fiche porte et que rien n'imprimait : **ce que
+   le personnage a sur lui** (un objet, un papier, une somme) et **ce
+   qui le presse** (une heure, et ce qui tombe si rien). Un joueur qui
+   reçoit un passé et des faits joue un souvenir ; un joueur qui reçoit
+   une enveloppe dans sa poche et une heure limite joue une journée.
 
    ── CE QUE LES DEUX PORTENT TOUJOURS ──
    La note d'intention, les avertissements de contenu et les mécaniques
@@ -94,12 +106,18 @@ function enonceDe(i) {
     pas dans celui de la planque. Sans époque, on lit les liens tels
     quels : un GN mono-époque ne change pas. */
 function contactsDe(reseau, p) {
-  const contact = (l, autre) => ({
-    nom: autre.nom,
-    role: autre.role || "",
-    nature: (l.nature || "").trim(),
-    cle: l.tonalite,
-  });
+  const contact = (l, autre) => {
+    const enonce = (l.enonce || "").trim();
+    const nature = (l.nature || "").trim();
+    return {
+      nom: autre.nom,
+      role: autre.role || "",
+      nature: enonce || nature,
+      // Vrai quand le livret imprime le texte d'auteur faute d'énoncé.
+      brut: !enonce && !!nature,
+      cle: l.tonalite,
+    };
+  };
   // Ni `importance` ni `miroir` : ce sont des outils d'auteur.
   if (!p.epoqueId) {
     return reseau
@@ -166,6 +184,12 @@ export function livret(personnageId, { reseau, monde, infos, casting = null }) {
   });
   if (!contacts.length)
     avertissements.push("Aucun contact : le personnage arriverait sans connaître personne.");
+  const bruts = contacts.filter((c) => c.brut).length;
+  if (bruts)
+    avertissements.push(
+      `${bruts} contact${bruts > 1 ? "s" : ""} sans formulation pour le joueur : le livret imprime ` +
+        "la nature écrite pour l'équipe.",
+    );
   if (!cadre(monde).contexte.trim())
     avertissements.push("Le contexte commun du monde est vide — le livret n'aura pas d'entrée.");
 
@@ -183,6 +207,8 @@ export function livret(personnageId, { reseau, monde, infos, casting = null }) {
     background: (p.background || "").trim(),
     style: (p.style || "").trim(),
     objectifs: (p.objectifs || []).filter((o) => String(o).trim()),
+    possede: (p.possede || []).filter((o) => String(o).trim()),
+    pressions: (p.pressions || []).filter((o) => String(o).trim()),
     images: (p.images || []).filter((i) => i && i.src),
     traits,
     contacts,
@@ -296,6 +322,8 @@ export function consigne(personnageId, { reseau, monde, infos, trames }) {
     cadre: cadre(monde),
     comediens,
     porte: porte.map((t) => t.titre),
+    possede: (p.possede || []).filter((o) => String(o).trim()),
+    pressions: (p.pressions || []).filter((o) => String(o).trim()),
     scenes,
     contacts,
     sait: sait.map((i) => i.contenu).filter(Boolean),
@@ -493,6 +521,8 @@ ${bloc(
     : "",
 )}
 ${bloc("Ce que vous cherchez", liste(l.objectifs))}
+${bloc("Ce que vous avez sur vous", liste(l.possede))}
+${bloc("Ce qui vous presse", liste(l.pressions))}
 ${bloc(
   "Ceux que vous connaissez",
   l.contacts.length
@@ -562,6 +592,8 @@ export function consigneHtml(k) {
 <div class="encadre"><h2>Ce document ne se remet à personne</h2>
 <p>Il contient les vérités que les joueurs ignorent. Il est fait pour l'équipe.</p></div>
 ${bloc("Ce que vous portez", liste(k.porte))}
+${bloc("Ce qu'il a sur lui", liste(k.possede))}
+${bloc("Ce qui le presse", liste(k.pressions))}
 ${bloc("Où vous entrez", scenes)}
 ${bloc("Ce que vous savez", liste(k.sait))}
 ${bloc(
@@ -715,6 +747,8 @@ export function livretMarkdown(l) {
   sect("Votre histoire", l.background && proseTexte(l.background));
   sect("Qui vous êtes", l.traits.map((t) => `**${t.label}** — ${t.valeur}`));
   sect("Ce que vous cherchez", l.objectifs.map((o) => `- ${o}`));
+  sect("Ce que vous avez sur vous", l.possede.map((o) => `- ${o}`));
+  sect("Ce qui vous presse", l.pressions.map((o) => `- ${o}`));
   sect(
     "Ceux que vous connaissez",
     l.contacts.map((x) => `- **${x.nom}**${x.role ? ` (${x.role})` : ""}${x.nature ? ` — ${x.nature}` : ""}`),

@@ -530,7 +530,7 @@ export const App = {
     }
     this._quitter();
     this._basculer("monde", "Le monde");
-    Monde.monter(this._hotes.monde, MondeStore, LiensStore);
+    Monde.monter(this._hotes.monde, MondeStore, LiensStore, ReseauStore);
     if (!silencieux) location.hash = "#/monde";
   },
 

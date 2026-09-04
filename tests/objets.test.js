@@ -38,6 +38,7 @@ const GN = () => ({
       { id: "e1", nom: "1912", ordre: 0 },
       { id: "e2", nom: "1932", ordre: 1 },
     ],
+    interrupteurs: [],
   },
   reseau: {
     personnages: [

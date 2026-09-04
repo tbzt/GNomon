@@ -121,7 +121,7 @@ suite("Normaliser — un document venu d'ailleurs", () => {
       roleId: null, epoqueId: null, fonction: null,
       moral: "", desir: "", besoin: "", faiblesse: "", pouvoirs: "",
       transformation: "", archetype: "", surprise: false, notes: "",
-      background: "", style: "", objectifs: [], portrait: "", images: [],
+      background: "", style: "", objectifs: [], possede: [], pressions: [], portrait: "", images: [],
       x: null, y: null,
     };
     const r = normaliserDocument("reseau.personnages", complet, "p1");

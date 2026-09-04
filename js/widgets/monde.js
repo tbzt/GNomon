@@ -15,6 +15,14 @@
    store émet à chaque frappe, et reconstruire l'écran écraserait le
    champ sous le curseur.
 
+   ── LES INTERRUPTEURS SONT SOUS LE FIL, ET LA FEUILLE EN SORT ──
+   Ce que le jeu décide le premier soir et que la suite se joue dessus
+   était marqué dans le fil, en prose. Ici, chaque interrupteur est
+   une ligne : la question, la valeur par défaut, à qui la valeur
+   jouée se dit le matin, et la phrase à dire. Le bouton « Feuille de
+   2 h » en tire le document que l'orga imprime — le seul de cet écran
+   qui sorte, et il ne sort que pour l'équipe.
+
    ── LE FIL A SA PROPRE SECTION, ET ELLE LE DIT ──
    Le fil de l'histoire n'est pas un champ parmi les autres : tout ce
    qui précède est public ou repris dans les livrets, lui ne sort
@@ -24,6 +32,8 @@
    ============================================================ */
 import { MECANIQUES } from "../core/mondestore.js";
 import { hote } from "../core/liensstore.js";
+import { telecharger } from "../core/archive.js";
+import { feuilleDe2h } from "../core/feuille.js";
 import { Utils } from "../core/utils.js";
 
 /** Le fil de l'histoire — hors de `CHAMPS` parce qu'il a sa section. */
@@ -111,12 +121,16 @@ export const Monde = {
   _hote: null,
   _store: null,
   _liens: null,
+  _reseau: null,
   _tSave: null,
 
-  monter(hote, store, liens) {
+  /** `reseau` ne sert qu'aux interrupteurs : nommer qui est touché.
+      Sans lui, la section se rend avec des identifiants — jamais vide. */
+  monter(hote, store, liens, reseau = null) {
     this._hote = hote;
     this._store = store;
     this._liens = liens;
+    this._reseau = reseau;
     this.rendre();
   },
 
@@ -147,6 +161,7 @@ export const Monde = {
           `<textarea rows="${c.lignes}" data-m="${c.cle}" placeholder="${Utils.escHtml(c.invite)}">${Utils.escHtml(m[c.cle] || "")}</textarea></label>`,
       ).join("") +
       this._fil() +
+      this._interrupteursSection() +
       this._securite() +
       this._hub() +
       `<div class="monde-lieux"><p class="carnet-titre">Les lieux<span class="carnet-aide">le site tel qu'il est, indépendamment des scènes qui s'y jouent</span></p>` +
@@ -171,6 +186,98 @@ export const Monde = {
       h.outerHTML = this._hub();
       this._brancher();
     }
+    // Les interrupteurs aussi — sauf si l'on est en train d'y écrire :
+    // reconstruire la liste sous le curseur perdrait la frappe. APRÈS le
+    // hub : `_brancher()` rebranche tout l'écran, y compris cette liste ;
+    // la reconstruire ensuite garantit un seul écouteur par bouton, et
+    // pas deux clics qui s'annulent.
+    const k = this._hote.querySelector("#liste-interrupteurs");
+    if (k && !(document.activeElement && k.contains(document.activeElement))) {
+      k.innerHTML = this._interrupteurs();
+      this._brancherInterrupteurs();
+    }
+  },
+
+  /* ================= Interrupteurs ================= */
+
+  _interrupteursSection() {
+    return (
+      '<div class="monde-lieux monde-interrupteurs"><p class="carnet-titre">Les interrupteurs' +
+      '<span class="carnet-aide">ce que le jeu décide, et que l\'orga note à 2 h — document d\'organisation</span></p>' +
+      '<p class="monde-aide">Une question par ligne, sa valeur par défaut (celle que les livrets affirment ' +
+      "faute de mieux), à qui la valeur jouée se dit le lendemain matin, et la phrase à leur dire. " +
+      "La feuille de 2 h se génère d'ici ; elle ne sort jamais dans un livret.</p>" +
+      `<div id="liste-interrupteurs">${this._interrupteurs()}</div>` +
+      '<button type="button" id="ajout-interrupteur">+ Interrupteur</button> ' +
+      '<button type="button" id="feuille-2h">Feuille de 2 h</button></div>'
+    );
+  },
+
+  _nomDe(id) {
+    const p = this._reseau && this._reseau.personnage ? this._reseau.personnage(id) : null;
+    return p ? p.nom : id;
+  },
+
+  _interrupteurs() {
+    const l = this._store.interrupteurs ? this._store.interrupteurs() : [];
+    if (!l.length)
+      return '<p class="liens-vide">Aucun interrupteur. Un GN joué en une seule session n\'en a pas besoin.</p>';
+    const gens = this._reseau && this._reseau.personnages ? this._reseau.personnages() : [];
+    return (
+      '<ul class="lieux interrupteurs">' +
+      l
+        .map((x) => {
+          const dedans = new Set(x.toucheIds || []);
+          const puces = gens.length
+            ? gens
+                .map(
+                  (p) =>
+                    `<button type="button" class="cast-puce${dedans.has(p.id) ? " dedans" : ""}" data-inter-touche="${x.id}" data-p="${p.id}" title="${Utils.escHtml(p.nom)}">` +
+                    `${Utils.escHtml(p.nom.split(" ")[0])}</button>`,
+                )
+                .join("")
+            : (x.toucheIds || []).map((id) => `<span class="cast-puce dedans">${Utils.escHtml(this._nomDe(id))}</span>`).join("");
+          return (
+            `<li><div class="inter-champs">` +
+            `<input data-inter-q="${x.id}" value="${Utils.escHtml(x.question)}" placeholder="Quelqu'un est-il allé chez la doctoresse ?" aria-label="Question" />` +
+            `<input data-inter-d="${x.id}" value="${Utils.escHtml(x.defaut)}" placeholder="Défaut si rien n'a été joué de net : personne, Marcel jusqu'à la porte" aria-label="Valeur par défaut" />` +
+            `<input data-inter-n="${x.id}" value="${Utils.escHtml(x.note)}" placeholder="À dire le matin, à ceux que ça touche" aria-label="Phrase à dire" />` +
+            `<div class="inter-touche">${puces}</div></div>` +
+            `<button type="button" data-inter-x="${x.id}" title="Retirer">✕</button></li>`
+          );
+        })
+        .join("") +
+      "</ul>"
+    );
+  },
+
+  _brancherInterrupteurs() {
+    const rendre = () => {
+      const n = this._hote.querySelector("#liste-interrupteurs");
+      if (n) {
+        n.innerHTML = this._interrupteurs();
+        this._brancherInterrupteurs();
+      }
+    };
+    const champ = (attr, cle) => {
+      for (const el of this._hote.querySelectorAll(`[data-inter-${attr}]`))
+        el.addEventListener("change", (e) =>
+          this._store.majInterrupteur(el.dataset[`inter${attr.toUpperCase()}`], { [cle]: e.target.value }),
+        );
+    };
+    champ("q", "question");
+    champ("d", "defaut");
+    champ("n", "note");
+    for (const b of this._hote.querySelectorAll("[data-inter-touche]"))
+      b.addEventListener("click", () => {
+        this._store.basculerTouche(b.dataset.interTouche, b.dataset.p);
+        rendre();
+      });
+    for (const b of this._hote.querySelectorAll("[data-inter-x]"))
+      b.addEventListener("click", () => {
+        this._store.supprimerInterrupteur(b.dataset.interX);
+        rendre();
+      });
   },
 
   /** Document d'organisation : ce qui s'est passé, en une seule version.
@@ -388,6 +495,29 @@ export const Monde = {
         }
       });
     this._brancherEpoques();
+
+    const ai = this._hote.querySelector("#ajout-interrupteur");
+    if (ai)
+      ai.addEventListener("click", () => {
+        this._store.creerInterrupteur();
+        const n = this._hote.querySelector("#liste-interrupteurs");
+        if (n) {
+          n.innerHTML = this._interrupteurs();
+          this._brancherInterrupteurs();
+        }
+      });
+    const f2 = this._hote.querySelector("#feuille-2h");
+    if (f2)
+      f2.addEventListener("click", () => {
+        this.flush();
+        const m = this._store.monde();
+        telecharger(
+          "feuille-de-2h.md",
+          feuilleDe2h({ titre: m.titre, interrupteurs: this._store.interrupteurs(), reseau: this._reseau }),
+          "text/markdown",
+        );
+      });
+    this._brancherInterrupteurs();
   },
 
   _brancherLieux() {

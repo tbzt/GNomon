@@ -1,7 +1,7 @@
 "use strict";
 
 /* ============================================================
-   CONSCIENCE — les douze règles, calculées.
+   CONSCIENCE — les treize règles, calculées.
    ------------------------------------------------------------
    Aucun outil de GN existant n'en implémente une seule. C'est le
    produit.
@@ -26,6 +26,8 @@
    reste rejouable tel quel.
    ============================================================ */
 
+import { ciblesDe } from "./objectifs.js";
+
 const DENSITE_MIN = 3;
 const DENSITE_MAX = 7;
 
@@ -38,7 +40,7 @@ function seChevauchent(a, b) {
 }
 
 /**
- * Renvoie les douze règles, chacune avec ses alertes.
+ * Renvoie les treize règles, chacune avec ses alertes.
  *
  *   { cle, nom, question, source, transpose?, alertes: [{ cible, nom, detail }] }
  *
@@ -231,6 +233,30 @@ export function conscience(reseau, trames, infos) {
       });
     }
 
+  /* ---- 13. Objectif avec adversaire ---- */
+  // Un objectif que personne ne peut refuser est une attente : le
+  // joueur attend que le jeu lui apporte la réponse. On lit la cible
+  // dans la phrase (cf. `objectifs.js`) ; c'est une lecture, et la
+  // transposition le dit.
+  //
+  // On signale le PERSONNAGE dont aucun objectif ne nomme quelqu'un,
+  // pas chaque objectif muet : « faire prononcer un nom au chapiteau »
+  // vise tout le monde et personne, et c'est légitime à côté de deux
+  // objectifs qui nomment. Mesuré sur un GN réel, l'alerte par objectif
+  // touchait quarante-huit fiches sur soixante-sept — un compteur qu'on
+  // apprend à ne plus lire.
+  const sansAdversaire = pjs
+    .map((p) => ({
+      p,
+      ecrits: (p.objectifs || []).map((o) => String(o)).filter((o) => o.trim()),
+    }))
+    .filter(({ p, ecrits }) => ecrits.length && ecrits.every((o) => !ciblesDe(o, persos, p.id).length))
+    .map(({ p, ecrits }) => ({
+      cible: p.id,
+      nom: p.nom,
+      detail: `aucun de ses ${ecrits.length} objectif${ecrits.length > 1 ? "s" : ""} ne nomme quelqu'un qui puisse refuser — « ${ecrits[0]} »`,
+    }));
+
   return [
     {
       cle: "seul",
@@ -319,6 +345,16 @@ export function conscience(reseau, trames, infos) {
       question: "Deux PJ d'un même groupe pensent-ils différemment ?",
       source: "eXpérience · Electro-GN — les personnages s'individualisent par comparaison sur le problème moral",
       alertes: jumeaux,
+    },
+    {
+      cle: "adversaire",
+      nom: "Objectif avec adversaire",
+      question: "Chaque PJ a-t-il au moins un objectif que quelqu'un peut refuser ?",
+      source:
+        "Trames et enjeux — un enjeu se joue contre quelqu'un · Audit de jouabilité (2026) — « savoir si… » est une attente, « obtenir de X… » est un acte",
+      transpose:
+        "L'adversaire est lu dans la phrase de l'objectif : un autre personnage nommé en entier, par un prénom ou un nom de famille qu'il est seul à porter à la même époque, ou par une mention. « Faire signer votre père » vise quelqu'un et n'est pas lu ; « Empêcher Édouard de parler » avec deux Édouard n'est pas lu non plus. Reformuler avec le nom règle l'alerte.",
+      alertes: sansAdversaire,
     },
   ];
 }

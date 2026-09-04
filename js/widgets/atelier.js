@@ -187,7 +187,7 @@ export const Atelier = {
         from: c.de,
         to: c.vers,
         label: c.texte,
-        pattern: c.type === "echappatoire" ? "dashed" : "solid",
+        pattern: c.type === "echappatoire" || c.type === "interrupteur" ? "dashed" : "solid",
         dir: "forward",
       }));
 
@@ -390,7 +390,7 @@ export const Atelier = {
           `<li class="concl ${c.type}${c.vers ? "" : " orpheline"}" data-c="${c.id}">` +
           `<input class="concl-texte" value="${Utils.escHtml(c.texte)}" placeholder="Ce qui peut arriver…" aria-label="Texte de la conclusion" />` +
           '<span class="concl-actions">' +
-          `<button type="button" class="concl-type" data-basculer title="Basculer conclusion / échappatoire">${TYPES_CONCLUSION[c.type]}</button>` +
+          `<button type="button" class="concl-type" data-basculer title="Conclusion (décision de jeu) → échappatoire → narration (imposée par l'orga) → interrupteur (le jeu décide, l'orga note)">${TYPES_CONCLUSION[c.type]}</button>` +
           (cible
             ? `<button type="button" class="concl-cible" data-aller="${cible.id}">→ ${Utils.escHtml(cible.titre || "Sans titre")}</button>`
             : '<button type="button" class="concl-apres" data-apres>Et après ?</button>') +
@@ -542,8 +542,10 @@ export const Atelier = {
       );
       li.querySelector("[data-basculer]").addEventListener("click", () => {
         const c = this._trames.conclusion(id);
+        // On fait le tour des quatre types, dans l'ordre de la table.
+        const ordre = Object.keys(TYPES_CONCLUSION);
         this._trames.majConclusion(id, {
-          type: c.type === "normale" ? "echappatoire" : "normale",
+          type: ordre[(ordre.indexOf(c.type) + 1) % ordre.length],
         });
       });
       li.querySelector("[data-suppr]").addEventListener("click", () =>

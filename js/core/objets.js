@@ -54,7 +54,7 @@
     · `nu`     — le bloc EST un tableau d'objets à `id` (le hub) ;
     · le reste des champs, s'il y en a, part dans le document `_`. */
 const PLAN = Object.freeze({
-  monde: { listes: ["lieux", "epoques"], reste: true },
+  monde: { listes: ["lieux", "epoques", "interrupteurs"], reste: true },
   reseau: { listes: ["personnages", "liens", "groupes", "sieges"] },
   trames: { listes: ["trames", "situations", "conclusions"] },
   informations: { listes: ["informations"] },

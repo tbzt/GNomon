@@ -3,7 +3,7 @@
 /* ============================================================
    DIAGNOSTIC — la couche d'interprétation, pas un nouveau calcul.
    ------------------------------------------------------------
-   GNomon sait déjà calculer douze règles de conscience, ce que coûte
+   GNomon sait déjà calculer treize règles de conscience, ce que coûte
    une absence, les collisions de temps, l'asymétrie de connaissance.
    Le problème n'est pas le calcul, c'est l'accès : chacun vit dans son
    écran, avec son vocabulaire, et il faut déjà savoir ce qu'est un
@@ -131,7 +131,7 @@ function titreConscience(regleCle, a) {
 }
 
 /** Catégorie d'affichage par règle — sert à grouper le cockpit sans
-    que l'auteur ait à connaître le nom des douze règles. */
+    que l'auteur ait à connaître le nom des treize règles. */
 function categorieConscience(regleCle) {
   if (["seul", "heros", "positif", "densite", "mixite", "differenciation"].includes(regleCle))
     return "personnage";
@@ -162,7 +162,7 @@ function ciblesConscience(regleCle, a, reseau) {
   return [{ id: a.cible, nom: a.nom, ecran: "fiche" }];
 }
 
-/** Les douze règles, traduites. Un diagnostic par alerte, sans rien
+/** Les treize règles, traduites. Un diagnostic par alerte, sans rien
     recalculer : `conscience()` fait tout le travail. */
 function depuisConscience(reseau, trames, infos) {
   const out = [];

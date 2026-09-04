@@ -47,6 +47,8 @@ const perso = (id, nom, extra = {}) => ({
   background: "",
   style: "",
   objectifs: [],
+  possede: [],
+  pressions: [],
   portrait: "",
   images: [],
   x: null,

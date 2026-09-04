@@ -49,7 +49,7 @@ une erreur.
 
 C'est ce qu'on rencontre en ouvrant un GN qui a du contenu, et c'est le cœur de l'outil.
 
-GNomon savait déjà beaucoup de choses : douze règles tirées de la littérature, ce que coûte
+GNomon savait déjà beaucoup de choses : treize règles tirées de la littérature, ce que coûte
 l'absence d'un joueur, qui est attendu à deux endroits à la fois, qui sait quoi. Le problème
 n'était pas le calcul — **c'était l'accès**. Chacune vivait dans son écran, avec son
 vocabulaire, et il fallait déjà savoir ce qu'est un « miroir désaccordé » pour aller le
@@ -130,7 +130,7 @@ reste qu'à romancer.
 en continu — un compteur vivant, pas un bouton « vérifier ». **Aucun outil de GN
 existant n'en implémente une seule.** Trois interdits, et ils viennent du corpus lui-même :
 jamais bloquant ; toute alerte s'écarte **avec une justification écrite**, qui reste lisible
-pour le crosschecker ; et jamais de score global — douze compteurs, jamais une moyenne.
+pour le crosschecker ; et jamais de score global — treize compteurs, jamais une moyenne.
 
 **S5 — le temps.** Une frise, une ligne par personnage. Elle montre ce qu'aucune relecture ne
 montre : qui est attendu à deux endroits à la fois. Avec une distinction qui commande tout —
@@ -176,6 +176,21 @@ le joueur**, la seule que le livret imprime — et il signale chaque fois qu'ell
 a de même une note publique et une note d'équipe. Ces deux séparations viennent d'un GN réel où
 « Ange a six semaines à vivre » et « ne pas y placer de scène avant 45 h » étaient partis dans
 les livrets.
+
+Un lien a la même séparation : sa **nature** est la carte de l'auteur, son **énoncé** est ce que
+le joueur lit, à la deuxième personne. Un audit de jouabilité sur un GN réel a trouvé six natures
+qui disaient au joueur ce que son personnage ignorait — « le premier des cinq à qui l'offre est
+faite », imprimé dans le livret de celui qui se croyait seul.
+
+Le même audit a changé ce que le livret imprime et ce que l'outil mesure. Une fiche porte
+désormais, à côté de ce que le personnage cherche, **ce qu'il a sur lui** et **ce qui le
+presse** : un joueur qui reçoit un passé et des faits joue un souvenir ; un joueur qui reçoit
+une enveloppe dans la poche et une heure limite joue une journée. « Ce qu'il vit » compte
+d'abord ce qu'il peut **demander** et ce qu'on viendra **lui demander** — lus dans les
+objectifs, les siens et ceux des autres — avant ce qu'il peut apprendre ; une treizième règle
+de conscience signale l'objectif que personne ne peut refuser. Les conclusions ont quatre
+types, dont la **narration** que l'orga impose et l'**interrupteur** que le jeu décide ; les
+interrupteurs se déclarent sur le monde, et la **feuille de 2 h** se génère depuis eux.
 
 Le **background** remis est distinct du **carnet de l'auteur**, qui ne sort jamais : sans cette
 séparation, un « à révéler plus tard » griffonné en écrivant partait au joueur. Le background

@@ -1,7 +1,7 @@
 "use strict";
 
 /* ============================================================
-   CONSCIENCE — l'écran des douze règles.
+   CONSCIENCE — l'écran des treize règles.
    ------------------------------------------------------------
    Trois interdits, et ils viennent du corpus lui-même. Ils sont tenus
    ici, dans le rendu, autant que dans les stores :

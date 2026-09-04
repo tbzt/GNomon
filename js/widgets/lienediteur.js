@@ -67,6 +67,12 @@ export const LienEditeur = {
       '<label class="le-champ le-nature"><span>Nature du lien</span>' +
       `<input type="text" data-le="nature" data-l="${l.id}" value="${Utils.escHtml(l.nature)}" ` +
       "placeholder=\"sa sœur · son créancier · l'a vu sortir du tunnel…\" /></label>" +
+      // Deux textes, comme sur l'information : la nature est la carte de
+      // l'auteur, l'énoncé est ce que le joueur lit. Sans énoncé, le
+      // livret imprime la nature et le signale.
+      '<label class="le-champ le-nature"><span>Pour le joueur</span>' +
+      `<input type="text" data-le="enonce" data-l="${l.id}" value="${Utils.escHtml(l.enonce || "")}" ` +
+      "placeholder=\"À la deuxième personne, sans rien que le personnage ignore. Vide : le livret imprime la nature.\" /></label>" +
       '<label class="bascule le-miroir">' +
       `<input type="checkbox" data-le="miroir" data-l="${l.id}"${l.miroir ? " checked" : ""} /> ` +
       "Contact-miroir</label>" +
@@ -100,6 +106,7 @@ export const LienEditeur = {
           de: l.de,
           vers: l.vers,
           nature: l.nature,
+          enonce: l.enonce || "",
           tonalite: l.tonalite,
           importance: l.importance,
           miroir: l.miroir,

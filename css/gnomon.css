@@ -1268,6 +1268,18 @@ textarea::placeholder {
   border-left-style: dashed;
   border-left-color: var(--complique);
 }
+/* Une narration est imposée par l'orga : trait plein, épais, sans
+   couleur d'accent — ce n'est pas un choix. Un interrupteur est ce que
+   le jeu décide et que l'orga note : pointillé. */
+.concl.narration {
+  border-left-style: double;
+  border-left-width: 6px;
+  border-left-color: var(--ink-faint);
+}
+.concl.interrupteur {
+  border-left-style: dotted;
+  border-left-color: var(--accent);
+}
 .concl.orpheline {
   border-left-color: var(--negatif);
 }
@@ -3362,6 +3374,15 @@ button[disabled] {
 #ecran-conduite .cd-suite.sans-suite {
   border-left-color: var(--n-alarme);
 }
+#ecran-conduite .cd-suite.narration {
+  border-left-style: double;
+  border-left-width: 6px;
+  border-left-color: var(--n-encre);
+}
+#ecran-conduite .cd-suite.interrupteur {
+  border-left-style: dotted;
+  border-left-color: var(--n-calme);
+}
 .cd-averti {
   font-size: 10px;
   letter-spacing: 0.11em;
@@ -3967,6 +3988,28 @@ main[data-actif="monde"] {
   outline: none;
 }
 /* La note d'équipe se distingue à l'œil : c'est celle qui ne sort pas. */
+/* ---------- les interrupteurs ---------- */
+
+.interrupteurs li {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 6px 8px;
+  align-items: start;
+}
+.interrupteurs li > .inter-champs {
+  display: grid;
+  gap: 6px;
+}
+.interrupteurs .inter-touche {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+.interrupteurs .inter-touche .cast-puce {
+  font-size: 9.5px;
+  padding: 3px 7px;
+}
+
 .lieux input.lieu-prive {
   border-style: dashed;
   color: var(--ink-soft);
