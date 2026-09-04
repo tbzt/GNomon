@@ -253,14 +253,15 @@ export const Monde = {
       l
         .map((x) => {
           const dedans = new Set(x.toucheIds || []);
-          const visibles = gens.filter((p) => !filtre || !p.epoqueId || p.epoqueId === filtre || dedans.has(p.id));
+          const existe = (p) => (this._reseau && this._reseau.existeA ? this._reseau.existeA(p.id, filtre) : true);
+          const visibles = gens.filter((p) => !filtre || existe(p) || dedans.has(p.id));
           const puces = gens.length
             ? visibles
                 .map(
                   (p) =>
                     `<button type="button" class="cast-puce${dedans.has(p.id) ? " dedans" : ""}" data-inter-touche="${x.id}" data-p="${p.id}" ` +
-                    `title="${Utils.escHtml(p.nom + (p.epoqueId ? " · " + nomEpoque(p.epoqueId) : ""))}">` +
-                    `${Utils.escHtml(p.nom.split(" ")[0])}${!filtre && p.epoqueId ? `<small> ${Utils.escHtml(nomEpoque(p.epoqueId))}</small>` : ""}</button>`,
+                    `title="${Utils.escHtml(p.nom)}">` +
+                    `${Utils.escHtml(p.nom.split(" ")[0])}</button>`,
                 )
                 .join("")
             : (x.toucheIds || []).map((id) => `<span class="cast-puce dedans">${Utils.escHtml(this._nomDe(id))}</span>`).join("");

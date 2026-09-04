@@ -110,6 +110,8 @@ export const LienEditeur = {
           tonalite: l.tonalite,
           importance: l.importance,
           miroir: l.miroir,
+          // Un lien garde son époque quand on le retouche.
+          epoqueId: l.epoqueId || null,
         };
         patch[el.dataset.le] = el.type === "checkbox" ? el.checked : el.value;
         store.upsertLien(patch);

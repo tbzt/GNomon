@@ -50,7 +50,7 @@ import { heure } from "../core/temps.js";
 import { Mentions } from "./journal/mentions.js";
 import { LienEditeur } from "./lienediteur.js";
 import { degatsHtml } from "./degats.js";
-import { epoques as epoquesDe, epoque as epoqueDe, incarnations, roleDe, roleParEpoque } from "../core/epoques.js";
+import { epoques as epoquesDe, epoque as epoqueDe, roleParEpoque } from "../core/epoques.js";
 import { Utils } from "../core/utils.js";
 
 /** Réduit une image avant de l'embarquer en `data:` — une photo de
@@ -134,6 +134,10 @@ export const Fiche = {
   _tSave: null,
   _tCarnet: null,
   _lienOuvert: null,
+  /* La vue « côte à côte » : toutes les incarnations du rôle, champ par
+     champ, dans une grille où l'on écrit. Un réglage d'écran, pas de
+     donnée — il survit au changement de fiche, pas au rechargement. */
+  _cote: false,
 
   monter(hote, store, personnageId, { onOuvrir = null, infos = null, trames = null, monde = null } = {}) {
     // On quitte peut-être une fiche en cours d'écriture : la sauvegarde
@@ -194,10 +198,10 @@ export const Fiche = {
       `<article class="fiche${p.pj ? "" : " pnj"}">` +
       this._entete(p) +
       '<div class="fiche-corps">' +
-      `<div class="fiche-gauche">${this._background(p)}<div id="fiche-autres">${this._autresEpoques(p)}</div>${this._carnet(p)}${this._extras(p)}` +
+      `<div class="fiche-gauche">${this._background(p)}<div id="fiche-autres">${this._blocEpoques(p)}</div>${this._carnet(p)}${this._extras(p)}` +
       `<div id="fiche-liens">${this._liens(p)}</div></div>` +
       `<aside class="fiche-droite"><div id="fiche-jauge">${this._jauge(p)}</div>` +
-      `<div id="fiche-role">${this._role(p)}</div>` +
+
       `<div id="fiche-squelette">${this._squelette(p)}</div>` +
       `<div id="fiche-vecu">${this._vecu(p)}</div>${this._champs(p)}</aside>` +
       "</div></article>";
@@ -213,22 +217,37 @@ export const Fiche = {
     const l = this._hote.querySelector("#fiche-liens");
     const q = this._hote.querySelector("#fiche-squelette");
     const v = this._hote.querySelector("#fiche-vecu");
-    const r = this._hote.querySelector("#fiche-role");
     const a = this._hote.querySelector("#fiche-autres");
     if (j) j.innerHTML = this._jauge(p);
     // Le background des autres époques n'est jamais édité ici : on peut
     // le reconstruire sans crainte pour un curseur. On garde seulement
     // les volets ouverts tels que l'auteur les a laissés.
-    if (a) {
+    // Sauf si l'on est en train d'y écrire : en côte à côte, ce bloc est
+    // une grille de saisie, et la reconstruire sous le curseur perdrait
+    // la frappe.
+    if (a && !(document.activeElement && a.contains(document.activeElement))) {
       const ouverts = new Set([...a.querySelectorAll("details[open]")].map((d) => d.dataset.inc));
-      a.innerHTML = this._autresEpoques(p, ouverts);
+      a.innerHTML = this._blocEpoques(p, ouverts);
+      this._brancherCote();
     }
-    if (r) {
-      r.innerHTML = this._role(p);
-      this._brancherRole();
+    // Le background, les champs de structure et les listes peuvent avoir
+    // été écrits depuis la grille : on les reflète dans leurs éditeurs
+    // s'ils n'ont pas le curseur. Les listes se reconstruisent en bloc,
+    // et se rebranchent — la section entière, jamais sous une frappe.
+    const bg = this._hote.querySelector("#background");
+    if (bg && document.activeElement !== bg && bg.value !== (p.background || "")) bg.value = p.background || "";
+    for (const ta of this._hote.querySelectorAll("[data-champ]"))
+      if (document.activeElement !== ta && ta.value !== (p[ta.dataset.champ] || ""))
+        ta.value = p[ta.dataset.champ] || "";
+    const ex = this._hote.querySelector(".extras");
+    if (ex && !(document.activeElement && ex.contains(document.activeElement))) {
+      const meme = (a, b) => JSON.stringify(a || []) === JSON.stringify(b || []);
+      const lus = (attr) => [...ex.querySelectorAll(`[data-${attr}]`)].map((i) => i.value);
+      if (!meme(lus("obj"), p.objectifs) || !meme(lus("poss"), p.possede) || !meme(lus("press"), p.pressions)) {
+        ex.outerHTML = this._extras(p);
+        this._brancherExtras();
+      }
     }
-    const se = this._hote.querySelector(".fiche-epoque");
-    if (se && document.activeElement !== se) se.value = p.epoqueId || "";
     if (q) q.innerHTML = this._squelette(p);
     if (v) {
       v.innerHTML = this._vecu(p);
@@ -266,11 +285,150 @@ export const Fiche = {
       '<div class="fiche-meta">' +
       `<input class="fiche-role" value="${Utils.escHtml(p.role)}" placeholder="Métier ou fonction…" aria-label="Métier ou fonction" />` +
       `<select class="fiche-fonction" aria-label="Fonction narrative"><option value="">— fonction narrative —</option>${opts}</select>` +
-      this._selectEpoque(p) +
       `<label class="bascule"><input type="checkbox" class="fiche-pj"${p.pj ? " checked" : ""} /> PJ</label>` +
       `<label class="bascule"><input type="checkbox" class="fiche-surprise"${p.surprise ? " checked" : ""} /> Surprise en réserve</label>` +
-      "</div></div></div></header>"
+      "</div>" +
+      this._navEpoques(p) +
+      "</div></div></header>"
     );
+  },
+
+  /* ================= la bascule d'époque =================
+     Un rôle qui traverse le GN se lit et s'écrit sur UNE fiche : un
+     onglet par époque, le courant marqué, et un bouton pour mettre les
+     incarnations côte à côte. Avant, l'autre époque était une autre
+     fiche, atteinte par un lien dans une liste ; l'auteur qui tient
+     Ange-65 et Ange-85 en même temps changeait d'écran à chaque phrase. */
+
+  _navEpoques(p) {
+    const l = this._epoques();
+    if (!l.length) return "";
+    const par = roleParEpoque(this._store, this._monde, p.id);
+    const onglets = par
+      .map(({ epoque, personnage: x, courant }) => {
+        const nom = Utils.escHtml(epoque.nom || "sans nom");
+        if (courant && x) return `<span class="ep-onglet actif" aria-current="page">${nom}</span>`;
+        if (x) return `<button type="button" class="ep-onglet" data-epoque="${Utils.escHtml(epoque.id)}">${nom}</button>`;
+        return `<button type="button" class="ep-onglet vide" data-epoque-creer="${Utils.escHtml(epoque.id)}" title="Cette personne n'est pas écrite à cette époque : cliquer l'y écrit">+ ${nom}</button>`;
+      })
+      .join("");
+    return (
+      '<nav class="fiche-epoques" aria-label="Époques du rôle">' +
+      onglets +
+      `<button type="button" class="ep-cote${this._cote ? " actif" : ""}" data-cote aria-pressed="${this._cote}">` +
+      `${this._cote ? "Lecture" : "Côte à côte"}</button></nav>`
+    );
+  },
+
+  _blocEpoques(p, ouverts = new Set()) {
+    return this._cote ? this._coteACote(p) : this._autresEpoques(p, ouverts);
+  },
+
+  _brancherNavEpoques() {
+    const h = this._hote;
+    for (const b of h.querySelectorAll("[data-epoque]"))
+      b.addEventListener("click", () => {
+        // L'époque est un réglage du store : toute la fiche se relit à
+        // ce moment-là, et les autres écrans suivront.
+        this._store.reglerEpoque(b.dataset.epoque);
+        this.rendre();
+      });
+    for (const b of h.querySelectorAll("[data-epoque-creer]"))
+      b.addEventListener("click", () => {
+        const ep = b.dataset.epoqueCreer;
+        // Copiée de l'époque courante : ce qu'il est reste vrai jusqu'à
+        // preuve du contraire, et une facette vide ferait tout ressaisir.
+        const courante = this._store.epoqueCourante();
+        this._store.creerFacette(this._id, ep, courante && this._store.existeA(this._id, courante) ? courante : null);
+        this._store.reglerEpoque(ep);
+        this.rendre();
+      });
+  },
+
+  /* ================= côte à côte =================
+     Une colonne par époque, une ligne par champ, et l'on écrit dans
+     chaque case. Les listes (objectifs, ce qu'il a, ce qui le presse)
+     se saisissent une ligne par entrée. Une époque sans incarnation
+     propose de la créer, rattachée au rôle. */
+
+  _coteACote(p) {
+    const par = roleParEpoque(this._store, this._monde, p.id);
+    if (!par.length) return "";
+    // Le background d'abord : c'est pour le lire à deux époques qu'on
+    // met les colonnes côte à côte. Le reste suit, plus court.
+    const TEXTES = [
+      ["background", "Le background", 18],
+      ["objectifs", "Ce qu'il cherche", 4, true],
+      ["possede", "Ce qu'il a sur lui", 3, true],
+      ["pressions", "Ce qui le presse", 3, true],
+      ["style", "Comment le jouer", 3],
+      ["role", "Métier ou fonction", 1],
+      ...CHAMPS.map((c) => [c.cle, c.label, 2]),
+      ["nom", "Nom à cette époque", 1],
+    ];
+    const tete =
+      '<div class="cg-tete"></div>' +
+      par
+        .map(
+          ({ epoque, personnage: x, courant }) =>
+            `<div class="cg-tete${courant ? " actif" : ""}">${Utils.escHtml(epoque.nom || "sans nom")}` +
+            (x ? `<span>${Utils.escHtml(x.nom || "sans nom")}</span>` : "<span>pas d'incarnation</span>") +
+            "</div>",
+        )
+        .join("");
+    const cellule = (x, epoque, [cle, , lignes, liste]) => {
+      if (!x) return '<div class="cg-case vide"></div>';
+      const v = liste ? (x[cle] || []).filter(Boolean).join("\n") : x[cle] || "";
+      const attrs = `data-cmp-id="${Utils.escHtml(x.id)}" data-cmp-epoque="${Utils.escHtml(epoque.id)}" data-cmp-champ="${cle}"${liste ? ' data-cmp-liste="1"' : ""} aria-label="${Utils.escHtml(cle)}"`;
+      return (
+        '<div class="cg-case">' +
+        (lignes === 1
+          ? `<input ${attrs} value="${Utils.escHtml(v)}" />`
+          : `<textarea ${attrs} rows="${lignes}"${liste ? ' placeholder="une ligne par entrée"' : ""}>${Utils.escHtml(v)}</textarea>`) +
+        "</div>"
+      );
+    };
+    const lignes = TEXTES.map(
+      (t) =>
+        `<div class="cg-label">${Utils.escHtml(t[1])}</div>` +
+        par.map(({ personnage: x, epoque }) => cellule(x, epoque, t)).join(""),
+    ).join("");
+    const creer = par
+      .filter(({ personnage: x }) => !x)
+      .map(
+        ({ epoque }) =>
+          `<button type="button" data-cmp-creer="${Utils.escHtml(epoque.id)}">+ Écrire ${Utils.escHtml(p.nom || "cette personne")} en ${Utils.escHtml(epoque.nom || "cette époque")}</button>`,
+      )
+      .join(" ");
+    return (
+      '<section class="autres-epoques cote-section">' +
+      '<p class="carnet-titre">Les époques, côte à côte <span class="carnet-aide">la même personne, une colonne par époque · on écrit dans chaque colonne · une ligne par entrée dans les listes</span></p>' +
+      `<div class="cote-grille" style="--colonnes:${par.length}">${tete}${lignes}</div>` +
+      (creer ? `<p class="cg-creer">${creer}</p>` : "") +
+      "</section>"
+    );
+  },
+
+  _brancherCote() {
+    const bloc = this._hote.querySelector("#fiche-autres");
+    if (!bloc) return;
+    for (const el of bloc.querySelectorAll("[data-cmp-champ]"))
+      el.addEventListener("change", () => {
+        const { cmpId, cmpEpoque, cmpChamp, cmpListe } = el.dataset;
+        const v = cmpListe
+          ? el.value.split(/\n/).map((x) => x.trim()).filter(Boolean)
+          : el.value;
+        // Le nom est commun à toutes les époques ; le reste va dans la
+        // facette de la colonne.
+        this._store.majPersonnage(cmpId, { [cmpChamp]: v }, cmpChamp === "nom" ? undefined : cmpEpoque);
+      });
+    for (const b of bloc.querySelectorAll("[data-cmp-creer]"))
+      b.addEventListener("click", () => {
+        // Copiée de l'époque courante : ce qu'il est reste vrai jusqu'à
+        // preuve du contraire.
+        const courante = this._store.epoqueCourante();
+        this._store.creerFacette(this._id, b.dataset.cmpCreer, courante && this._store.existeA(this._id, courante) ? courante : null);
+      });
   },
 
   /* ================= l'époque et le rôle =================
@@ -286,132 +444,10 @@ export const Fiche = {
     return this._monde ? epoquesDe(this._monde) : [];
   },
 
-  /** Le sélecteur d'époque, ou rien. Une époque inconnue du monde reste
-      proposée telle quelle : la retirer en silence changerait la fiche
-      sous les yeux de l'auteur. */
-  _selectEpoque(p) {
-    const l = this._epoques();
-    if (!l.length) return "";
-    const connue = l.some((e) => e.id === p.epoqueId);
-    return (
-      '<select class="fiche-epoque" aria-label="Époque">' +
-      '<option value="">— toutes les époques —</option>' +
-      l
-        .map(
-          (e) =>
-            `<option value="${Utils.escHtml(e.id)}"${p.epoqueId === e.id ? " selected" : ""}>${Utils.escHtml(e.nom || "sans nom")}</option>`,
-        )
-        .join("") +
-      (p.epoqueId && !connue
-        ? `<option value="${Utils.escHtml(p.epoqueId)}" selected>époque inconnue (${Utils.escHtml(p.epoqueId)})</option>`
-        : "") +
-      "</select>"
-    );
-  },
-
   _nomEpoque(id) {
     if (!id) return "";
     const e = epoqueDe(this._monde, id);
     return e ? e.nom || "sans nom" : "époque inconnue";
-  },
-
-  /** Le rôle à travers les époques : les autres incarnations, et la
-      porte pour en rattacher une. Dérivé de `roleId`, jamais d'une table. */
-  _role(p) {
-    if (!this._epoques().length) return "";
-    const rid = roleDe(this._store, p.id);
-    const autres = incarnations(this._store, rid, this._monde).filter((x) => x.id !== p.id);
-    // Un rôle n'a qu'une incarnation par époque : on ne propose donc que
-    // les gens d'une AUTRE époque, ou sans époque. La liste reste
-    // lisible, et on ne peut pas déclarer une impossibilité.
-    const candidats = this._store
-      .personnages()
-      .filter(
-        (x) =>
-          x.id !== p.id &&
-          roleDe(this._store, x.id) !== rid &&
-          !(p.epoqueId && x.epoqueId && x.epoqueId === p.epoqueId),
-      )
-      .sort((a, b) => a.nom.localeCompare(b.nom, "fr"));
-
-    const lignes = autres
-      .map(
-        (x) =>
-          `<li><a class="fiche-lien" href="#/fiche/${encodeURIComponent(x.id)}">${Utils.escHtml(x.nom || "sans nom")}</a>` +
-          `<span class="inc-epoque">${Utils.escHtml(this._nomEpoque(x.epoqueId) || "toutes les époques")}</span>` +
-          `<button type="button" data-separer="${Utils.escHtml(x.id)}" title="Ce n'est pas la même personne">✕</button></li>`,
-      )
-      .join("");
-
-    return (
-      '<div class="role-bloc">' +
-      `<p class="jauge-titre"><span>Le même rôle, aux autres époques</span><span class="jauge-score">${autres.length}</span></p>` +
-      (autres.length
-        ? `<ul class="incarnations">${lignes}</ul>`
-        : '<p class="sq-note">Personne d\'autre : ce personnage n\'existe qu\'à son époque, ou ses autres incarnations ne sont pas encore rattachées.</p>') +
-      // Un JSON importé porte souvent la même personne deux fois, sous le
-      // même nom, une par époque. On propose ces homonymes d'un clic
-      // plutôt que de les faire chercher dans une liste de soixante.
-      this._homonymes(p, candidats) +
-      (candidats.length
-        ? '<label class="role-meme"><span>C\'est la même personne que</span>' +
-          '<select data-meme aria-label="Rattacher à un rôle"><option value="">— choisir —</option>' +
-          candidats
-            .map(
-              (x) =>
-                `<option value="${Utils.escHtml(x.id)}">${Utils.escHtml(x.nom || "sans nom")}` +
-                (x.epoqueId ? ` (${Utils.escHtml(this._nomEpoque(x.epoqueId))})` : "") +
-                "</option>",
-            )
-            .join("") +
-          "</select></label>"
-        : "") +
-      "</div>"
-    );
-  },
-
-  _homonymes(p, candidats) {
-    const cle = (n) => Utils.searchNorm(n).trim();
-    const memes = candidats.filter((x) => cle(x.nom) && cle(x.nom) === cle(p.nom));
-    if (!memes.length) return "";
-    return (
-      '<div class="role-homonymes">' +
-      memes
-        .map(
-          (x) =>
-            `<button type="button" data-meme-que="${Utils.escHtml(x.id)}">` +
-            `Même personne que ${Utils.escHtml(x.nom)}` +
-            (x.epoqueId ? ` (${Utils.escHtml(this._nomEpoque(x.epoqueId))})` : "") +
-            "</button>",
-        )
-        .join("") +
-      "</div>"
-    );
-  },
-
-  _brancherRole() {
-    const bloc = this._hote.querySelector("#fiche-role");
-    if (!bloc) return;
-    for (const b of bloc.querySelectorAll("[data-meme-que]"))
-      b.addEventListener("click", () => this._store.fusionnerRoles(b.dataset.memeQue, this._id));
-    const sel = bloc.querySelector("[data-meme]");
-    if (sel)
-      sel.addEventListener("change", () => {
-        if (!sel.value) return;
-        // L'autre est la référence : on rattache CETTE fiche à une
-        // identité déjà écrite, jamais l'inverse (cf. `fusionnerRoles`).
-        this._store.fusionnerRoles(sel.value, this._id);
-      });
-    for (const b of bloc.querySelectorAll("[data-separer]"))
-      b.addEventListener("click", () => {
-        // Celui des deux qui n'est pas la référence du rôle s'en détache :
-        // la référence garde son identité pour tous les autres.
-        const moi = this._store.personnage(this._id);
-        const autre = this._store.personnage(b.dataset.separer);
-        if (!moi || !autre) return;
-        const qui = moi.roleId && moi.roleId !== moi.id ? moi.id : autre.id;
-        this._store.majPersonnage(qui, { roleId: null });
-      });
   },
 
   _jauge(p) {
@@ -726,7 +762,7 @@ export const Fiche = {
       .join("");
     return (
       '<section class="autres-epoques">' +
-      '<p class="carnet-titre">Le même rôle, aux autres époques <span class="carnet-aide">en lecture · ce qu\'il a été, ou sera</span></p>' +
+      '<p class="carnet-titre">Aux autres époques <span class="carnet-aide">en lecture · ce qu\'il a été, ou sera · « Côte à côte » pour écrire</span></p>' +
       blocs +
       "</section>"
     );
@@ -993,7 +1029,6 @@ export const Fiche = {
     q(".fiche-pj").addEventListener("change", (e) => maj({ pj: e.target.checked }));
     const se = q(".fiche-epoque");
     if (se) se.addEventListener("change", (e) => maj({ epoqueId: e.target.value || null }));
-    this._brancherRole();
     q(".fiche-surprise").addEventListener("change", (e) => maj({ surprise: e.target.checked }));
 
     for (const ta of this._hote.querySelectorAll("[data-champ]"))
@@ -1060,6 +1095,22 @@ export const Fiche = {
 
     this._brancherJauge();
     this._brancherLiens();
+    this._brancherCote();
+    this._brancherNavEpoques();
+    const cote = q("[data-cote]");
+    if (cote)
+      cote.addEventListener("click", () => {
+        this._cote = !this._cote;
+        const p = this._store.personnage(this._id);
+        const a = q("#fiche-autres");
+        if (a && p) {
+          a.innerHTML = this._blocEpoques(p);
+          this._brancherCote();
+        }
+        cote.textContent = this._cote ? "Lecture" : "Côte à côte";
+        cote.classList.toggle("actif", this._cote);
+        cote.setAttribute("aria-pressed", String(this._cote));
+      });
   },
 
   /* ---- objectifs, style, images ---- */

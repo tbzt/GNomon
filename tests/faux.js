@@ -15,9 +15,18 @@
    **documentation du contrat** que chaque pur exige.
    ============================================================ */
 
-/** `{ personnages, liens, groupes }` → l'interface de `ReseauStore`. */
-export function fauxReseau({ personnages = [], liens = [], groupes = [], sieges = [] } = {}) {
-  const P = personnages.map((p, i) => ({
+import { vue as vueDe, existeA as existeFacette, facettesDe } from "../js/core/personnes.js";
+
+/** `{ personnages, liens, groupes, sieges, epoques }` → l'interface de `ReseauStore`.
+
+    Un personnage de test peut être PLAT (l'ancien modèle, un champ
+    `epoqueId` optionnel) ou une personne à `facettes`. Le faux rend des
+    vues plates dans les deux cas, comme le vrai store. `epoques` est
+    l'ordre des époques, pour la vue et pour `epoquesDe`. */
+export function fauxReseau({ personnages = [], liens = [], groupes = [], sieges = [], epoques = [] } = {}) {
+  const ordre = epoques;
+  const F = personnages.filter((p) => p && p.facettes).map((p, i) => ({ id: p.id || `f${i}`, nom: "", pj: true, portrait: "", x: null, y: null, ...p }));
+  const P = personnages.filter((p) => !(p && p.facettes)).map((p, i) => ({
     id: p.id || `p${i}`,
     nom: p.nom || `Personnage ${i}`,
     role: "",
@@ -41,8 +50,23 @@ export function fauxReseau({ personnages = [], liens = [], groupes = [], sieges 
     y: null,
     roleId: null,
     epoqueId: null,
+    presentA: true,
     ...p,
   }));
+  const plat = (id, ep) => {
+    const p = P.find((x) => x.id === id);
+    if (p) return p;
+    const f = F.find((x) => x.id === id);
+    return f ? vueDe(f, ep === undefined ? null : ep, ordre) : null;
+  };
+  const tous = (ep) => [...P, ...F.map((f) => vueDe(f, ep === undefined ? null : ep, ordre))];
+  const existe = (id, ep) => {
+    const f = F.find((x) => x.id === id);
+    if (f) return existeFacette(f, ep);
+    const p = P.find((x) => x.id === id);
+    return !!p && (!ep || !p.epoqueId || p.epoqueId === ep);
+  };
+  const visible = (l, ep) => !l.epoqueId || !ep || l.epoqueId === ep;
   const L = liens.map((l, i) => ({
     id: l.id || `l${i}`,
     nature: "",
@@ -56,19 +80,30 @@ export function fauxReseau({ personnages = [], liens = [], groupes = [], sieges 
   return {
     sieges: () => sieges,
     siege: (id) => sieges.find((x) => x.id === id) || null,
-    personnages: () => P,
-    personnage: (id) => P.find((p) => p.id === id) || null,
-    pj: () => P.filter((p) => p.pj),
-    pnj: () => P.filter((p) => !p.pj),
-    liens: () => L,
-    liensDe: (id) => L.filter((l) => l.de === id),
-    liensVers: (id) => L.filter((l) => l.vers === id),
-    liensTouchant: (id) => L.filter((l) => l.de === id || l.vers === id),
+    personnages: (ep) => tous(ep),
+    personnage: (id, ep) => plat(id, ep),
+    existeA: (id, ep = null) => existe(id, ep),
+    epoquesDe: (id) => {
+      const f = F.find((x) => x.id === id);
+      if (f) return facettesDe(f, ordre);
+      const p = P.find((x) => x.id === id);
+      return p ? [p.epoqueId || "*"] : [];
+    },
+    epoqueCourante: () => null,
+    ordreEpoques: () => ordre,
+    pj: (ep) => tous(ep).filter((p) => p.pj),
+    pnj: (ep) => tous(ep).filter((p) => !p.pj),
+    // Sans époque, le tableau lui-même : des tests y poussent des liens.
+    liens: (ep) => (ep == null ? L : L.filter((l) => visible(l, ep))),
+    liensBruts: () => L,
+    liensDe: (id, ep) => L.filter((l) => l.de === id && visible(l, ep)),
+    liensVers: (id, ep) => L.filter((l) => l.vers === id && visible(l, ep)),
+    liensTouchant: (id, ep) => L.filter((l) => (l.de === id || l.vers === id) && visible(l, ep)),
     reciproque: (l) => L.find((x) => x.de === l.vers && x.vers === l.de) || null,
-    miroirDe: (id) => L.find((l) => l.de === id && l.miroir) || null,
+    miroirDe: (id, ep) => L.find((l) => l.de === id && l.miroir && visible(l, ep)) || null,
     groupes: () => G,
     groupe: (id) => G.find((g) => g.id === id) || null,
-    membresDe: (id) => P.filter((p) => p.groupeId === id),
+    membresDe: (id, ep) => tous(ep).filter((p) => p.groupeId === id),
   };
 }
 
@@ -78,6 +113,7 @@ export function fauxTrames({ trames = [], situations = [], conclusions = [] } = 
   const S = situations.map((s, i) => ({
     id: s.id || `s${i}`,
     trameId: T[0] ? T[0].id : null,
+    epoqueId: null,
     titre: "",
     pitch: "",
     pointDeVueId: null,
@@ -114,6 +150,13 @@ export function fauxTrames({ trames = [], situations = [], conclusions = [] } = 
     conclusion: (id) => C.find((c) => c.id === id) || null,
     conclusionsDe: (id) => C.filter((c) => c.de === id),
     conclusionsVers: (id) => C.filter((c) => c.vers === id),
+    epoqueDe: (id) => {
+      const s = S.find((x) => x.id === id);
+      if (!s) return null;
+      if (s.epoqueId) return s.epoqueId;
+      const t = T.find((x) => x.id === s.trameId);
+      return (t && t.epoqueId) || null;
+    },
     requiert: (id) => (S.find((s) => s.id === id) || {}).requiertIds || [],
     produit: (id) => (S.find((s) => s.id === id) || {}).produitIds || [],
     situationsAvec: (infoId) => ({
@@ -133,14 +176,26 @@ export function fauxInfos(informations = []) {
     influence: "latente",
     etats: {},
     croyances: {},
+    etatsParEpoque: {},
+    croyancesParEpoque: {},
     ...i,
   }));
   const trouve = (id) => I.find((x) => x.id === id) || null;
   return {
     informations: () => I,
     information: trouve,
-    etat: (id, p) => (trouve(id) ? trouve(id).etats[p] || "ignore" : "ignore"),
-    croyance: (id, p) => (trouve(id) ? trouve(id).croyances[p] || "" : ""),
+    etat: (id, p, ep = null) => {
+      const i = trouve(id);
+      if (!i) return "ignore";
+      if (ep && i.etatsParEpoque[ep] && i.etatsParEpoque[ep][p]) return i.etatsParEpoque[ep][p];
+      return i.etats[p] || "ignore";
+    },
+    croyance: (id, p, ep = null) => {
+      const i = trouve(id);
+      if (!i) return "";
+      if (ep && i.croyancesParEpoque[ep] && i.croyancesParEpoque[ep][p] != null) return i.croyancesParEpoque[ep][p];
+      return i.croyances[p] || "";
+    },
     detenteurs: (id) => {
       const i = trouve(id);
       return i ? Object.keys(i.etats).filter((p) => i.etats[p] === "sait") : [];

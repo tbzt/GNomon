@@ -57,7 +57,7 @@
    ============================================================ */
 import { TONALITES, IMPORTANCES } from "./reseaustore.js";
 import { pic } from "./temps.js";
-import { roleDe, incarnationA, liensA } from "./epoques.js";
+
 
 const TRAITS_PUBLIABLES = [
   { cle: "moral", label: "Ce en quoi je crois" },
@@ -97,15 +97,14 @@ function enonceDe(i) {
   return (i.enonce || "").trim() || i.contenu || "";
 }
 
-/** Les contacts d'un livret : les liens du RÔLE, projetés sur l'époque
-    du personnage. Un lien appartient à la personne, pas à la
-    personne-en-1985 (cf. `epoques.js`) : Ange-65 a donc les contacts
-    écrits sur Ange-85, ramenés à leurs incarnations de 1965 — et un
-    contact qui n'existe pas à cette époque disparaît : Régis, mort en
-    65, n'est pas dans le livret du mariage ; Nadia, née en 61, n'est
-    pas dans celui de la planque. Sans époque, on lit les liens tels
-    quels : un GN mono-époque ne change pas. */
+/** Les contacts d'un livret : les liens de la personne visibles à
+    l'époque de la vue — datés de cette époque, ou sans date — vers des
+    personnes qui existent à cette époque. Régis, mort en 65, n'est pas
+    dans le livret du mariage ; Nadia, née en 61, n'est pas dans celui
+    de la planque. Sans époque, on lit tout. */
 function contactsDe(reseau, p) {
+  const ep = p.epoqueId || null;
+  const existe = (id) => (reseau.existeA ? reseau.existeA(id, ep) : true);
   const contact = (l, autre) => {
     const enonce = (l.enonce || "").trim();
     const nature = (l.nature || "").trim();
@@ -119,36 +118,20 @@ function contactsDe(reseau, p) {
     };
   };
   // Ni `importance` ni `miroir` : ce sont des outils d'auteur.
-  if (!p.epoqueId) {
-    return reseau
-      .liensDe(p.id)
-      .map((l) => {
-        const autre = reseau.personnage(l.vers);
-        return autre ? contact(l, autre) : null;
-      })
-      .filter(Boolean);
-  }
-  const rid = roleDe(reseau, p.id);
-  const out = [];
-  const vus = new Set();
-  for (const l of liensA(reseau, p.epoqueId)) {
-    if (roleDe(reseau, l.de) !== rid) continue;
-    const autre = incarnationA(reseau, l.vers, p.epoqueId);
-    if (!autre || autre.id === p.id) continue;
-    // Deux incarnations du même rôle peuvent porter la même arête ; on
-    // ne l'imprime qu'une fois.
-    const cle = `${autre.id}|${(l.nature || "").trim()}`;
-    if (vus.has(cle)) continue;
-    vus.add(cle);
-    out.push(contact(l, autre));
-  }
-  return out;
+  return reseau
+    .liensDe(p.id, ep)
+    .map((l) => {
+      if (!existe(l.vers)) return null;
+      const autre = reseau.personnage(l.vers, ep);
+      return autre ? contact(l, autre) : null;
+    })
+    .filter(Boolean);
 }
 
 /* ================= LE LIVRET ================= */
 
-export function livret(personnageId, { reseau, monde, infos, casting = null }) {
-  const p = reseau.personnage(personnageId);
+export function livret(personnageId, { reseau, monde, infos, casting = null }, epoqueId = undefined) {
+  const p = reseau.personnage(personnageId, epoqueId);
   if (!p) return null;
 
   const groupe = p.groupeId ? reseau.groupe(p.groupeId) : null;
@@ -226,8 +209,8 @@ export function livret(personnageId, { reseau, monde, infos, casting = null }) {
  * croient de faux**. Un PNJ qui ignore la fausse croyance d'un PJ va la
  * contredire sans le vouloir et défaire l'intrigue en une phrase.
  */
-export function consigne(personnageId, { reseau, monde, infos, trames }) {
-  const p = reseau.personnage(personnageId);
+export function consigne(personnageId, { reseau, monde, infos, trames }, epoqueId = undefined) {
+  const p = reseau.personnage(personnageId, epoqueId);
   if (!p) return null;
 
   const groupe = p.groupeId ? reseau.groupe(p.groupeId) : null;

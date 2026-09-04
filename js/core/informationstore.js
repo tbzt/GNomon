@@ -12,7 +12,13 @@
    les autres ignorent la présence ? Est-ce un malentendu — l'ont-ils
    interprété différemment, et pourquoi ? »
 
-       Information { id, contenu, influence, etats, croyances }
+       Information { id, contenu, enonce, influence, etats, croyances,
+                     etatsParEpoque, croyancesParEpoque }
+
+   `etats` et `croyances` sont ce que chaque PERSONNE sait, à toutes
+   les époques. `etatsParEpoque[epoqueId][pid]` est l'exception datée :
+   Brun croit en 1965 ce qu'il sait en 1985. Rare, et lue seulement
+   quand on demande une époque.
 
    `etats` associe un id de personnage à `"sait"` ou `"croit"`.
    **L'absence d'entrée vaut « ignore »** : c'est l'état par défaut du
@@ -124,15 +130,26 @@ export const InformationStore = {
   /** L'état d'un personnage vis-à-vis d'une information.
       Une information inconnue renvoie « ignore », pas `null` : le
       monde par défaut est un monde où l'on ne sait pas. */
-  etat(infoId, personnageId) {
+  etat(infoId, personnageId, epoqueId = null) {
     const i = this.information(infoId);
     if (!i) return "ignore";
+    if (epoqueId && i.etatsParEpoque && i.etatsParEpoque[epoqueId] && i.etatsParEpoque[epoqueId][personnageId])
+      return i.etatsParEpoque[epoqueId][personnageId];
     return i.etats[personnageId] || "ignore";
   },
 
-  croyance(infoId, personnageId) {
+  croyance(infoId, personnageId, epoqueId = null) {
     const i = this.information(infoId);
-    return (i && i.croyances[personnageId]) || "";
+    if (!i) return "";
+    if (epoqueId && i.croyancesParEpoque && i.croyancesParEpoque[epoqueId] && i.croyancesParEpoque[epoqueId][personnageId] != null)
+      return i.croyancesParEpoque[epoqueId][personnageId];
+    return i.croyances[personnageId] || "";
+  },
+
+  /** Cette personne a-t-elle un état DIFFÉRENT à cette époque ? */
+  exceptionA(infoId, personnageId, epoqueId) {
+    const i = this.information(infoId);
+    return !!(i && epoqueId && i.etatsParEpoque && i.etatsParEpoque[epoqueId] && i.etatsParEpoque[epoqueId][personnageId]);
   },
 
   /** Ceux qui la savent vraiment. */
@@ -169,7 +186,7 @@ export const InformationStore = {
       Debug.warn("information", "influence inconnue, refusée", { influence });
       return null;
     }
-    const i = { id: this._uid(), contenu, enonce, influence, etats: {}, croyances: {} };
+    const i = { id: this._uid(), contenu, enonce, influence, etats: {}, croyances: {}, etatsParEpoque: {}, croyancesParEpoque: {} };
     this._d().informations.push(i);
     this.save();
     this._emit({ type: "information:creer", id: i.id });
@@ -187,6 +204,8 @@ export const InformationStore = {
     // porte (`poser`), qui tient l'invariant « ignore = absence ».
     delete patch.etats;
     delete patch.croyances;
+    delete patch.etatsParEpoque;
+    delete patch.croyancesParEpoque;
     Object.assign(i, patch, { id: i.id });
     this.save();
     this._emit({ type: "information:maj", id });
@@ -211,12 +230,31 @@ export const InformationStore = {
       Une croyance ne survit pas à la sortie de l'état « croit » : la
       garder produirait un texte fantôme qu'aucun écran n'affiche et que
       personne ne penserait à relire. */
-  poser(infoId, personnageId, etat, croyance = "") {
+  poser(infoId, personnageId, etat, croyance = "", epoqueId = null) {
     const i = this.information(infoId);
     if (!i || !personnageId) return null;
     if (!(etat in ETATS)) {
       Debug.warn("information", "état inconnu, refusé", { etat });
       return null;
+    }
+    // Une époque demandée pose une EXCEPTION datée : « ignore » la
+    // retire, et la personne reprend son état de toutes les époques.
+    if (epoqueId) {
+      if (!i.etatsParEpoque) i.etatsParEpoque = {};
+      if (!i.croyancesParEpoque) i.croyancesParEpoque = {};
+      const E = (i.etatsParEpoque[epoqueId] = i.etatsParEpoque[epoqueId] || {});
+      const C = (i.croyancesParEpoque[epoqueId] = i.croyancesParEpoque[epoqueId] || {});
+      if (etat === "ignore" || etat === i.etats[personnageId]) {
+        delete E[personnageId];
+        delete C[personnageId];
+      } else {
+        E[personnageId] = etat;
+        if (etat === "croit") C[personnageId] = croyance;
+        else delete C[personnageId];
+      }
+      this.save();
+      this._emit({ type: "information:poser", id: infoId, personnageId, etat, epoqueId });
+      return i;
     }
     if (etat === "ignore") {
       delete i.etats[personnageId];

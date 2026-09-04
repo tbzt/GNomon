@@ -1,17 +1,17 @@
 "use strict";
 
 /* ============================================================
-   ÉPOQUES — l'identité, l'incarnation, le siège.
+   ÉPOQUES — la personne est l'unité, l'époque est une facette.
    Ce que ces tests protègent avant tout : qu'un GN à un seul moment
-   ne voie RIEN changer, et qu'un même rôle ne puisse pas être
-   revendiqué par deux sièges sans que ça se dise.
+   ne voie RIEN changer, et qu'une personne se lise à chaque époque
+   sans jamais devenir deux personnages.
    ============================================================ */
 import { suite, test, eq, ok, pasOk, contient } from "./harnais.js";
 import { fauxReseau, fauxMonde } from "./faux.js";
 import {
-  epoques, rang, roles, roleDe, incarnations,
+  epoques, rang, ordre, roles, roleDe, incarnations,
   siegeDe, continu, comptes, anomalies, liensA, personnagesA,
-  incarnationA, projeter, grapheA, roleParEpoque,
+  incarnationA, projeter, grapheA, roleParEpoque, epoquesDe,
 } from "../js/core/epoques.js";
 
 const MONDE = fauxMonde({
@@ -20,21 +20,22 @@ const MONDE = fauxMonde({
     { id: "e65", nom: "1965", ordre: 0 },
   ],
 });
+const ORDRE = ["e65", "e85"];
 
-/* Ange joue les deux époques ; Antoine devient Daniel. */
+/* Ange traverse les deux époques ; Antoine n'a que 1965, Daniel que 1985. */
 const GN = fauxReseau({
+  epoques: ORDRE,
   personnages: [
-    { id: "p01", nom: "Ange 85", roleId: "r01", epoqueId: "e85" },
-    { id: "p50", nom: "Ange 65", roleId: "r01", epoqueId: "e65" },
-    { id: "p17", nom: "Antoine", epoqueId: "e65" },
-    { id: "p13", nom: "Daniel", epoqueId: "e85" },
+    { id: "p01", nom: "Ange Sarti", facettes: { e65: { role: "celui qui décide", moral: "juré" }, e85: { role: "le Vieux", moral: "juré" } } },
+    { id: "p17", nom: "Antoine", facettes: { e65: { role: "le blessé" } } },
+    { id: "p13", nom: "Daniel", facettes: { e85: { role: "le fils" } } },
   ],
   liens: [
-    { id: "lf", de: "p01", vers: "p13", nature: "sa fille" },
-    { id: "l65", de: "p50", vers: "p17", nature: "cette nuit-là", epoqueId: "e65" },
+    { id: "lf", de: "p01", vers: "p13", nature: "le fils d'Antoine" },
+    { id: "l65", de: "p01", vers: "p17", nature: "cette nuit-là", epoqueId: "e65" },
   ],
   sieges: [
-    { id: "S1", nom: "Siège 1", personnageIds: ["p50", "p01"] },
+    { id: "S1", nom: "Siège 1", personnageIds: ["p01"] },
     { id: "S2", nom: "Siège 2", personnageIds: ["p17", "p13"] },
   ],
 });
@@ -42,6 +43,7 @@ const GN = fauxReseau({
 suite("Époques — l'ordre est déclaré, pas deviné", () => {
   test("les époques sortent triées par ordre, pas par saisie", () => {
     eq(epoques(MONDE).map((e) => e.nom).join(","), "1965,1985");
+    eq(ordre(MONDE).join(","), "e65,e85");
   });
 
   test("une époque inconnue a le rang -1", () => {
@@ -54,39 +56,43 @@ suite("Époques — l'ordre est déclaré, pas deviné", () => {
   });
 });
 
-suite("Rôles — dérivés, jamais stockés", () => {
-  test("deux incarnations qui partagent un roleId sont un seul rôle", () => {
-    const r = roles(GN, MONDE);
-    eq(r.length, 3, "Ange compte pour un, Antoine et Daniel pour deux");
-    const ange = r.find((x) => x.id === "r01");
-    eq(ange.personnages.length, 2);
+suite("La personne — une, à plusieurs époques", () => {
+  test("une personne est son propre rôle, et un rôle compte pour une personne", () => {
+    eq(roles(GN).length, 3, "Ange, Antoine, Daniel");
+    eq(roleDe(GN, "p01"), "p01");
+    eq(incarnations(GN, "p01").length, 1);
   });
 
-  test("le nom du rôle est celui de la PREMIÈRE époque", () => {
-    eq(roles(GN, MONDE).find((x) => x.id === "r01").nom, "Ange 65");
+  test("la vue à une époque est la facette de cette époque", () => {
+    eq(GN.personnage("p01", "e65").role, "celui qui décide");
+    eq(GN.personnage("p01", "e85").role, "le Vieux");
+    eq(GN.personnage("p01", "e85").id, "p01", "même identifiant : c'est la même personne");
   });
 
-  test("sans roleId, un personnage est son propre rôle", () => {
-    eq(roleDe(GN, "p17"), "p17");
-    eq(roleDe(GN, "p01"), "r01");
+  test("une personne absente d'une époque rend sa facette la plus proche, et le dit", () => {
+    const v = GN.personnage("p17", "e85");
+    eq(v.role, "le blessé");
+    pasOk(v.presentA, "Antoine n'est pas de 1985");
+    pasOk(GN.existeA("p17", "e85"));
+    ok(GN.existeA("p17", "e65"));
   });
 
-  test("les incarnations d'un rôle sont ordonnées par époque", () => {
-    eq(incarnations(GN, "r01", MONDE).map((p) => p.nom).join(" → "), "Ange 65 → Ange 85");
+  test("ses époques se lisent dans l'ordre", () => {
+    eq(epoquesDe(GN, "p01").join(","), "e65,e85");
+    eq(epoquesDe(GN, "p13").join(","), "e85");
   });
 });
 
-suite("Le rôle, époque par époque — ce que la fiche lit", () => {
-  test("une entrée par époque déclarée, dans l'ordre, avec l'incarnation ou rien", () => {
+suite("La personne, époque par époque — ce que la fiche lit", () => {
+  test("une entrée par époque déclarée, dans l'ordre, avec la facette ou rien", () => {
     const l = roleParEpoque(GN, MONDE, "p01");
     eq(l.map((x) => x.epoque.nom).join(","), "1965,1985", "toutes les époques, triées");
-    eq(l[0].personnage.id, "p50", "Ange en 1965");
-    eq(l[1].personnage.id, "p01", "Ange en 1985");
-    pasOk(l[0].courant, "1965 n'est pas la fiche ouverte");
-    ok(l[1].courant, "1985 est la fiche ouverte");
+    eq(l[0].personnage.role, "celui qui décide");
+    eq(l[1].personnage.role, "le Vieux");
+    eq(l[1].personnage.id, "p01");
   });
 
-  test("un rôle qui n'existe qu'à une époque a une entrée vide à l'autre", () => {
+  test("une personne qui n'existe qu'à une époque a une entrée vide à l'autre", () => {
     const l = roleParEpoque(GN, MONDE, "p17");
     eq(l.length, 2);
     eq(l[0].personnage.id, "p17");
@@ -99,7 +105,7 @@ suite("Le rôle, époque par époque — ce que la fiche lit", () => {
 });
 
 suite("Sièges — déclarés, et c'est la différence", () => {
-  test("un siège dont les incarnations partagent le rôle est CONTINU", () => {
+  test("un siège tenu par une personne à deux époques est CONTINU", () => {
     ok(continu(GN, GN.siege("S1")), "Ange vieillit");
     pasOk(continu(GN, GN.siege("S2")), "Antoine devient quelqu'un d'autre");
   });
@@ -111,19 +117,20 @@ suite("Sièges — déclarés, et c'est la différence", () => {
     eq(c.changements, 1);
   });
 
-  test("on retrouve le siège d'une incarnation", () => {
+  test("on retrouve le siège d'une personne", () => {
     eq(siegeDe(GN, "p13").id, "S2");
     eq(siegeDe(GN, "inconnu"), null);
   });
 });
 
 suite("Invariants — les bugs qu'on veut rendre impossibles", () => {
-  test("un même rôle revendiqué par deux sièges est signalé", () => {
+  test("une même personne revendiquée par deux sièges est signalée", () => {
     const r = fauxReseau({
+      epoques: ORDRE,
       personnages: [
-        { id: "a", nom: "Marise", epoqueId: "e65" },
-        { id: "b", nom: "Line", epoqueId: "e65" },
-        { id: "c", nom: "Nicole", epoqueId: "e85" },
+        { id: "a", nom: "Marise", facettes: { e65: {} } },
+        { id: "b", nom: "Line", facettes: { e65: {} } },
+        { id: "c", nom: "Nicole", facettes: { e85: {} } },
       ],
       sieges: [
         { id: "S1", nom: "un", personnageIds: ["a", "c"] },
@@ -135,25 +142,16 @@ suite("Invariants — les bugs qu'on veut rendre impossibles", () => {
     contient(a.find((x) => x.code === "siege:double").message, "Nicole");
   });
 
-  test("un siège avec deux rôles à la même époque est signalé", () => {
+  test("un siège avec deux personnes à la même époque est signalé", () => {
     const r = fauxReseau({
+      epoques: ORDRE,
       personnages: [
-        { id: "a", nom: "A", epoqueId: "e65" },
-        { id: "b", nom: "B", epoqueId: "e65" },
+        { id: "a", nom: "A", facettes: { e65: {} } },
+        { id: "b", nom: "B", facettes: { e65: {} } },
       ],
       sieges: [{ id: "S1", nom: "un", personnageIds: ["a", "b"] }],
     });
     ok(anomalies(r).some((x) => x.code === "siege:epoque"), "un joueur, deux endroits");
-  });
-
-  test("un rôle avec deux incarnations à la même époque est signalé", () => {
-    const r = fauxReseau({
-      personnages: [
-        { id: "a", nom: "Ange", roleId: "r1", epoqueId: "e65" },
-        { id: "b", nom: "Ange bis", roleId: "r1", epoqueId: "e65" },
-      ],
-    });
-    ok(anomalies(r).some((x) => x.code === "role:epoque"));
   });
 
   test("un PJ sans siège est signalé — mais seulement si le casting a commencé", () => {
@@ -167,8 +165,8 @@ suite("Invariants — les bugs qu'on veut rendre impossibles", () => {
     ok(avec && anomalies(avec).some((x) => x.code === "siege:orphelin"));
   });
 
-  test("une époque non déclarée est signalée", () => {
-    const r = fauxReseau({ personnages: [{ id: "a", nom: "A", epoqueId: "e1900" }] });
+  test("une facette à une époque non déclarée est signalée", () => {
+    const r = fauxReseau({ epoques: ORDRE, personnages: [{ id: "a", nom: "A", facettes: { e1900: {} } }] });
     ok(anomalies(r, MONDE).some((x) => x.code === "epoque:inconnue"));
   });
 
@@ -188,46 +186,44 @@ suite("Liens — sans date, ils valent partout", () => {
     pasOk(liensA(GN, "e85").some((l) => l.id === "l65"));
   });
 
-  test("les personnages d'une époque, et ceux qui n'en ont pas", () => {
-    eq(personnagesA(GN, "e65").map((p) => p.id).sort().join(","), "p17,p50");
-    eq(personnagesA(GN, null).length, 4, "sans époque demandée, tout le monde");
+  test("les personnes d'une époque, et tout le monde sans époque", () => {
+    eq(personnagesA(GN, "e65").map((p) => p.id).sort().join(","), "p01,p17");
+    eq(personnagesA(GN, null).length, 3, "sans époque demandée, tout le monde");
   });
 });
 
-suite("Projection — un lien appartient au rôle, pas à l'incarnation", () => {
-  test("on retrouve l'incarnation d'un rôle à une époque", () => {
-    eq(incarnationA(GN, "p01", "e65").nom, "Ange 65", "depuis l'incarnation de 85");
-    eq(incarnationA(GN, "p50", "e85").nom, "Ange 85", "et dans l'autre sens");
+suite("Lecture d'un lien à une époque", () => {
+  test("on retrouve la personne à une époque, ou rien", () => {
+    eq(incarnationA(GN, "p01", "e65").role, "celui qui décide");
     eq(incarnationA(GN, "p17", "e85"), null, "Antoine n'existe pas en 1985");
   });
 
-  test("un lien écrit en 1985 se lit aussi en 1965, entre les bons bouts", () => {
-    // « sa fille » est un fait sur la personne : Ange-65 l'a déjà.
+  test("un lien sans date se lit là où ses deux bouts existent", () => {
     const l = GN.liens().find((x) => x.id === "lf");
     eq(projeter(GN, l, "e85").de, "p01");
-    eq(projeter(GN, l, "e65"), null, "…mais Daniel n'est pas né : le lien ne se projette pas");
+    eq(projeter(GN, l, "e65"), null, "Daniel n'est pas né : le lien ne se lit pas en 1965");
   });
 
-  test("un lien daté ne se projette pas hors de sa date", () => {
-    const l = GN.liens().find((x) => x.id === "l65");
+  test("un lien daté ne se lit pas hors de sa date", () => {
+    const l = GN.liensBruts().find((x) => x.id === "l65");
     ok(projeter(GN, l, "e65"), "il vit en 1965");
     eq(projeter(GN, l, "e85"), null);
   });
 
   test("le graphe d'une époque ne contient que ce qui y existe", () => {
     const g65 = grapheA(GN, "e65");
-    eq(g65.personnages.map((p) => p.id).sort().join(","), "p17,p50");
-    eq(g65.liens.length, 1, "le lien de 1965, projeté");
-    eq(g65.liens[0].de, "p50");
+    eq(g65.personnages.map((p) => p.id).sort().join(","), "p01,p17");
+    eq(g65.liens.length, 1, "le lien de 1965");
+    eq(g65.liens[0].de, "p01");
 
     const g85 = grapheA(GN, "e85");
     eq(g85.personnages.map((p) => p.id).sort().join(","), "p01,p13");
-    eq(g85.liens.length, 1, "« sa fille », projeté sur 1985");
+    eq(g85.liens.length, 1, "« le fils d'Antoine », lisible en 1985");
   });
 
   test("sans époque demandée, le graphe est le réseau entier", () => {
     const g = grapheA(GN, null);
-    eq(g.personnages.length, 4);
+    eq(g.personnages.length, 3);
     eq(g.liens.length, 2);
   });
 });
@@ -238,7 +234,7 @@ suite("Un GN mono-époque ne voit rien changer", () => {
     liens: [{ id: "l", de: "a", vers: "b", nature: "x" }],
   });
 
-  test("chaque personnage est son propre rôle", () => {
+  test("chaque personne est son propre rôle", () => {
     eq(roles(simple).length, 2);
   });
 

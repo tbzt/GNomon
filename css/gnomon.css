@@ -243,6 +243,39 @@ main {
   margin: 2px 0 10px;
 }
 
+.perso-epoques {
+  display: inline-flex;
+  gap: 4px;
+  margin: 0 0 8px;
+}
+.perso-epoques .ep-puce {
+  font-family: var(--mono);
+  font-size: 9.5px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  padding: 2px 7px;
+  border: 1px solid var(--rule);
+  border-radius: 2px;
+  color: var(--ink-faint);
+  background: none;
+  cursor: pointer;
+}
+.perso-epoques .ep-puce.actif {
+  color: var(--ink);
+  border-color: var(--accent);
+}
+.perso-epoques .ep-puce.vide {
+  border-style: dashed;
+  opacity: 0.6;
+  cursor: default;
+}
+.perso-epoques button.ep-puce:hover,
+.perso-epoques button.ep-puce:focus-visible {
+  color: var(--ink);
+  border-color: var(--accent);
+  outline: none;
+}
+
 .perso .moral {
   margin: 0 0 10px;
   color: var(--ink-soft);
@@ -6224,6 +6257,112 @@ main[data-actif="monde"] {
 /* Le background des autres époques, sous celui qu'on écrit : des volets
    repliés, un par époque, en lecture. Le volet vide (pas d'incarnation)
    se distingue : un mort n'a pas de suite, et ça se voit. */
+/* ---------- la bascule d'époque, et le côte à côte ---------- */
+
+.fiche-epoques {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin-top: 8px;
+  flex-wrap: wrap;
+}
+.fiche-epoques .ep-onglet {
+  font-family: var(--mono);
+  font-size: 10.5px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  padding: 4px 10px;
+  border: 1px solid var(--rule);
+  border-radius: 2px;
+  color: var(--ink-faint);
+  text-decoration: none;
+}
+.fiche-epoques a.ep-onglet:hover,
+.fiche-epoques a.ep-onglet:focus-visible {
+  color: var(--ink);
+  border-color: var(--accent);
+  outline: none;
+}
+.fiche-epoques .ep-onglet.actif {
+  color: var(--ink);
+  border-color: var(--accent);
+  background: var(--ground);
+}
+.fiche-epoques .ep-onglet.vide {
+  border-style: dashed;
+  opacity: 0.6;
+}
+.fiche-epoques .ep-cote {
+  margin-left: 8px;
+  font-size: 9.5px;
+  padding: 4px 9px;
+}
+.fiche-epoques .ep-cote.actif {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.cote-grille {
+  display: grid;
+  grid-template-columns: 110px repeat(var(--colonnes, 2), minmax(0, 1fr));
+  gap: 6px 10px;
+  align-items: start;
+}
+.cg-tete {
+  font-family: var(--mono);
+  font-size: 10.5px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--ink-faint);
+  padding-bottom: 6px;
+  border-bottom: 1px solid var(--rule);
+}
+.cg-tete.actif {
+  color: var(--ink);
+}
+.cg-tete span {
+  display: block;
+  font-family: var(--sans);
+  font-size: 12.5px;
+  letter-spacing: 0;
+  text-transform: none;
+  color: var(--ink);
+}
+.cg-label {
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--ink-faint);
+  padding-top: 7px;
+}
+.cg-case input,
+.cg-case textarea {
+  width: 100%;
+  font-family: var(--serif);
+  font-size: 13.5px;
+  line-height: 1.45;
+  color: var(--ink);
+  background: var(--ground);
+  border: 1px solid var(--rule-controle);
+  border-radius: 2px;
+  padding: 5px 8px;
+  resize: vertical;
+}
+.cg-case input:focus,
+.cg-case textarea:focus {
+  border-color: var(--accent);
+  outline: none;
+}
+.cg-case.vide {
+  border: 1px dashed var(--rule);
+  min-height: 28px;
+  border-radius: 2px;
+}
+.cg-creer {
+  margin: 10px 0 0;
+}
+
 .autres-epoques {
   margin-top: 14px;
 }

@@ -58,6 +58,7 @@ import { TYPES_CONCLUSION } from "./tramestore.js";
 import { INFLUENCES, ETATS } from "./informationstore.js";
 import { urlSure } from "./liensstore.js";
 import { planDe, RESTE } from "./objets.js";
+import { CHAMPS_FACETTE, facetteVide, TOUTES } from "./personnes.js";
 
 /* ---- Coercitions ---- */
 
@@ -88,38 +89,60 @@ function srcSure(v) {
    Chacune rend l'objet réparé, ou `null` pour l'écarter. `note` sert à
    signaler une réparation qui mérite d'être dite. */
 
-const REGLES = {
-  "reseau.personnages": (o, note) => ({
-    ...o,
-    nom: txt(o.nom),
-    role: txt(o.role),
-    pj: bool(o.pj),
-    groupeId: idOuNull(o.groupeId),
-    roleId: idOuNull(o.roleId),
-    epoqueId: o.epoqueId || null,
-    fonction: o.fonction == null ? null : dans(o.fonction, FONCTIONS, null),
-    moral: txt(o.moral),
-    desir: txt(o.desir),
-    besoin: txt(o.besoin),
-    faiblesse: txt(o.faiblesse),
-    pouvoirs: txt(o.pouvoirs),
-    transformation: txt(o.transformation),
-    archetype: txt(o.archetype),
-    surprise: bool(o.surprise),
-    notes: txt(o.notes),
-    background: txt(o.background),
-    style: txt(o.style),
-    objectifs: liste(o.objectifs).map(txt),
-    possede: liste(o.possede).map(txt),
-    pressions: liste(o.pressions).map(txt),
-    portrait: garder(srcSure(o.portrait), o.portrait, note, "portrait à source refusée"),
-    images: liste(o.images)
+/** Une facette réparée : chaque champ reprend son défaut. */
+function facette(f, note) {
+  f = carte(f);
+  return {
+    ...facetteVide(),
+    role: txt(f.role),
+    groupeId: idOuNull(f.groupeId),
+    fonction: f.fonction == null ? null : dans(f.fonction, FONCTIONS, null),
+    moral: txt(f.moral),
+    desir: txt(f.desir),
+    besoin: txt(f.besoin),
+    faiblesse: txt(f.faiblesse),
+    pouvoirs: txt(f.pouvoirs),
+    transformation: txt(f.transformation),
+    archetype: txt(f.archetype),
+    surprise: bool(f.surprise),
+    notes: txt(f.notes),
+    background: txt(f.background),
+    style: txt(f.style),
+    objectifs: liste(f.objectifs).map(txt),
+    possede: liste(f.possede).map(txt),
+    pressions: liste(f.pressions).map(txt),
+    images: liste(f.images)
       .filter((i) => i && i.id)
       .map((i) => ({ ...i, src: garder(srcSure(i.src), i.src, note, "image à source refusée"), legende: txt(i.legende) }))
       .filter((i) => i.src),
-    x: nombre(o.x),
-    y: nombre(o.y),
-  }),
+  };
+}
+
+const REGLES = {
+  // Une personne à facettes. Un objet PLAT — ancien modèle, ou pair
+  // ancien — entre dans une seule facette : celle de son époque, ou
+  // « * ». Ses champs plats sont retirés de la surface : deux sources
+  // pour une même chose finiraient par diverger.
+  "reseau.personnages": (o, note) => {
+    const facettes = {};
+    if (o.facettes && typeof o.facettes === "object" && !Array.isArray(o.facettes)) {
+      for (const [k, f] of Object.entries(o.facettes)) if (k) facettes[k] = facette(f, note);
+    } else {
+      facettes[o.epoqueId || TOUTES] = facette(o, note);
+    }
+    if (!Object.keys(facettes).length) facettes[TOUTES] = facetteVide();
+    const p = {
+      ...o,
+      nom: txt(o.nom),
+      pj: bool(o.pj),
+      portrait: garder(srcSure(o.portrait), o.portrait, note, "portrait à source refusée"),
+      x: nombre(o.x),
+      y: nombre(o.y),
+      facettes,
+    };
+    for (const k of [...CHAMPS_FACETTE, "roleId", "epoqueId"]) delete p[k];
+    return p;
+  },
 
   // Un lien dont les bouts manquent ne désigne rien. Les énumérations
   // sont fermées DANS le store ; ici on les ramène plutôt que d'écarter
@@ -153,11 +176,20 @@ const REGLES = {
     personnageIds: liste(o.personnageIds).map(txt).filter(Boolean),
   }),
 
-  "trames.trames": (o) => ({ ...o, titre: txt(o.titre), porteurId: idOuNull(o.porteurId), notes: txt(o.notes) }),
+  // L'époque d'une trame est celle de ses scènes, sauf redite sur une
+  // scène. `null` = pas d'époque, ou héritée.
+  "trames.trames": (o) => ({
+    ...o,
+    titre: txt(o.titre),
+    porteurId: idOuNull(o.porteurId),
+    notes: txt(o.notes),
+    epoqueId: o.epoqueId || null,
+  }),
 
   "trames.situations": (o) => ({
     ...o,
     trameId: idOuNull(o.trameId),
+    epoqueId: o.epoqueId || null,
     titre: txt(o.titre),
     pitch: txt(o.pitch),
     pointDeVueId: idOuNull(o.pointDeVueId),
@@ -193,14 +225,28 @@ const REGLES = {
   // LE CAS QUI CASSAIT UN ÉCRAN : sans `etats`, `InformationStore.etat()`
   // lève, et « Qui sait quoi » reste vide même après rechargement.
   "informations.informations": (o, note) => {
-    const etats = {};
-    const croyances = {};
-    for (const [pid, e] of Object.entries(carte(o.etats))) {
-      const v = dans(e, ETATS, null);
-      // « ignore » n'est jamais stocké : c'est l'absence.
-      if (!v || v === "ignore") continue;
-      etats[pid] = v;
-      if (v === "croit") croyances[pid] = txt(carte(o.croyances)[pid]);
+    const lire = (brutEtats, brutCroyances) => {
+      const etats = {};
+      const croyances = {};
+      for (const [pid, e] of Object.entries(carte(brutEtats))) {
+        const v = dans(e, ETATS, null);
+        // « ignore » n'est jamais stocké : c'est l'absence.
+        if (!v || v === "ignore") continue;
+        etats[pid] = v;
+        if (v === "croit") croyances[pid] = txt(carte(brutCroyances)[pid]);
+      }
+      return { etats, croyances };
+    };
+    const base = lire(o.etats, o.croyances);
+    // Les exceptions datées : ce qu'une personne sait AUTREMENT à une
+    // époque donnée. Rares, et gardées telles quelles.
+    const etatsParEpoque = {};
+    const croyancesParEpoque = {};
+    for (const [ep, brut] of Object.entries(carte(o.etatsParEpoque))) {
+      if (!ep) continue;
+      const r = lire(brut, carte(o.croyancesParEpoque)[ep]);
+      if (Object.keys(r.etats).length) etatsParEpoque[ep] = r.etats;
+      if (Object.keys(r.croyances).length) croyancesParEpoque[ep] = r.croyances;
     }
     return {
       ...o,
@@ -208,8 +254,10 @@ const REGLES = {
       // Ce que lit celui qui la sait. Absent = vide, et le livret le dit.
       enonce: txt(o.enonce),
       influence: garder(dans(o.influence, INFLUENCES, null), o.influence, note, "influence inconnue") || "latente",
-      etats,
-      croyances,
+      etats: base.etats,
+      croyances: base.croyances,
+      etatsParEpoque,
+      croyancesParEpoque,
     };
   },
 

@@ -287,7 +287,7 @@ suite("Trombinoscope — rien que du public", () => {
   });
 });
 
-suite("Le livret à plusieurs époques — les contacts suivent le rôle", () => {
+suite("Le livret à plusieurs époques — une personne, ses contacts à chaque époque", () => {
   const monde = fauxMonde({
     contexte: "Deux moments.",
     epoques: [
@@ -296,44 +296,46 @@ suite("Le livret à plusieurs époques — les contacts suivent le rôle", () =>
     ],
   });
   const reseau = fauxReseau({
+    epoques: ["e65", "e85"],
     personnages: [
-      { id: "p01", nom: "Ange 85", roleId: "r01", epoqueId: "e85", background: "Vingt ans après." },
-      { id: "p50", nom: "Ange 65", roleId: "r01", epoqueId: "e65", background: "Cette nuit-là." },
-      { id: "p07", nom: "Simone 85", roleId: "r07", epoqueId: "e85" },
-      { id: "p56", nom: "Simone 65", roleId: "r07", epoqueId: "e65" },
-      { id: "p18", nom: "Régis", epoqueId: "e65" },
-      { id: "p12", nom: "Nadia", epoqueId: "e85" },
+      { id: "p01", nom: "Ange", facettes: { e65: { background: "Cette nuit-là." }, e85: { background: "Vingt ans après." } } },
+      { id: "p07", nom: "Simone", facettes: { e65: {}, e85: {} } },
+      { id: "p18", nom: "Régis", facettes: { e65: {} } },
+      { id: "p12", nom: "Nadia", facettes: { e85: {} } },
     ],
     liens: [
       { id: "l1", de: "p01", vers: "p07", nature: "Sa femme depuis 1958", tonalite: "complique" },
       { id: "l2", de: "p01", vers: "p18", nature: "Le chauffeur qui veut partir", tonalite: "negatif" },
       { id: "l3", de: "p01", vers: "p12", nature: "Sa fille", tonalite: "positif" },
-      { id: "l4", de: "p50", vers: "p12", nature: "Un lien daté 85 écrit sur la fiche 65", tonalite: "neutre", epoqueId: "e85" },
+      { id: "l4", de: "p01", vers: "p12", nature: "Un lien daté 85", tonalite: "neutre", epoqueId: "e85" },
     ],
   });
   const infos = fauxInfos([]);
   const st = { reseau, monde, infos };
 
-  test("l'incarnation de 1965 a les contacts du rôle, ramenés à 1965", () => {
-    const l = livret("p50", st);
+  test("le livret de 1965 lit la facette de 1965, et ses contacts de 1965", () => {
+    const l = livret("p01", st, "e65");
+    eq(l.background, "Cette nuit-là.");
     const noms = l.contacts.map((c) => c.nom).sort().join(",");
-    eq(noms, "Régis,Simone 65", "Simone est ramenée à son incarnation de 65 ; Nadia n'existe pas encore");
-    eq(l.contacts.find((c) => c.nom === "Simone 65").nature, "Sa femme depuis 1958");
-    pasOk(l.avertissements.some((a) => /Aucun contact/.test(a)), "plus d'avertissement « sans contact » sur un livret de 1965");
+    eq(noms, "Régis,Simone", "Simone existe en 65 ; Nadia n'existe pas encore");
+    eq(l.contacts.find((c) => c.nom === "Simone").nature, "Sa femme depuis 1958");
+    pasOk(l.avertissements.some((a) => /Aucun contact/.test(a)), "pas d'avertissement « sans contact » sur un livret de 1965");
   });
 
-  test("l'incarnation de 1985 ne voit pas un contact qui n'existe qu'en 1965", () => {
-    const noms = livret("p01", st)
-      .contacts.filter((c) => !c.nature.startsWith("Un lien daté"))
-      .map((c) => c.nom)
-      .sort()
-      .join(",");
-    eq(noms, "Nadia,Simone 85", "Régis, mort en 65, n'est pas au mariage");
+  test("le livret de 1985 ne voit pas un contact qui n'existe qu'en 1965", () => {
+    const l = livret("p01", st, "e85");
+    eq(l.background, "Vingt ans après.");
+    const noms = l.contacts.filter((c) => !c.nature.startsWith("Un lien daté")).map((c) => c.nom).sort().join(",");
+    eq(noms, "Nadia,Simone", "Régis, mort en 65, n'est pas au mariage");
   });
 
-  test("un lien daté ne se lit qu'à sa date, quelle que soit la fiche qui le porte", () => {
-    ok(livret("p01", st).contacts.some((c) => c.nature.startsWith("Un lien daté")));
-    pasOk(livret("p50", st).contacts.some((c) => c.nature.startsWith("Un lien daté")));
+  test("un lien daté ne se lit qu'à sa date", () => {
+    ok(livret("p01", st, "e85").contacts.some((c) => c.nature.startsWith("Un lien daté")));
+    pasOk(livret("p01", st, "e65").contacts.some((c) => c.nature.startsWith("Un lien daté")));
+  });
+
+  test("c'est le même identifiant aux deux époques : une personne, pas deux fiches", () => {
+    eq(livret("p01", st, "e65").identite.id, livret("p01", st, "e85").identite.id);
   });
 
   test("sans époque déclarée, rien ne change", () => {

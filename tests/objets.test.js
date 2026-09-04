@@ -42,8 +42,8 @@ const GN = () => ({
   },
   reseau: {
     personnages: [
-      { id: "p1", nom: "Elena", pj: true, moral: "on ne ment pas aux morts" },
-      { id: "p2", nom: "Marek", pj: true, moral: "" },
+      { id: "p1", nom: "Elena", pj: true, facettes: { "*": { moral: "on ne ment pas aux morts" } } },
+      { id: "p2", nom: "Marek", pj: true, facettes: { "*": { moral: "" } } },
     ],
     liens: [{ id: "l1", de: "p1", vers: "p2", tonalite: "positif", importance: "primaire", miroir: true }],
     groupes: [{ id: "g1", nom: "Le dispensaire" }],

@@ -12,11 +12,30 @@
    Donc ici, la vérité racine est **l'arête**. Ce store la détient, avec
    ses deux bouts.
 
-       Personnage { id, nom, role, pj, groupeId,
-                    fonction, moral, desir, besoin, faiblesse,
-                    pouvoirs, transformation, archetype, surprise,
-                    notes, objectifs[], possede[], pressions[] }
-       Lien       { id, de, vers, nature, enonce, tonalite, importance, miroir }
+       Personnage { id, nom, pj, portrait, x, y,
+                    facettes: { [epoqueId | "*"]: Facette } }
+       Facette    { role, groupeId, fonction, moral, desir, besoin,
+                    faiblesse, pouvoirs, transformation, archetype,
+                    surprise, notes, background, style,
+                    objectifs[], possede[], pressions[], images[] }
+       Lien       { id, de, vers, nature, enonce, tonalite, importance,
+                    miroir, epoqueId? }
+
+   ── LA PERSONNE EST L'UNITÉ, L'ÉPOQUE EST UNE DIMENSION ──
+   Ce store range des PERSONNES. Ce qu'une personne est à un moment
+   donné — son métier, son background, ses objectifs, son groupe — vit
+   dans une **facette** par époque (cf. `personnes.js`). Le reste de
+   l'outil lit des personnages plats : `personnages()` et
+   `personnage()` rendent la facette de l'**époque courante** fondue
+   sur la personne. L'époque courante est un réglage d'écran, posé par
+   l'application (`reglerEpoques`) : la dernière déclarée par défaut,
+   celle que l'auteur choisit ensuite. Un GN à un seul moment n'a que
+   la facette « * » et ne voit rien de tout ça.
+
+   Une personne absente d'une époque rend quand même une vue — la
+   facette la plus proche — parce qu'une scène de 1965 doit pouvoir
+   afficher Régis depuis un écran réglé sur 1985. `existeA()` dit si
+   elle est de cette époque.
 
    ── CE QU'IL A, ET CE QUI LE PRESSE ──
    `objectifs` dit ce qu'il cherche. `possede` dit ce qu'il a sur lui
@@ -74,6 +93,16 @@
    ============================================================ */
 import { Storage } from "./storage.js";
 import { Debug } from "./debug.js";
+import {
+  vue,
+  existeA as existeFacette,
+  separer,
+  facetteVide,
+  facetteDepuis,
+  personneDepuisPlat,
+  facettesDe,
+  TOUTES,
+} from "./personnes.js";
 
 /** Tonalité d'un lien — Kröger, « tone of the contact ». */
 export const TONALITES = Object.freeze({
@@ -106,22 +135,59 @@ export const ReseauStore = {
   _key: "reseau",
   _data: null,
   _observers: new Set(),
+  /* L'époque courante et l'ordre des époques : un réglage, pas de la
+     donnée. `null` = pas d'époque (GN à un seul moment, ou « toutes »). */
+  _epoque: null,
+  _ordre: [],
+  _vues: new Map(),
 
   /* ================= Persistance ================= */
 
   load() {
     const raw = Storage.get(this._key, null);
     this._data = {
-      personnages: Array.isArray(raw?.personnages) ? raw.personnages : [],
+      // Une personne venue d'un ancien stockage ou d'un pair ancien
+      // arrive plate : on la fait entrer dans une facette. Sans rôle
+      // à fusionner ici — c'est la migration qui s'en charge.
+      personnages: (Array.isArray(raw?.personnages) ? raw.personnages : [])
+        .filter((p) => p && p.id)
+        .map((p) => (p.facettes && typeof p.facettes === "object" ? p : personneDepuisPlat(p))),
       liens: Array.isArray(raw?.liens) ? raw.liens : [],
       groupes: Array.isArray(raw?.groupes) ? raw.groupes : [],
       sieges: Array.isArray(raw?.sieges) ? raw.sieges : [],
     };
+    this._vues = new Map();
     return this._data;
   },
 
   save() {
+    this._vues = new Map();
     Storage.set(this._key, this._data || VIDE);
+  },
+
+  /* ================= L'époque courante ================= */
+
+  /** Pose l'ordre des époques déclarées et, si donnée, l'époque
+      courante. Sans courante valable, la dernière déclarée. */
+  reglerEpoques(ordre = [], courante = undefined) {
+    this._ordre = [...ordre];
+    if (courante !== undefined) this._epoque = courante;
+    if (this._epoque && !this._ordre.includes(this._epoque)) this._epoque = null;
+    if (!this._epoque && this._ordre.length) this._epoque = this._ordre[this._ordre.length - 1];
+    this._vues = new Map();
+    this._emit({ type: "reseau:epoque", epoqueId: this._epoque });
+  },
+
+  reglerEpoque(epoqueId) {
+    this.reglerEpoques(this._ordre, epoqueId || null);
+  },
+
+  epoqueCourante() {
+    return this._epoque;
+  },
+
+  ordreEpoques() {
+    return this._ordre;
   },
 
   _d() {
@@ -156,70 +222,133 @@ export const ReseauStore = {
 
   /* ================= Personnages ================= */
 
-  personnages() {
-    return this._d().personnages;
-  },
-
-  personnage(id) {
+  /** La personne brute, avec ses facettes. Pour ce store et l'archive. */
+  _brut(id) {
     return this._d().personnages.find((p) => p && p.id === id) || null;
   },
 
+  personnesBrutes() {
+    return this._d().personnages;
+  },
+
+  _vue(p, epoqueId) {
+    const cle = `${p.id}|${epoqueId || ""}`;
+    let v = this._vues.get(cle);
+    if (!v) {
+      v = vue(p, epoqueId, this._ordre);
+      this._vues.set(cle, v);
+    }
+    return v;
+  },
+
+  /** Les personnages plats, à l'époque demandée — l'époque courante
+      si l'on n'en demande aucune. Tout le monde y est : une personne
+      absente d'une époque rend sa facette la plus proche, et
+      `presentA` le dit. */
+  personnages(epoqueId = undefined) {
+    const ep = epoqueId === undefined ? this._epoque : epoqueId;
+    return this._d().personnages.filter(Boolean).map((p) => this._vue(p, ep));
+  },
+
+  personnage(id, epoqueId = undefined) {
+    const p = this._brut(id);
+    if (!p) return null;
+    return this._vue(p, epoqueId === undefined ? this._epoque : epoqueId);
+  },
+
+  /** La personne est-elle de cette époque ? Sans époque, dès qu'elle existe. */
+  existeA(id, epoqueId = null) {
+    const p = this._brut(id);
+    return !!p && existeFacette(p, epoqueId);
+  },
+
+  /** Les clés de facette d'une personne, dans l'ordre des époques. */
+  epoquesDe(id) {
+    const p = this._brut(id);
+    return p ? facettesDe(p, this._ordre) : [];
+  },
+
   /** Les PJ seuls — la plupart des validateurs ne portent que sur eux. */
-  pj() {
-    return this._d().personnages.filter((p) => p && p.pj);
+  pj(epoqueId = undefined) {
+    return this.personnages(epoqueId).filter((p) => p.pj);
   },
 
   /** Les PNJ seuls — porteurs de trame, et sujets à une charge. */
-  pnj() {
-    return this._d().personnages.filter((p) => p && !p.pj);
+  pnj(epoqueId = undefined) {
+    return this.personnages(epoqueId).filter((p) => !p.pj);
   },
 
-  creerPersonnage({ nom = "", pj = true, groupeId = null, ...champs } = {}) {
+  /** Crée une personne, avec une première facette : celle de l'époque
+      demandée, sinon de l'époque courante, sinon « * ». Les champs
+      plats passés se rangent d'eux-mêmes — commun ou facette. */
+  creerPersonnage({ nom = "", pj = true, groupeId = null, epoqueId = undefined, ...champs } = {}) {
+    const cle = epoqueId === undefined ? this._epoque || TOUTES : epoqueId || TOUTES;
+    const { commun, facette } = separer({ groupeId, ...champs });
     const p = {
       id: this._uid("p"),
       nom,
-      role: "",
       pj: !!pj,
-      groupeId,
-      /* Une incarnation appartient à un rôle et se situe à une époque.
-         Par défaut elle est son propre rôle et n'a pas d'époque : c'est
-         le cas d'un GN à un seul moment, et il ne doit rien écrire. */
-      roleId: null,
-      epoqueId: null,
-      fonction: null,
-      moral: "",
-      desir: "",
-      besoin: "",
-      faiblesse: "",
-      pouvoirs: "",
-      transformation: "",
-      archetype: "",
-      surprise: false,
-      notes: "",
-      background: "",
-      style: "",
-      objectifs: [],
-      possede: [],
-      pressions: [],
-      portrait: "",
-      images: [],
-      x: null,
-      y: null,
-      ...champs,
+      portrait: commun.portrait || "",
+      x: commun.x ?? null,
+      y: commun.y ?? null,
+      facettes: { [cle]: facetteDepuis(facette) },
     };
     this._d().personnages.push(p);
     this.save();
     this._emit({ type: "personnage:creer", id: p.id });
-    return p;
+    return this.personnage(p.id, cle === TOUTES ? null : cle);
   },
 
-  majPersonnage(id, patch = {}) {
-    const p = this.personnage(id);
+  /** La facette où l'on ÉCRIT à l'époque courante : celle de l'époque
+      si elle existe, sinon « * » si elle existe, sinon on la crée. */
+  _cleEcriture(p, epoqueId = undefined) {
+    if (epoqueId !== undefined) return epoqueId || TOUTES;
+    const ep = this._epoque;
+    if (!ep) return p.facettes[TOUTES] ? TOUTES : facettesDe(p, this._ordre).slice(-1)[0] || TOUTES;
+    if (p.facettes[ep]) return ep;
+    if (p.facettes[TOUTES]) return TOUTES;
+    return ep;
+  },
+
+  /** Met à jour une personne depuis un patch PLAT : ce qui est commun
+      va sur la personne, ce qui est de facette va dans la facette de
+      l'époque donnée — l'époque courante sinon. */
+  majPersonnage(id, patch = {}, epoqueId = undefined) {
+    const p = this._brut(id);
     if (!p) return null;
-    Object.assign(p, patch, { id: p.id });
+    const { commun, facette } = separer(patch);
+    Object.assign(p, commun);
+    if (Object.keys(facette).length) {
+      const cle = this._cleEcriture(p, epoqueId);
+      if (!p.facettes[cle]) p.facettes[cle] = facetteVide();
+      Object.assign(p.facettes[cle], facette);
+    }
     this.save();
     this._emit({ type: "personnage:maj", id });
-    return p;
+    return this.personnage(id, epoqueId);
+  },
+
+  /** Écrit une personne à une époque de plus. `depuis` copie une autre
+      facette comme point de départ ; sinon la facette est vide. */
+  creerFacette(id, epoqueId, depuis = null) {
+    const p = this._brut(id);
+    if (!p || !epoqueId) return null;
+    if (p.facettes[epoqueId]) return this.personnage(id, epoqueId);
+    p.facettes[epoqueId] = depuis && p.facettes[depuis] ? facetteDepuis(p.facettes[depuis]) : facetteVide();
+    this.save();
+    this._emit({ type: "personnage:maj", id });
+    return this.personnage(id, epoqueId);
+  },
+
+  /** Retire une facette. La dernière ne se retire pas : ce serait
+      supprimer la personne sans le dire. */
+  supprimerFacette(id, epoqueId) {
+    const p = this._brut(id);
+    if (!p || !p.facettes[epoqueId] || Object.keys(p.facettes).length < 2) return false;
+    delete p.facettes[epoqueId];
+    this.save();
+    this._emit({ type: "personnage:maj", id });
+    return true;
   },
 
   /** Supprime un personnage ET purge ses liens. Renvoie
@@ -252,7 +381,7 @@ export const ReseauStore = {
       glisser en produirait des dizaines par seconde, et re-projeterait
       le graphe sous le doigt. Même règle que `poserSituation`. */
   poserPersonnage(id, x, y) {
-    const p = this.personnage(id);
+    const p = this._brut(id);
     if (!p) return;
     p.x = x;
     p.y = y;
@@ -267,12 +396,12 @@ export const ReseauStore = {
      en a qu'une ou deux par fiche. */
 
   majPortrait(personnageId, src) {
-    const p = this.personnage(personnageId);
+    const p = this._brut(personnageId);
     if (!p) return null;
     p.portrait = src || "";
     this.save();
     this._emit({ type: "personnage:maj", id: personnageId });
-    return p;
+    return this.personnage(personnageId);
   },
 
   /** Combien manquent — le trombinoscope s'en sert pour dire quoi
@@ -289,38 +418,64 @@ export const ReseauStore = {
      `localStorage`). Les deux sont légitimes, et l'écran dit le
      compromis plutôt que de choisir à la place de l'auteur. */
 
+  // Les images sont de facette : celle où l'on écrit à l'époque courante.
   ajouterImage(personnageId, src, legende = "") {
-    const p = this.personnage(personnageId);
+    const p = this._brut(personnageId);
     if (!p || !src) return null;
-    if (!Array.isArray(p.images)) p.images = [];
+    const cle = this._cleEcriture(p);
+    if (!p.facettes[cle]) p.facettes[cle] = facetteVide();
+    const f = p.facettes[cle];
+    if (!Array.isArray(f.images)) f.images = [];
     const img = { id: this._uid("i"), src, legende };
-    p.images.push(img);
+    f.images.push(img);
     this.save();
     this._emit({ type: "personnage:maj", id: personnageId });
     return img;
+  },
+
+  _image(p, imageId) {
+    for (const f of Object.values(p.facettes || {})) {
+      const img = (f.images || []).find((x) => x && x.id === imageId);
+      if (img) return { f, img };
+    }
+    return null;
   },
 
   majImage(personnageId, imageId, patch = {}) {
-    const p = this.personnage(personnageId);
-    const img = p && (p.images || []).find((x) => x && x.id === imageId);
-    if (!img) return null;
-    Object.assign(img, patch, { id: img.id });
+    const p = this._brut(personnageId);
+    const t = p && this._image(p, imageId);
+    if (!t) return null;
+    Object.assign(t.img, patch, { id: t.img.id });
     this.save();
     this._emit({ type: "personnage:maj", id: personnageId });
-    return img;
+    return t.img;
   },
 
   supprimerImage(personnageId, imageId) {
-    const p = this.personnage(personnageId);
-    if (!p) return;
-    p.images = (p.images || []).filter((x) => x && x.id !== imageId);
+    const p = this._brut(personnageId);
+    const t = p && this._image(p, imageId);
+    if (!t) return;
+    t.f.images = (t.f.images || []).filter((x) => x && x.id !== imageId);
     this.save();
     this._emit({ type: "personnage:maj", id: personnageId });
   },
 
-  /* ================= Liens ================= */
+  /* ================= Liens =================
+     Un lien porte une époque, ou aucune — la parenté n'a pas de date.
+     Toute lecture se fait à une époque : la courante si l'on n'en
+     donne pas, et un lien sans date se lit partout. */
 
-  liens() {
+  _visible(l, epoqueId) {
+    const ep = epoqueId === undefined ? this._epoque : epoqueId;
+    return !!l && (!l.epoqueId || !ep || l.epoqueId === ep);
+  },
+
+  liens(epoqueId = undefined) {
+    return this._d().liens.filter((l) => this._visible(l, epoqueId));
+  },
+
+  /** Tous les liens, quelle que soit leur époque. Pour l'archive. */
+  liensBruts() {
     return this._d().liens;
   },
 
@@ -329,31 +484,37 @@ export const ReseauStore = {
   },
 
   /** Liens sortants — « les contacts que ce personnage déclare ». */
-  liensDe(id) {
-    return this._d().liens.filter((l) => l && l.de === id);
+  liensDe(id, epoqueId = undefined) {
+    return this._d().liens.filter((l) => l && l.de === id && this._visible(l, epoqueId));
   },
 
   /** Liens entrants — « pour qui ce personnage compte ».
       C'est le sens que lit le validateur « personne n'est seul ». */
-  liensVers(id) {
-    return this._d().liens.filter((l) => l && l.vers === id);
+  liensVers(id, epoqueId = undefined) {
+    return this._d().liens.filter((l) => l && l.vers === id && this._visible(l, epoqueId));
   },
 
-  liensTouchant(id) {
-    return this._d().liens.filter((l) => l && (l.de === id || l.vers === id));
+  liensTouchant(id, epoqueId = undefined) {
+    return this._d().liens.filter(
+      (l) => l && (l.de === id || l.vers === id) && this._visible(l, epoqueId),
+    );
   },
 
   /** Le lien de retour, s'il existe. Dérivé, jamais stocké. */
   reciproque(lien) {
     if (!lien) return null;
+    const retours = this._d().liens.filter((l) => l && l.de === lien.vers && l.vers === lien.de);
+    // Le retour de la même époque d'abord, puis un retour sans date.
     return (
-      this._d().liens.find((l) => l && l.de === lien.vers && l.vers === lien.de) || null
+      retours.find((l) => (l.epoqueId || null) === (lien.epoqueId || null)) ||
+      retours.find((l) => !l.epoqueId) ||
+      null
     );
   },
 
-  /** Le contact-miroir déclaré par ce personnage (au plus un). */
-  miroirDe(id) {
-    return this._d().liens.find((l) => l && l.de === id && l.miroir) || null;
+  /** Le contact-miroir déclaré par ce personnage (au plus un par époque). */
+  miroirDe(id, epoqueId = undefined) {
+    return this._d().liens.find((l) => l && l.de === id && l.miroir && this._visible(l, epoqueId)) || null;
   },
 
   /** Insère ou met à jour un lien. Unicité par (de, vers) : re-poser le
@@ -367,7 +528,12 @@ export const ReseauStore = {
     tonalite = "neutre",
     importance = "secondaire",
     miroir = false,
+    epoqueId = undefined,
   } = {}) {
+    // Un lien nouveau porte l'époque courante ; un GN sans époque le
+    // laisse sans date. Un lien existant garde la sienne si on ne la
+    // redit pas.
+    const ep = epoqueId === undefined ? this._epoque || null : epoqueId || null;
     if (!de || !vers || de === vers) {
       Debug.warn("reseau", "lien invalide (bouts manquants ou identiques)", { de, vers });
       return null;
@@ -382,17 +548,20 @@ export const ReseauStore = {
     }
 
     const d = this._d();
-    let l = d.liens.find((x) => x && x.de === de && x.vers === vers);
+    // Unicité par (de, vers, époque) : le même couple à deux époques
+    // fait deux liens, et c'est le point.
+    let l = d.liens.find((x) => x && x.de === de && x.vers === vers && (x.epoqueId || null) === ep);
     if (l) Object.assign(l, { nature, enonce, tonalite, importance, miroir: !!miroir });
     else {
-      l = { id: this._uid("l"), de, vers, nature, enonce, tonalite, importance, miroir: !!miroir };
+      l = { id: this._uid("l"), de, vers, nature, enonce, tonalite, importance, miroir: !!miroir, epoqueId: ep };
       d.liens.push(l);
     }
 
-    // Invariant 2 : un seul miroir par personnage.
+    // Invariant 2 : un seul miroir par personnage — à une époque.
     if (l.miroir)
       for (const autre of d.liens)
-        if (autre && autre.de === de && autre.id !== l.id) autre.miroir = false;
+        if (autre && autre.de === de && autre.id !== l.id && (autre.epoqueId || null) === (l.epoqueId || null))
+          autre.miroir = false;
 
     this.save();
     this._emit({ type: "lien:upsert", id: l.id, de, vers });
@@ -411,6 +580,7 @@ export const ReseauStore = {
       nature: aller.nature,
       tonalite: aller.tonalite,
       importance: aller.importance,
+      epoqueId: aller.epoqueId,
       // L'énoncé est à la deuxième personne : celui de l'aller ne peut
       // pas servir au retour. Il se réécrit, ou reste vide.
       enonce: "",
@@ -502,22 +672,6 @@ export const ReseauStore = {
     return s;
   },
 
-  /** Déclare que deux incarnations sont la MÊME personne. Le rôle de la
-      première l'emporte : on rattache la nouvelle à l'ancienne, jamais
-      l'inverse, pour que l'identité la plus anciennement écrite reste
-      la référence. */
-  fusionnerRoles(idReference, idAutre) {
-    const a = this.personnage(idReference);
-    const b = this.personnage(idAutre);
-    if (!a || !b || a.id === b.id) return null;
-    const rid = a.roleId || a.id;
-    a.roleId = rid;
-    b.roleId = rid;
-    this.save();
-    this._emit({ type: "personnage:maj", id: b.id });
-    return rid;
-  },
-
   /* ================= Groupes ================= */
 
   groupes() {
@@ -552,20 +706,22 @@ export const ReseauStore = {
     const i = d.groupes.findIndex((g) => g && g.id === id);
     if (i < 0) return null;
     const g = d.groupes.splice(i, 1)[0];
-    for (const p of d.personnages) if (p && p.groupeId === id) p.groupeId = null;
+    for (const p of d.personnages)
+      for (const f of Object.values((p && p.facettes) || {})) if (f && f.groupeId === id) f.groupeId = null;
     this.save();
     this._emit({ type: "groupe:supprimer", id });
     return g;
   },
 
-  membresDe(groupeId) {
-    return this._d().personnages.filter((p) => p && p.groupeId === groupeId);
+  membresDe(groupeId, epoqueId = undefined) {
+    return this.personnages(epoqueId).filter((p) => p.groupeId === groupeId);
   },
 
   /* ================= Remise à zéro ================= */
 
   vider() {
     this._data = { personnages: [], liens: [], groupes: [], sieges: [] };
+    this._vues = new Map();
     this.save();
     this._emit({ type: "reseau:vider" });
   },

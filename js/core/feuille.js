@@ -24,7 +24,9 @@ export function feuilleDe2h({ titre = "", interrupteurs = [], reseau = null, epo
   const nomDe = (id) => {
     const p = reseau && reseau.personnage ? reseau.personnage(id) : null;
     if (!p) return "personnage supprimé";
-    const e = p.epoqueId ? epoqueDe(p.epoqueId) : "";
+    // Une personne qui n'existe qu'à une époque est nommée avec elle.
+    const cles = reseau.epoquesDe ? reseau.epoquesDe(id).filter((k) => k !== "*") : [];
+    const e = cles.length === 1 ? epoqueDe(cles[0]) : "";
     return e ? `${p.nom} (${e})` : p.nom;
   };
   const out = [`# Feuille de 2 h${titre ? " — " + titre : ""}`, ""];

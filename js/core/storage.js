@@ -22,6 +22,7 @@
    Rien d'autre ne touche `localStorage`.
    ============================================================ */
 import { Debug } from "./debug.js";
+import { convertirIncarnations } from "./personnes.js";
 
 const PREFIX = "gnomon_v1_";
 
@@ -49,7 +50,7 @@ export const CLES_PROJET = Object.freeze([
 ]);
 
 export const Storage = {
-  SCHEMA_VERSION: 4,
+  SCHEMA_VERSION: 5,
   _observers: [],
   _writeFailNotified: false,
   _signaler: null,
@@ -362,6 +363,56 @@ export const Storage = {
       }
 
       Debug.log("storage", "migration v4 : incarnations et sièges", { projets: touches, sieges });
+    },
+
+    /* v4 → v5 — LA PERSONNE EST L'UNITÉ, L'ÉPOQUE EST UNE DIMENSION.
+       Les incarnations d'un même rôle deviennent les facettes d'une
+       seule personne (cf. `personnes.js`), et tout ce qui les nommait
+       est ramené sur l'identifiant conservé. Un GN à un seul moment
+       migre vers un état équivalent : une facette « * » par personne,
+       et rien ne bouge à l'écran. Même adressage en clair que la v3 et
+       la v4, pour la même raison. */
+    (S) => {
+      const projets = S.get("projets", []);
+      const ids = Array.isArray(projets) ? projets.map((p) => p && p.id).filter(Boolean) : [];
+      const prefixes = ids.length ? ids.map((id) => `${PREFIX}${id}__`) : [PREFIX];
+      const lire = (k) => {
+        try {
+          return JSON.parse(localStorage.getItem(k));
+        } catch {
+          return null;
+        }
+      };
+      let touches = 0;
+      let fusions = 0;
+      for (const pre of prefixes) {
+        const reseau = lire(pre + "reseau");
+        if (!reseau || !Array.isArray(reseau.personnages) || !reseau.personnages.length) continue;
+        const monde = lire(pre + "monde") || {};
+        const ordre = [...(Array.isArray(monde.epoques) ? monde.epoques : [])]
+          .sort((a, b) => (a.ordre ?? 0) - (b.ordre ?? 0))
+          .map((e) => e.id);
+        const r = convertirIncarnations(
+          {
+            reseau,
+            trames: lire(pre + "trames") || {},
+            informations: lire(pre + "informations") || {},
+            casting: lire(pre + "casting") || {},
+            derogations: lire(pre + "derogations") || {},
+            monde,
+          },
+          ordre,
+        );
+        localStorage.setItem(pre + "reseau", JSON.stringify(r.reseau));
+        localStorage.setItem(pre + "trames", JSON.stringify(r.trames));
+        localStorage.setItem(pre + "informations", JSON.stringify(r.informations));
+        localStorage.setItem(pre + "casting", JSON.stringify(r.casting));
+        localStorage.setItem(pre + "derogations", JSON.stringify(r.derogations));
+        localStorage.setItem(pre + "monde", JSON.stringify(r.monde));
+        touches++;
+        fusions += r.fusions || 0;
+      }
+      Debug.log("storage", "migration v5 : personnes à facettes", { projets: touches, fusions });
     },
   ],
 

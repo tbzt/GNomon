@@ -1172,11 +1172,96 @@ l'archive contenait des branches que le fil interdisait (« Jeannot refuse », a
 donnée avant que le jeu commence). Le type ne calcule rien encore ; il dit à l'atelier et à la
 conduite ce qui est un choix et ce qui n'en est pas.
 
+### Une fiche par personne, l'époque en onglet
+
+La liste montre **une carte par personne**, lue à l'époque courante, avec une puce par époque
+qui ouvre la même fiche à ce moment-là ; la fiche porte sous l'identité un **onglet par
+époque** (le courant marqué ; une époque où la personne n'est pas écrite propose de l'y
+écrire), et un mode **côte à côte** où toutes ses époques s'écrivent dans une grille, le
+background en premier — c'est pour le lire à deux moments qu'on met les colonnes côte à côte.
+Ce qui est écrit dans la grille se reflète dans les éditeurs de la fiche, jamais sous le
+curseur. Le modèle qui rend ça vrai est au §5v.
+
 ### L'interrupteur et la feuille de 2 h
 
 `Monde.interrupteurs[]` — question, défaut, personnages touchés, phrase à dire le matin — et
 `feuille.js`, pur, qui en tire le Markdown que l'orga imprime. La feuille existait, à la main,
 dans le fil ; à 2 h du matin personne ne relit soixante mille signes.
+
+---
+
+## 5v. La personne est l'unité, l'époque est une dimension
+
+### Ce que les données ont dit
+
+Le modèle des époques (§5 de `epoques.js`, migration v4) rangeait une **incarnation** par
+époque — Ange-65, Ange-85 — reliées par un `roleId`. Sur le GN de l'audit, les données ne
+l'ont pas suivi : les trente-neuf scènes de 1965 castaient l'identifiant de 1985, la matrice
+« Qui sait quoi » n'était remplie que sur 1985, et l'auteur voyait deux Toussainte dans sa
+liste. Quand on écrit, on caste une personne et on fait savoir une chose à une personne ;
+c'est la scène qui sait à quelle époque elle se joue. Seuls les liens et les backgrounds
+avaient suivi le modèle. Le modèle a donc suivi les données.
+
+### Le modèle
+
+```
+Personnage { id, nom, pj, portrait, x, y, facettes: { [epoqueId | "*"]: Facette } }
+Facette    { role, groupeId, fonction, moral, desir, besoin, faiblesse, pouvoirs,
+             transformation, archetype, surprise, notes, background, style,
+             objectifs[], possede[], pressions[], images[] }
+Lien       { …, epoqueId? }          — déjà daté ; null = toutes les époques
+Trame      { …, epoqueId? }          — l'époque de ses scènes
+Situation  { …, epoqueId? }          — la sienne, sinon celle de la trame (`epoqueDe`)
+Information{ …, etatsParEpoque, croyancesParEpoque } — l'exception datée, rare
+```
+
+`personnes.js` est pur : la **vue** fond une facette sur la personne et rend le personnage
+plat que tout le reste de l'outil lit ; `existeA` dit si la personne est d'une époque ; la
+**conversion** fait passer un GN de l'ancien modèle au nouveau. Une personne absente d'une
+époque rend quand même une vue — sa facette la plus proche — parce qu'une scène de 1965 doit
+pouvoir afficher Régis depuis un écran réglé sur 1985.
+
+### L'époque courante est un réglage du store, pas de la donnée
+
+`ReseauStore.reglerEpoques(ordre, courante)` : l'application y pose les époques du monde, la
+dernière par défaut ; les onglets de la fiche et les puces de la liste la changent.
+`personnages()`, `personnage(id)`, `liensDe(id)`, `membresDe(g)` lisent à cette époque quand on
+ne leur en donne pas une. C'est ce qui a permis de ne toucher **aucun module pur** au moment du
+changement de modèle : la conscience, le point de vue, la couverture, la défection lisent des
+personnages plats, et les lisent maintenant à une époque. Leur donner explicitement une époque —
+« personne n'est seul en 1965 » — est la suite, pas une condition.
+
+`majPersonnage(id, patch, epoqueId?)` sépare un patch plat : le nom, le portrait et la position
+vont sur la personne ; le reste dans la facette de l'époque donnée, ou courante, créée s'il le
+faut. `creerFacette(id, epoqueId, depuis?)` écrit une personne à une époque de plus, copiée
+d'une autre facette ou vide.
+
+### La conversion, en trois exemplaires qui se vérifient
+
+`convertirIncarnations()` sert à la **migration v5** du stockage local, à l'**import d'une
+archive de version 1** (`archive.js` la convertit avant de normaliser, parce que la conversion
+regarde plusieurs blocs à la fois), et elle est **portée en Python** pour convertir un fichier
+hors de l'outil. Les trois ont donné le même résultat sur le GN de l'audit : 67 incarnations →
+48 personnes, 19 fusions, 437 liens, 32 sièges, onze trames datées, sept exceptions
+d'information. L'identifiant conservé pour un rôle est le plus référencé — celui des scènes —,
+à égalité celui de la dernière époque ; un savoir qui diffère entre les deux incarnations
+devient une exception datée, avec la dernière époque pour base.
+
+### Ce qui a disparu
+
+`roleId`, `fusionnerRoles`, la projection des liens par rôle dans le livret, la règle
+« deux incarnations à la même époque », le sélecteur d'époque sur la fiche et le bloc « c'est
+la même personne que ». Un siège **continu** est une personne écrite à plusieurs époques ; il
+**change de rôle** quand il tient plusieurs personnes. Le normaliseur fait entrer un personnage
+plat — ancien stockage, pair ancien — dans une facette, à son époque ou à « * ».
+
+### Ce qui reste à faire, et c'est la seconde moitié du refacto
+
+Les modules purs ne prennent pas encore d'époque en paramètre : ils lisent la courante. La
+matrice n'affiche pas les exceptions datées. Le graphe, la frise et le casting n'ont pas de
+sélecteur d'époque à eux — ils suivent la fiche. L'espace partagé synchronise une personne
+entière : deux auteurs sur les deux époques d'Ange entrent en conflit, là où une facette par
+document les séparerait.
 
 ---
 

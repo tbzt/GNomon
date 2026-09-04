@@ -106,7 +106,7 @@ suite("Normaliser — un document venu d'ailleurs", () => {
     const r = normaliserDocument("reseau.personnages", { id: "p1", nom: "Ana" }, "p1");
     eq(r.anomalies.length, 0);
     eq(r.d.portrait, "");
-    eqDonnees(r.d.objectifs, []);
+    eqDonnees(r.d.facettes["*"].objectifs, []);
   });
 
   /** ── L'INVARIANT QUI REND LA SYNCHRONISATION SAINE ──
@@ -117,12 +117,15 @@ suite("Normaliser — un document venu d'ailleurs", () => {
       repousserait tout le GN à chaque tour, en croyant l'avoir modifié. */
   test("normaliser ne bouge pas un objet déjà bien formé", () => {
     const complet = {
-      id: "p1", nom: "Elena", role: "", pj: true, groupeId: null,
-      roleId: null, epoqueId: null, fonction: null,
-      moral: "", desir: "", besoin: "", faiblesse: "", pouvoirs: "",
-      transformation: "", archetype: "", surprise: false, notes: "",
-      background: "", style: "", objectifs: [], possede: [], pressions: [], portrait: "", images: [],
-      x: null, y: null,
+      id: "p1", nom: "Elena", pj: true, portrait: "", x: null, y: null,
+      facettes: {
+        "*": {
+          role: "", groupeId: null, fonction: null,
+          moral: "", desir: "", besoin: "", faiblesse: "", pouvoirs: "",
+          transformation: "", archetype: "", surprise: false, notes: "",
+          background: "", style: "", objectifs: [], possede: [], pressions: [], images: [],
+        },
+      },
     };
     const r = normaliserDocument("reseau.personnages", complet, "p1");
     eqDonnees(r.d, complet, "aucun champ ajouté ni retiré");
@@ -144,6 +147,15 @@ suite("Normaliser — un document venu d'ailleurs", () => {
 });
 
 suite("Normaliser — un bloc entier", () => {
+  test("un personnage PLAT entre dans une facette, à son époque ou à « * »", () => {
+    const r = normaliserDocument("reseau.personnages", { id: "p2", nom: "Ange", moral: "M", epoqueId: "e65", roleId: "r1" }, "p2");
+    eq(Object.keys(r.d.facettes).join(), "e65");
+    eq(r.d.facettes.e65.moral, "M");
+    eq(r.d.moral, undefined, "plus de champ plat en surface");
+    eq(r.d.roleId, undefined, "le rôle n'existe plus : la personne est l'unité");
+    eq(normaliserDocument("reseau.personnages", { id: "p3", nom: "X" }, "p3").d.facettes["*"].objectifs.length, 0);
+  });
+
   test("une liste qui n'en est pas une devient vide", () => {
     const r = normaliserBloc("reseau", { personnages: "pas un tableau", liens: null, groupes: 3 });
     eqDonnees(r.bloc, { personnages: [], liens: [], groupes: [], sieges: [] });

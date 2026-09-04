@@ -20,12 +20,22 @@
 
    Aucune n'est « la vraie » : les trois lisent le même store, avec le
    même vocabulaire (⇄ accord · ⇄̸ désaccord · → sens unique).
+
+   ── LA LISTE COMPTE DES RÔLES, PAS DES INCARNATIONS ──
+   Un GN à deux époques range dans le store une incarnation par époque
+   — parce que les liens et les scènes sont datés — mais l'auteur, lui,
+   écrit UNE personne. La liste montre donc une carte par rôle, avec
+   une puce par époque pour ouvrir la facette qu'on veut ; la fiche est
+   la même, avec son onglet d'époque. Ce que la carte résume (métier,
+   morale, contacts) est celui de la dernière époque, qui est presque
+   toujours celle qu'on joue le plus longtemps.
    ============================================================ */
 import { scoreCouverture } from "../core/couverture.js";
 import { TONALITES, IMPORTANCES, FONCTIONS } from "../core/reseaustore.js";
 import { ReseauGraphe } from "./reseaugraphe.js";
 import { Tableau } from "./tableau.js";
 import { Accueil } from "./accueil.js";
+import { epoques as epoquesDe } from "../core/epoques.js";
 import { Utils } from "../core/utils.js";
 
 const SEUIL_ALERTE = 5;
@@ -55,6 +65,15 @@ export const Reseau = {
     this._onCreer = onCreer;
     this._actions = actions;
     this._hote.addEventListener("click", (e) => {
+      // Une puce d'époque ouvre la facette de ce moment-là, pas la
+      // carte entière — qui, elle, ouvre la dernière époque.
+      const fac = e.target.closest("[data-facette]");
+      if (fac && this._onOuvrir) {
+        e.stopPropagation();
+        if (fac.dataset.epoque) this._store.reglerEpoque(fac.dataset.epoque);
+        this._onOuvrir(fac.dataset.facette);
+        return;
+      }
       const lent = e.target.closest("[data-lentille]");
       if (lent) {
         this._lentille = lent.dataset.lentille;
@@ -198,11 +217,14 @@ export const Reseau = {
     ReseauGraphe.demonter();
     Tableau.demonter();
     const groupes = [...this._store.groupes(), { id: null, nom: "Sans groupe" }];
+    // Une carte par personne, lue à l'époque courante : son groupe à
+    // cette époque range la carte.
+    const cartes = persos.map((p) => ({ role: p, p }));
     this._hote.innerHTML =
       barre +
       groupes
       .map((g) => {
-        const membres = persos.filter((p) => p.groupeId === g.id);
+        const membres = cartes.filter(({ p }) => p.groupeId === g.id);
         // Un groupe RÉEL resté sans membre s'affiche quand même, vide.
         // Le masquer le laisserait vivre dans les sélecteurs sans
         // qu'aucun écran ne permette de le renommer ni de le dissoudre —
@@ -214,7 +236,7 @@ export const Reseau = {
           `<section class="groupe" data-groupe="${g.id || ""}">` +
           this._enteteGroupe(g, membres.length) +
           (membres.length
-            ? membres.map((p) => this._carte(p)).join("")
+            ? membres.map(({ role, p }) => this._carte(p, role)).join("")
             : '<p class="groupe-vide">Aucun membre. Rangez quelqu\'un dedans depuis la lentille Tableau, ' +
               "ou dissolvez-le.</p>") +
           "</section>"
@@ -238,7 +260,27 @@ export const Reseau = {
     );
   },
 
-  _carte(p) {
+  /** Les puces d'époque d'un rôle : une par époque déclarée, pleine si
+      le rôle y existe (et elle ouvre cette facette), en pointillé sinon. */
+  _puces(role, p) {
+    const monde = this._stores && this._stores.monde ? this._stores.monde : null;
+    const ep = monde ? epoquesDe(monde) : [];
+    if (!ep.length) return "";
+    const courante = this._store.epoqueCourante ? this._store.epoqueCourante() : null;
+    return (
+      '<span class="perso-epoques">' +
+      ep
+        .map((e) => {
+          if (!this._store.existeA(p.id, e.id))
+            return `<span class="ep-puce vide" title="${Utils.escHtml(p.nom)} n'est pas de ${Utils.escHtml(e.nom)}">${Utils.escHtml(e.nom || "?")}</span>`;
+          return `<button type="button" class="ep-puce${e.id === courante ? " actif" : ""}" data-facette="${p.id}" data-epoque="${Utils.escHtml(e.id)}" title="Ouvrir en ${Utils.escHtml(e.nom)}">${Utils.escHtml(e.nom || "?")}</button>`;
+        })
+        .join("") +
+      "</span>"
+    );
+  },
+
+  _carte(p, role = null) {
     const liens = this._store.liensDe(p.id);
     const primairesRecus = this._store
       .liensVers(p.id)
@@ -261,6 +303,7 @@ export const Reseau = {
       `<span class="cote${couvert < SEUIL_ALERTE ? " basse" : ""}" title="Couverture : ${couvert} composantes sur ${total}">${couvert}/${total}</span>` +
       "</h3>" +
       `<p class="role">${Utils.escHtml(p.role)}${p.fonction ? " · " + FONCTIONS[p.fonction] : ""} · ${p.pj ? "PJ" : "PNJ"}</p>` +
+      (role ? this._puces(role, p) : "") +
       "</span></header>" +
       (p.moral ? `<p class="moral">« ${Utils.escHtml(p.moral)} »</p>` : "") +
       `<p class="compte">${liens.length} ${Utils.plur(liens.length, "contact")} ${Utils.plur(liens.length, "déclaré")} · ` +

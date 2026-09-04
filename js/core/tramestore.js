@@ -9,8 +9,8 @@
    chaque **conclusion potentielle** d'une situation est une arête
    sortante.
 
-       Trame      { id, titre, porteurId, notes }
-       Situation  { id, trameId, titre, pitch, pointDeVueId, castIds[],
+       Trame      { id, titre, porteurId, notes, epoqueId? }
+       Situation  { id, trameId, epoqueId?, titre, pitch, pointDeVueId, castIds[],
                     requiertIds[], produitIds[],
                     espace, debut, fin, miseEnScene, materiel,
                     joueurParticulier, regles, terminale, x, y }
@@ -31,6 +31,12 @@
    deux ferait d'une chaîne narrative un sac : on ne pourrait plus
    demander « qui doit savoir quoi AVANT le jeu ? », qui est exactement
    la question à laquelle sert le squelette de fiche.
+
+   ── LA SCÈNE SAIT À QUELLE ÉPOQUE ELLE SE JOUE ──
+   Un GN à deux moments caste les mêmes PERSONNES aux deux ; c'est la
+   scène qui dit le moment. `epoqueId` se pose sur la trame — la nuit
+   de 1965 est une trame — et une scène le reprend sans le redire ;
+   elle peut le contredire. `epoqueDe(situationId)` fait la lecture.
 
    ── UNE CONCLUSION SANS CIBLE EST VALIDE ──
    `vers: null` n'est pas un état dégradé, c'est **le moteur de
@@ -139,8 +145,8 @@ export const TrameStore = {
     return this._d().trames.find((t) => t && t.id === id) || null;
   },
 
-  creerTrame({ titre = "Nouvelle trame", porteurId = null, notes = "" } = {}) {
-    const t = { id: this._uid("t"), titre, porteurId, notes };
+  creerTrame({ titre = "Nouvelle trame", porteurId = null, notes = "", epoqueId = null } = {}) {
+    const t = { id: this._uid("t"), titre, porteurId, notes, epoqueId };
     this._d().trames.push(t);
     this.save();
     this._emit({ type: "trame:creer", id: t.id });
@@ -178,6 +184,15 @@ export const TrameStore = {
 
   situation(id) {
     return this._d().situations.find((s) => s && s.id === id) || null;
+  },
+
+  /** L'époque d'une scène : la sienne, sinon celle de sa trame. */
+  epoqueDe(situationId) {
+    const s = this.situation(situationId);
+    if (!s) return null;
+    if (s.epoqueId) return s.epoqueId;
+    const t = this.trame(s.trameId);
+    return (t && t.epoqueId) || null;
   },
 
   creerSituation(trameId, { titre = "", pitch = "", ...champs } = {}) {

@@ -170,6 +170,12 @@ export const App = {
       },
     });
 
+    // L'époque courante du réseau suit les époques déclarées : la
+    // dernière par défaut, celle que l'auteur choisit ensuite.
+    this._reglerEpoques();
+    MondeStore.subscribe((evt) => {
+      if (!evt || evt.type === "monde:epoques" || evt.type === "monde:vider" || evt.type === "monde:maj") this._reglerEpoques();
+    });
     ReseauStore.subscribe(() => this._surChangement());
     TrameStore.subscribe(() => this._surChangement());
     InformationStore.subscribe(() => this._surChangement());
@@ -183,6 +189,11 @@ export const App = {
     this._brancherBarre();
     window.addEventListener("hashchange", () => this._lireHash());
     this._lireHash();
+  },
+
+  _reglerEpoques() {
+    const ordre = MondeStore.epoques().map((e) => e.id);
+    ReseauStore.reglerEpoques(ordre);
   },
 
   /* ---------------- routage ---------------- */

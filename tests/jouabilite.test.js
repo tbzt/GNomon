@@ -104,8 +104,8 @@ suite("Jouabilité — ce qu'il a, ce qui le presse", () => {
 
   test("le normaliseur les fournit vides", () => {
     const r = normaliserDocument("reseau.personnages", { id: "p9", nom: "X" }, "p9");
-    eq(r.d.possede.length, 0);
-    eq(r.d.pressions.length, 0);
+    eq(r.d.facettes["*"].possede.length, 0);
+    eq(r.d.facettes["*"].pressions.length, 0);
   });
 });
 
@@ -234,18 +234,20 @@ suite("Jouabilité — conclusions et interrupteurs", () => {
 
   test("la feuille dit à quelle époque elle parle", () => {
     const reseau = fauxReseau({
+      epoques: ["e65", "e85"],
       personnages: [
-        { id: "m65", nom: "Marcel Vidal", epoqueId: "e65" },
-        { id: "m85", nom: "Marcel Vidal", epoqueId: "e85" },
+        { id: "m", nom: "Marcel Vidal", facettes: { e65: {}, e85: {} } },
+        { id: "d", nom: "Daniel Reggiani", facettes: { e85: {} } },
       ],
     });
     const md = feuilleDe2h({
-      interrupteurs: [{ id: "k1", question: "Q ?", defaut: "", note: "", toucheIds: ["m85"] }],
+      interrupteurs: [{ id: "k1", question: "Q ?", defaut: "", note: "", toucheIds: ["m", "d"] }],
       reseau,
       epoques: [{ id: "e65", nom: "1965", ordre: 0 }, { id: "e85", nom: "1985", ordre: 1 }],
     });
-    contient(md, "Marcel Vidal (1985)");
-    neContientPas(md, "Marcel Vidal (1965)");
+    contient(md, "Daniel Reggiani (1985)", "une personne d'une seule époque est datée");
+    contient(md, "Marcel Vidal,", "une personne des deux époques ne l'est pas");
+    neContientPas(md, "Marcel Vidal (");
   });
 
   test("sans interrupteur, la feuille le dit", () => {

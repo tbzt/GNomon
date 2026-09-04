@@ -43,9 +43,12 @@
    ============================================================ */
 import { Storage, CLES_PROJET } from "./storage.js";
 import { normaliserBloc, resumeAnomalies } from "./normaliser.js";
+import { convertirIncarnations } from "./personnes.js";
 
 export const FORMAT = "gnomon-archive";
-export const VERSION = 1;
+export /* v2 (septembre 2026) : la personne est l'unité, l'époque une facette.
+   Une archive v1 s'importe encore : elle est convertie à l'entrée. */
+const VERSION = 2;
 
 /** Écrit en clair dans le fichier, en tête. */
 export const AVERTISSEMENT =
@@ -171,10 +174,25 @@ export const Archive = {
     const v = this.verifier(paquet);
     if (!v.ok) return v;
 
+    // Une archive de version 1 range des incarnations : on la convertit
+    // avant de normaliser, d'un bloc, parce que la conversion regarde
+    // plusieurs blocs à la fois.
+    let data = paquet.data;
+    if (paquet.version < 2) {
+      const monde = data.monde || {};
+      const ordre = [...(Array.isArray(monde.epoques) ? monde.epoques : [])]
+        .sort((a, b) => (a.ordre ?? 0) - (b.ordre ?? 0))
+        .map((e) => e.id);
+      const r = convertirIncarnations(data, ordre);
+      data = { ...data };
+      for (const k of ["reseau", "trames", "informations", "casting", "derogations", "monde"])
+        if (data[k] !== undefined || r[k] !== undefined) data[k] = r[k];
+    }
+
     const bilan = {};
     const anomalies = [];
     for (const cle of CLES) {
-      const brut = paquet.data[cle];
+      const brut = data[cle];
       if (brut === undefined) continue;
       const norme = normaliserBloc(cle, brut);
       anomalies.push(...norme.anomalies);

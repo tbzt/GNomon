@@ -192,6 +192,13 @@ de conscience signale l'objectif que personne ne peut refuser. Les conclusions o
 types, dont la **narration** que l'orga impose et l'**interrupteur** que le jeu décide ; les
 interrupteurs se déclarent sur le monde, et la **feuille de 2 h** se génère depuis eux.
 
+Un GN à plusieurs époques s'écrit **une personne à la fois** : un personnage est une
+personne, et ce qu'elle est à chaque moment — métier, background, objectifs, groupe — est une
+facette par époque. La liste montre une carte par personne avec une puce par époque, la fiche
+a son onglet d'époque, et un mode côte à côte met les époques en colonnes pour écrire le
+background de 1965 en regard de celui de 1985. Les liens et les scènes portent l'époque ; une
+archive écrite avec l'ancien modèle, à une incarnation par époque, se convertit à l'import.
+
 Le **background** remis est distinct du **carnet de l'auteur**, qui ne sort jamais : sans cette
 séparation, un « à révéler plus tard » griffonné en écrivant partait au joueur. Le background
 prend la place qu'il faut (une ligne `---` commence une nouvelle page), accepte des images, et

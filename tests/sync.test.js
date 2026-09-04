@@ -29,31 +29,33 @@ import { empreinte } from "../js/core/objets.js";
 const perso = (id, nom, extra = {}) => ({
   id,
   nom,
-  role: "",
   pj: true,
-  groupeId: null,
-  roleId: null,
-  epoqueId: null,
-  fonction: null,
-  moral: "",
-  desir: "",
-  besoin: "",
-  faiblesse: "",
-  pouvoirs: "",
-  transformation: "",
-  archetype: "",
-  surprise: false,
-  notes: "",
-  background: "",
-  style: "",
-  objectifs: [],
-  possede: [],
-  pressions: [],
   portrait: "",
-  images: [],
   x: null,
   y: null,
-  ...extra,
+  facettes: {
+    "*": {
+      role: "",
+      groupeId: null,
+      fonction: null,
+      moral: "",
+      desir: "",
+      besoin: "",
+      faiblesse: "",
+      pouvoirs: "",
+      transformation: "",
+      archetype: "",
+      surprise: false,
+      notes: "",
+      background: "",
+      style: "",
+      objectifs: [],
+      possede: [],
+      pressions: [],
+      images: [],
+      ...extra,
+    },
+  },
 });
 const gn = (personnages) => ({ reseau: { personnages, liens: [], groupes: [], sieges: [] } });
 
@@ -215,9 +217,9 @@ suite("Sync — deux pairs convergent", () => {
 
     eq(rb.conflits.length, 1);
     eq(rb.conflits[0].cause, "modifié des deux côtés");
-    eq(rb.conflits[0].local.moral, "écrit par B", "la version écartée est rendue entière");
-    eq(rb.conflits[0].distant.moral, "écrit par A");
-    eq(b.persos()[0].moral, "écrit par A", "on converge sur le distant");
+    eq(rb.conflits[0].local.facettes["*"].moral, "écrit par B", "la version écartée est rendue entière");
+    eq(rb.conflits[0].distant.facettes["*"].moral, "écrit par A");
+    eq(b.persos()[0].facettes["*"].moral, "écrit par A", "on converge sur le distant");
   });
 
   test("après un conflit, les deux pairs sont d'accord", async () => {
